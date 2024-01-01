@@ -1,0 +1,24 @@
+{
+  "name": "@mercuryworkshop/alicejs",
+  "version": "1.0.0",
+  "description": "A utilitarian HTML rendering library",
+  "scripts": {
+    "build": "esbuild --minify --bundle AliceJS.js --outdir=dist && tsc",
+    "watch": "esbuild --watch=forever --bundle AliceJS.js --outdir=dist & tsc --watch"
+  },
+  "keywords": ["html","jsx","framework","alicejs"],
+  "author": "MercuryWorkshop",
+  "repository": "https://github.com/MercuryWorkshop/AliceJS",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "browser": "./dist/index.js",
+      "node": "./dist/index.js",
+      "types":"./AliceJS.d.ts"
+    }
+  },
+  "devDependencies": {
+    "esbuild": "^0.19.11",
+    "typescript": "^5.3.3"
+  }
+}

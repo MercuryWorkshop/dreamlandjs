@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+
+    "lib": [
+      "ESNext",
+      "dom"
+    ], 
+    "outDir": "./examples/lib",
+    "removeComments": true, 
+    "target": "ES6",
+
+    "jsx":"react",
+    "jsxFactory":"h",
+    "jsxFragmentFactory":"YOU_CANT_USE_FRAGMENTS",
+
+    "sourceMap": true,
+    "sourceRoot": "", 
+
+    "alwaysStrict": false, 
+    "noImplicitAny": false, 
+    "strictNullChecks":false, 
+
+    "noUncheckedIndexedAccess": true
+  },
+  "include": ["./examples/*.ts","./examples/*.tsx", "./AliceJS.d.ts"],
+  "exclude": [
+    "node_modules/**/*"
+  ]
+}
