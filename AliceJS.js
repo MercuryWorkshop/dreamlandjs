@@ -30,7 +30,7 @@ Object.defineProperty(window, "use", {
     };
   }
 });
-Object.assign(window, { h, stateful, handle, css, styled: { new: css } });
+Object.assign(window, { stateful, handle, css, styled: { new: css } });
 
 // This wraps the target in a proxy, doing 2 things:
 // - whenever a property is accessed, update the reference stack
@@ -122,8 +122,25 @@ export function handle(references, callback) {
   }
 }
 
+// Hack to skip use() when there's only one possible property
+Object.defineProperty(window, "h", {
+  get: () => {
+    __reference_stack = [];
+    return (type, props, ...children) => {
+      let references = __reference_stack;
+      references[ALICEJS_REFERENCES_MARKER] = true;
+
+      if (references.length == 1 && children.length == 1) {
+        __reference_stack = [];
+        return h(type, props, references);
+      } else {
+        return h(type, props, ...children);
+      }
+    };
+  }
+});
 // Actual JSX factory. Responsible for creating the HTML elements and all of the *reactive* syntactic sugar
-export function h(type, props, ...children) {
+function h(type, props, ...children) {
   if (typeof type === "function") {
     let newthis = stateful({});
     let component = type.bind(newthis);

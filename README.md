@@ -1,11 +1,8 @@
-# AliceJS
-A utilitarian rendering library
-
-## What is AliceJS
-AliceJS is a reactive JSX-based library with **no virtual dom**
+## What is AliceJS?
+AliceJS is a reactive JSX-based rendering library with **no virtual dom**
 
 ## Why do we need another javascript framework????
-not sure to be honest
+React is great, but the API is unnecesarily complex and bloated. AliceJS lets you write code where what you see is what you get, no trickery.
 
 ## What does it look like?
 Here's a simple counter app
@@ -16,7 +13,7 @@ function App() {
     <div>
       <button on:click={() => this.counter++} >Click me!</button>
       <p>
-        Value: {use(this.counter)}
+       {this.counter}
       </p>
     </div>
   );
@@ -56,7 +53,7 @@ ReactDOM.render(
 );
 ```
 
-AliceJS provides a simple and intuitive API at a low cost
+AliceJS provides a simple and intuitive API at a low cost (~8kb, smaller than react)
 
 To get started with AliceJS, add this to the compileroptions of your `tsconfig.json`
 ```json
@@ -84,3 +81,5 @@ window.addEventListener("load", () => {
 });
 ```
 
+
+See the examples/ directory for more.
