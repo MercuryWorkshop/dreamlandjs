@@ -30,7 +30,7 @@ Object.defineProperty(window, "use", {
     };
   }
 });
-Object.assign(window, { stateful, handle, css, styled: { new: css } });
+Object.assign(window, { stateful, handle, useValue, css, styled: { new: css } });
 
 // This wraps the target in a proxy, doing 2 things:
 // - whenever a property is accessed, update the reference stack
@@ -122,6 +122,11 @@ export function handle(references, callback) {
   }
 }
 
+export function useValue(references) {
+  let reference = references[references.length - 1];
+  return reference.proxy[reference.property];
+}
+
 // Hack to skip use() when there's only one possible property
 Object.defineProperty(window, "h", {
   get: () => {
@@ -143,9 +148,40 @@ Object.defineProperty(window, "h", {
 function h(type, props, ...children) {
   if (typeof type === "function") {
     let newthis = stateful({});
-    let component = type.bind(newthis);
 
-    return component();
+    for (const name in props) {
+      const references = props[name];
+      if (isAJSReferences(references) && name.startsWith("bind:")) {
+        let reference = references[references.length - 1];
+        const propname = name.substring(5);
+        if (propname == "this") {
+          reference.proxy[reference.property] = newthis;
+        } else {
+          // component two way data binding!! (exact same behavior as svelte:bind)
+          let isRecursive = false;
+
+          handle(references, value => {
+            if (isRecursive) {
+              isRecursive = false;
+              return;
+            }
+            isRecursive = true;
+            newthis[propname] = value
+          });
+          handle(use(newthis[propname]), value => {
+            if (isRecursive) {
+              isRecursive = false;
+              return;
+            }
+            isRecursive = true;
+            reference.proxy[reference.property] = value;
+          });
+        }
+        delete props[name];
+      }
+    }
+
+    return type.apply(newthis, [props]);
   }
 
 
@@ -310,22 +346,27 @@ function h(type, props, ...children) {
   }
 
 
-  // two-way bind an <input>
-  useProp("$value", references => {
-    if (!isAJSReferences(references)) return;
-    if (!(elm instanceof HTMLInputElement)) return;
-
-    handle(references, value => elm.value = value);
-    let reference = references[references.length - 1];
-    elm.addEventListener("change", () => {
-      reference.proxy[reference.property] = elm.value;
-    })
-  });
-
   // insert an element at the end
   useProp("after", callback => {
     addChild(callback());
   })
+
+  for (const name in props) {
+    const references = props[name];
+    if (isAJSReferences(references) && name.startsWith("bind:")) {
+      let reference = references[references.length - 1];
+      const propname = name.substring(5);
+      if (propname == "this") {
+        reference.proxy[reference.property] = elm;
+      } else if (propname == "value") {
+        handle(references, value => elm.value = value);
+        elm.addEventListener("change", () => {
+          reference.proxy[reference.property] = elm.value;
+        })
+      }
+      delete props[name];
+    }
+  }
 
   // apply the non-reactive properties
   for (const name in props) {
@@ -355,7 +396,7 @@ function JSXAddAttributes(elm, name, prop) {
     return;
   }
 
-  if (typeof prop === "function" && name === "@mount") {
+  if (typeof prop === "function" && name === "mount") {
     prop(elm);
     return;
   }
@@ -384,11 +425,6 @@ function JSXAddAttributes(elm, name, prop) {
       }
     });
     observer.observe(elm);
-    return;
-  }
-  if (name.startsWith("bind:")) {
-    const propname = name.substring(5);
-    prop[propname] = elm;
     return;
   }
 

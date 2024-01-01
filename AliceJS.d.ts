@@ -4,20 +4,21 @@ declare namespace JSX {
 
 declare function h(
   type: string,
-  props: { [index: string]: any } | null,
+  props?: { [index: string]: any } | null,
   ...children: (HTMLElement | string)[]
 ): Node;
 
-type AliceJSReferenceSink = { readonly __symbol: unique symbol };
+type AliceJSReferenceSink<T> = { readonly __symbol: unique symbol, readonly __signature: T };
 
-declare function use(sink: any, mapping?: (...args: any[]) => any): AliceJSReferenceSink;
+declare function use<T>(sink: T | any, mapping?: (...args: any[]) => any): AliceJSReferenceSink<T>;
+declare function useValue<T>(sink: AliceJSReferenceSink<T>): T;
 
 type Stateful<T> = T & { readonly symbol: unique symbol };
 
 
 declare function stateful<T>(target: T): Stateful<T>;
 
-declare function handle(references: AliceJSReferenceSink, callback: (value: any) => void): void;
+declare function handle<T>(references: AliceJSReferenceSink<T>, callback: (value: T) => void): void;
 
 declare function css(strings: TemplateStringsArray, ...values: any): string;
 declare var styled: { new: typeof css };

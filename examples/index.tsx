@@ -1,4 +1,5 @@
-function Counter() {
+function Counter(a) {
+  console.log(a);
   let css = styled.new`
     self {
       display: flex;
@@ -21,7 +22,7 @@ function Counter() {
     }
 `;
 
-  this.counter = 0;
+  this.counter ??= 0;
 
   return (
     <div css={css} class="box">
@@ -62,7 +63,7 @@ function ToDoList() {
   return (
     <div class="box" css={css}>
       <div>
-        <input $value={use(this.text)} on:change={() => addTask()} />
+        <input bind:value={use(this.text)} on:change={() => addTask()} />
         <button on:click={() => addTask()}>Add Task</button>
       </div>
       <div for={use(this.tasks)} do={(task, i) =>
@@ -99,16 +100,22 @@ function Index() {
     }
 `;
 
+  this.c = 5;
+
+  this.counterobj;
+
   return (
-    <div css={css}>
+    <div className={"as"}>
       <div>
         <h1>AliceJS Examples</h1>
         <p>Some examples of AliceJS components. Code is in examples/</p>
       </div>
       <examples>
-        <Counter />
+        <Counter a="b" bind:this={use(this.counterobj)} bind:counter={use(this.c)} />
         <ToDoList />
       </examples>
+      stuff: {use(this.counterobj.counter)}
+      <button on:click={() => this.counterobj.counter++}>as</button>
     </div>
   );
 }
