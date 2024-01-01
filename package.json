@@ -1,10 +1,10 @@
 {
   "name": "@mercuryworkshop/alicejs",
-  "version": "1.0.1",
+  "version": "1.1.2",
   "description": "A utilitarian HTML rendering library",
   "scripts": {
-    "build": "esbuild --minify --bundle AliceJS.js --outdir=dist && tsc",
-    "watch": "esbuild --watch=forever --bundle AliceJS.js --outdir=dist & tsc --watch"
+    "build": "esbuild --minify --bundle AliceJS.js --outfile=index.js && tsc",
+    "watch": "esbuild --watch=forever --bundle AliceJS.js --outfile=index.js & tsc --watch"
   },
   "keywords": ["html","jsx","framework","alicejs"],
   "author": "MercuryWorkshop",
