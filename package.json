@@ -1,6 +1,6 @@
 {
   "name": "@mercuryworkshop/alicejs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A utilitarian HTML rendering library",
   "scripts": {
     "build": "esbuild --minify --bundle AliceJS.js --outdir=dist && tsc",

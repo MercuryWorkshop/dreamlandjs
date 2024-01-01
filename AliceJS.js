@@ -183,12 +183,6 @@ export function h(type, props, ...children) {
     addChild(callback());
   })
 
-  useProp("css", classname => {
-    elm.classList.add(classname);
-    elm.classList.add("self");
-  });
-
-
   // if/then/else syntax
   useProp("if", condition => {
     let thenblock = props["then"];
@@ -328,6 +322,11 @@ export function h(type, props, ...children) {
     }
   }
 
+  useProp("css", classname => {
+    elm.classList.add(classname);
+    elm.classList.add("self");
+  });
+
   return elm;
 }
 
@@ -344,8 +343,8 @@ function JSXAddAttributes(elm, name, prop) {
     return;
   }
 
-  if (typeof prop === "function" && name.startsWith("#")) {
-    const names = name.substring(1);
+  if (typeof prop === "function" && name.startsWith("on:")) {
+    const names = name.substring(3);
     for (const name of names.split("$")) {
       elm.addEventListener(name, (...args) => {
         window.$el = elm;

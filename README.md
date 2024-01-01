@@ -14,7 +14,7 @@ function App() {
   this.counter = 0;
   return (
     <div>
-      <button #click={() => this.counter++} >Click me!</button>
+      <button on:click={() => this.counter++} >Click me!</button>
       <p>
         Value: {use(this.counter)}
       </p>
@@ -58,12 +58,12 @@ ReactDOM.render(
 
 AliceJS provides a simple and intuitive API at a low cost
 
-To get started with AliceJS, add this to your `tsconfig.json`
+To get started with AliceJS, add this to the compileroptions of your `tsconfig.json`
 ```json
 "jsx":"react",
 "jsxFactory":"h",
 "jsxFragmentFactory":"YOU_CANT_USE_FRAGMENTS",
-"types": ["@MercuryWorkshop/AliceJS"],
+"types": ["@mercuryworkshop/alicejs"],
 ```
 and run `npm install @mercuryworkshop/alicejs`
 
@@ -76,11 +76,11 @@ AliceJS can even be used without a build step, here's the counter example in pla
 function Index() {
     this.counter = 0;
     return (h("div",{},
-        h("button", { "#click": () => this.counter++ }, "Click me!"),
+        h("button", { "on:click": () => this.counter++ }, "Click me!"),
         h("p",{}, "Value: ", use(this.counter))));
 }
 window.addEventListener("load", () => {
-    document.body.appendChild(h(Index, null));
+    document.body.appendChild(h(Index));
 });
 ```
 
