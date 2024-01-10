@@ -84,7 +84,7 @@ export function handle(references, callback) {
         (pair) => values.get(pair[0])[pair[1]],
       );
 
-      const value = mapping(...flattened_values);
+      const value = mapping(...flattened_values.reverse());
 
       callback(value);
     };
@@ -362,6 +362,11 @@ function h(type, props, ...children) {
         handle(references, value => elm.value = value);
         elm.addEventListener("change", () => {
           reference.proxy[reference.property] = elm.value;
+        })
+      } else if (propname == "checked") {
+        handle(references, value => elm.checked = value);
+        elm.addEventListener("click", () => {
+          reference.proxy[reference.property] = elm.checked;
         })
       }
       delete props[name];
