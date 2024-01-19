@@ -13,7 +13,7 @@ function App() {
     <div>
       <button on:click={() => this.counter++} >Click me!</button>
       <p>
-       {this.counter}
+       {use(this.counter)}
       </p>
     </div>
   );
@@ -39,7 +39,7 @@ function App() {
     <div>
       <button onClick={increase}>Click me!</button>
       <p>
-        Value: {use(this.counter)}
+        Value: {counter}
       </p>
     </div>
   );

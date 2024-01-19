@@ -127,25 +127,8 @@ export function useValue(references) {
   return reference.proxy[reference.property];
 }
 
-// Hack to skip use() when there's only one possible property
-Object.defineProperty(window, "h", {
-  get: () => {
-    __reference_stack = [];
-    return (type, props, ...children) => {
-      let references = __reference_stack;
-      references[ALICEJS_REFERENCES_MARKER] = true;
-
-      if (references.length == 1 && children.length == 1) {
-        __reference_stack = [];
-        return h(type, props, references);
-      } else {
-        return h(type, props, ...children);
-      }
-    };
-  }
-});
 // Actual JSX factory. Responsible for creating the HTML elements and all of the *reactive* syntactic sugar
-function h(type, props, ...children) {
+export function h(type, props, ...children) {
   if (typeof type === "function") {
     let newthis = stateful({});
 
