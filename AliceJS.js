@@ -30,7 +30,7 @@ Object.defineProperty(window, "use", {
     };
   }
 });
-Object.assign(window, { h, stateful, handle, useValue, css, styled: { new: css } });
+Object.assign(window, { h, html, stateful, handle, useValue, css, styled: { new: css } });
 
 // This wraps the target in a proxy, doing 2 things:
 // - whenever a property is accessed, update the reference stack
@@ -129,37 +129,6 @@ export function useValue(references) {
 
 // Actual JSX factory. Responsible for creating the HTML elements and all of the *reactive* syntactic sugar
 export function h(type, props, ...children) {
-  function addChild(child, cb) {
-
-    if (isAJSReferences(child)) {
-      let appended = [];
-      handle(child, (val) => {
-        if (appended.length > 1) {
-          // this is why we don't encourage arrays (jank)
-          appended.forEach(n => n.remove());
-          appended = addChild(val, cb);
-        } else if (appended.length > 0) {
-          appended[0].replaceWith((appended = addChild(val, cb))[0]);
-        } else {
-          appended = addChild(val, cb);
-        }
-      });
-    } else if (child instanceof Node) {
-      cb(child);
-      return [child];
-    } else if (child instanceof Array) {
-      let elms = [];
-      for (const childchild of child) {
-        elms = elms.concat(addChild(childchild, cb));
-      }
-      return elms;
-    } else {
-      let node = document.createTextNode(child);
-      cb(node);
-      return [node];
-    }
-  }
-
   if (typeof type === "function") {
     let newthis = stateful({});
 
@@ -196,8 +165,7 @@ export function h(type, props, ...children) {
     }
     let slot = [];
     for (const child of children) {
-      console.log("??");
-      addChild(child, slot.push.bind(slot));
+      JSXAddChild(child, slot.push.bind(slot));
     }
 
     return type.apply(newthis, [props, slot]);
@@ -207,7 +175,7 @@ export function h(type, props, ...children) {
   const elm = document.createElement(type);
 
   for (const child of children) {
-    addChild(child, elm.appendChild.bind(elm));
+    JSXAddChild(child, elm.appendChild.bind(elm));
   }
 
   if (!props) return elm;
@@ -221,7 +189,7 @@ export function h(type, props, ...children) {
 
   // insert an element at the start
   useProp("before", callback => {
-    addChild(callback());
+    JSXAddChild(callback());
   })
 
   // if/then/else syntax
@@ -336,7 +304,7 @@ export function h(type, props, ...children) {
 
   // insert an element at the end
   useProp("after", callback => {
-    addChild(callback());
+    JSXAddChild(callback());
   })
 
   for (const name in props) {
@@ -381,6 +349,36 @@ export function h(type, props, ...children) {
   return elm;
 }
 
+// glue for nested children
+function JSXAddChild(child, cb) {
+  if (isAJSReferences(child)) {
+    let appended = [];
+    handle(child, (val) => {
+      if (appended.length > 1) {
+        // this is why we don't encourage arrays (jank)
+        appended.forEach(n => n.remove());
+        appended = JSXAddChild(val, cb);
+      } else if (appended.length > 0) {
+        appended[0].replaceWith((appended = JSXAddChild(val, cb))[0]);
+      } else {
+        appended = JSXAddChild(val, cb);
+      }
+    });
+  } else if (child instanceof Node) {
+    cb(child);
+    return [child];
+  } else if (child instanceof Array) {
+    let elms = [];
+    for (const childchild of child) {
+      elms = elms.concat(JSXAddChild(childchild, cb));
+    }
+    return elms;
+  } else {
+    let node = document.createTextNode(child);
+    cb(node);
+    return [node];
+  }
+}
 
 // Where properties are assigned to elements, and where the *non-reactive* syntax sugar goes
 function JSXAddAttributes(elm, name, prop) {
@@ -481,6 +479,70 @@ export function css(strings, ...values) {
   );
 
   return uid;
+}
+
+export function html(strings, ...values) {
+  let flattened = "";
+  let markers = {};
+  for (const i in strings) {
+    let string = strings[i];
+    let value = values[i];
+
+    flattened += string;
+    if (i < values.length) {
+      let dupe = Object.values(markers).findIndex(v => v == value);
+      if (dupe !== -1) {
+        flattened += Object.keys(markers)[dupe];
+      } else {
+        let marker = "m" + Array(16).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join("");
+        markers[marker] = value;
+        flattened += marker;
+      }
+    }
+  }
+  let dom = new DOMParser().parseFromString(flattened, "text/html");
+  if (dom.body.children.length !== 1)
+    throw "html builder needs exactly one child";
+
+  function wraph(elm) {
+    let nodename = elm.nodeName.toLowerCase();
+    if (nodename === "#text")
+      return elm.textContent;
+    if (nodename in markers)
+      nodename = markers[nodename];
+
+    let children = [...elm.childNodes].map(wraph);
+    for (let i = 0; i < children.length; i++) {
+      let text = children[i];
+      if (typeof text !== "string") continue;
+      for (const [marker, value] of Object.entries(markers)) {
+        if (!text) break;
+        if (!text.includes(marker)) continue;
+        let before;
+        [before, text] = text.split(marker);
+        children = [
+          ...children.slice(0, i),
+          before,
+          value,
+          text,
+          ...children.slice(i + 1)
+        ];
+        i += 2;
+      }
+    }
+
+    let attributes = {};
+    for (const attr of [...elm.attributes]) {
+      let val = attr.nodeValue;
+      if (val in markers)
+        val = markers[val];
+      attributes[attr.name] = val;
+    }
+
+    return h(nodename, attributes, children);
+  }
+
+  return wraph(dom.body.children[0]);
 }
 
 function deepEqual(object1, object2) {

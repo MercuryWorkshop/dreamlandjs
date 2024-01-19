@@ -70,14 +70,20 @@ If you don't like using modules, just add `<script src="://unpkg.com/@mercurywor
 
 AliceJS can even be used without a build step, here's the counter example in plain JS
 ```javascript
-function Index() {
-    this.counter = 0;
-    return (h("div",{},
-        h("button", { "on:click": () => this.counter++ }, "Click me!"),
-        h("p",{}, "Value: ", use(this.counter))));
+function App() {
+  this.counter = 0;
+  return html`
+    <div>
+      <button on:click=${() => this.counter++}>Click me!</button>
+      <p>
+        ${use(this.counter)}
+      </p>
+    </div>
+  `;
 }
+
 window.addEventListener("load", () => {
-    document.body.appendChild(h(Index));
+  document.body.appendChild(h(App));
 });
 ```
 
