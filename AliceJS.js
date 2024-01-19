@@ -30,7 +30,7 @@ Object.defineProperty(window, "use", {
     };
   }
 });
-Object.assign(window, { stateful, handle, useValue, css, styled: { new: css } });
+Object.assign(window, { h, stateful, handle, useValue, css, styled: { new: css } });
 
 // This wraps the target in a proxy, doing 2 things:
 // - whenever a property is accessed, update the reference stack
@@ -129,6 +129,37 @@ export function useValue(references) {
 
 // Actual JSX factory. Responsible for creating the HTML elements and all of the *reactive* syntactic sugar
 export function h(type, props, ...children) {
+  function addChild(child, cb) {
+
+    if (isAJSReferences(child)) {
+      let appended = [];
+      handle(child, (val) => {
+        if (appended.length > 1) {
+          // this is why we don't encourage arrays (jank)
+          appended.forEach(n => n.remove());
+          appended = addChild(val, cb);
+        } else if (appended.length > 0) {
+          appended[0].replaceWith((appended = addChild(val, cb))[0]);
+        } else {
+          appended = addChild(val, cb);
+        }
+      });
+    } else if (child instanceof Node) {
+      cb(child);
+      return [child];
+    } else if (child instanceof Array) {
+      let elms = [];
+      for (const childchild of child) {
+        elms = elms.concat(addChild(childchild, cb));
+      }
+      return elms;
+    } else {
+      let node = document.createTextNode(child);
+      cb(node);
+      return [node];
+    }
+  }
+
   if (typeof type === "function") {
     let newthis = stateful({});
 
@@ -163,46 +194,20 @@ export function h(type, props, ...children) {
         delete props[name];
       }
     }
+    let slot = [];
+    for (const child of children) {
+      console.log("??");
+      addChild(child, slot.push.bind(slot));
+    }
 
-    return type.apply(newthis, [props]);
+    return type.apply(newthis, [props, slot]);
   }
 
 
   const elm = document.createElement(type);
 
-  function addChild(child) {
-
-    if (isAJSReferences(child)) {
-      let appended = [];
-      handle(child, (val) => {
-        if (appended.length > 1) {
-          // this is why we don't encourage arrays (jank)
-          appended.forEach(n => n.remove());
-          appended = addChild(val);
-        } else if (appended.length > 0) {
-          appended[0].replaceWith((appended = addChild(val))[0]);
-        } else {
-          appended = addChild(val);
-        }
-      });
-    } else if (child instanceof Node) {
-      elm.appendChild(child);
-      return [child];
-    } else if (child instanceof Array) {
-      let elms = [];
-      for (const childchild of child) {
-        elms = elms.concat(addChild(childchild));
-      }
-      return elms;
-    } else {
-      let node = document.createTextNode(child);
-      elm.appendChild(node);
-      return [node];
-    }
-  }
-
   for (const child of children) {
-    addChild(child);
+    addChild(child, elm.appendChild.bind(elm));
   }
 
   if (!props) return elm;
