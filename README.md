@@ -53,7 +53,7 @@ ReactDOM.render(
 );
 ```
 
-AliceJS provides a simple and intuitive API at a low cost (~8kb, smaller than preact)
+AliceJS provides a simple and intuitive API at a low cost (~5.6kb min, ~2.4kb min+gzip, smaller than preact)
 
 To get started with AliceJS, add this to the compileroptions of your `tsconfig.json`
 ```json
