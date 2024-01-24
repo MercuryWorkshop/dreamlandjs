@@ -130,7 +130,7 @@ export function useValue(references) {
 // Actual JSX factory. Responsible for creating the HTML elements and all of the *reactive* syntactic sugar
 export function h(type, props, ...children) {
   if (typeof type === "function") {
-    let newthis = stateful({});
+    let newthis = stateful(Object.create(type.prototype));
 
     for (const name in props) {
       const references = props[name];
@@ -163,12 +163,17 @@ export function h(type, props, ...children) {
         delete props[name];
       }
     }
+    Object.assign(newthis, props);
+
     let slot = [];
     for (const child of children) {
       JSXAddChild(child, slot.push.bind(slot));
     }
 
-    return type.apply(newthis, [props, slot]);
+    let elm = type.apply(newthis, [slot]);
+    elm.$ = newthis;
+    newthis.root = elm;
+    return elm;
   }
 
 
@@ -359,7 +364,13 @@ function JSXAddChild(child, cb) {
         appended.forEach(n => n.remove());
         appended = JSXAddChild(val, cb);
       } else if (appended.length > 0) {
-        appended[0].replaceWith((appended = JSXAddChild(val, cb))[0]);
+        let old = appended[0];
+        appended = JSXAddChild(val, cb);
+        if (appended[0]) {
+          old.replaceWith(appended[0])
+        } else {
+          old.remove();
+        }
       } else {
         appended = JSXAddChild(val, cb);
       }
@@ -421,14 +432,15 @@ function JSXAddAttributes(elm, name, prop) {
 
   elm.setAttribute(name, prop);
 }
+
+const virtualDoc = document.implementation.createHTMLDocument("");
+const virtualStyleElement = document.createElement("style");
+virtualDoc.body.appendChild(virtualStyleElement);
+
 function parse_css(uid, css) {
   let cssParsed = "";
 
-  const virtualDoc = document.implementation.createHTMLDocument("");
-  const virtualStyleElement = document.createElement("style");
-
   virtualStyleElement.textContent = css;
-  virtualDoc.body.appendChild(virtualStyleElement);
 
   //@ts-ignore
   for (const rule of virtualStyleElement.sheet.cssRules) {

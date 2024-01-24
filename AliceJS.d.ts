@@ -22,3 +22,14 @@ declare function handle<T>(references: AliceJSReferenceSink<T>, callback: (value
 
 declare function css(strings: TemplateStringsArray, ...values: any): string;
 declare var styled: { new: typeof css };
+
+type DLCSS = string;
+
+interface Element {
+  $: DLComponent<any>
+}
+
+type DLComponent<T> = {
+  css: DLCSS,
+  root: Element,
+} & T;
