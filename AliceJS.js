@@ -433,11 +433,11 @@ function JSXAddAttributes(elm, name, prop) {
   elm.setAttribute(name, prop);
 }
 
-const virtualDoc = document.implementation.createHTMLDocument("");
-const virtualStyleElement = document.createElement("style");
-virtualDoc.body.appendChild(virtualStyleElement);
-
 function parse_css(uid, css) {
+  const virtualDoc = document.implementation.createHTMLDocument("");
+  const virtualStyleElement = document.createElement("style");
+  virtualDoc.body.appendChild(virtualStyleElement);
+
   let cssParsed = "";
 
   virtualStyleElement.textContent = css;
@@ -472,12 +472,16 @@ export function css(strings, ...values) {
 
       if (isAJSReferences(prop)) {
         const current_i = flattened_template.length;
+        let oldparsed;
         handle(prop, (val) => {
           flattened_template[current_i] = String(val);
-          styleElement.textContent = parse_css(
-            uid,
-            flattened_template.join(""),
-          );
+          let parsed = flattened_template.join("");
+          if (parsed != oldparsed)
+            styleElement.textContent = parse_css(
+              uid,
+              parsed,
+            );
+          oldparsed = parsed;
         });
       } else {
         flattened_template.push(String(prop));
