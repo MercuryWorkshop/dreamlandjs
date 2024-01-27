@@ -3,7 +3,7 @@
   "version": "1.3.1",
   "description": "A utilitarian HTML rendering library",
   "scripts": {
-    "build": "esbuild --minify --bundle AliceJS.js --outfile=index.js && tsc",
+    "build": "esbuild --minify --bundle AliceJS.js --outfile=index.js && esbuild --minify --bundle css.js js.js html.js --outdir=dist/ && tsc",
     "watch": "esbuild --watch=forever --bundle AliceJS.js --outfile=index.js & tsc --watch"
   },
   "keywords": ["html","jsx","framework","alicejs"],
