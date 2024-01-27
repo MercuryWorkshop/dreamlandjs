@@ -21,7 +21,8 @@ declare function stateful<T>(target: T): Stateful<T>;
 declare function handle<T>(references: AliceJSReferenceSink<T>, callback: (value: T) => void): void;
 
 declare function css(strings: TemplateStringsArray, ...values: any): string;
-declare var styled: { new: typeof css };
+declare function rule(strings: TemplateStringsArray, ...values: any): string;
+declare var styled: { new: typeof css, rule: typeof rule };
 
 type DLCSS = string;
 

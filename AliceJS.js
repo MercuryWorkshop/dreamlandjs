@@ -30,7 +30,7 @@ Object.defineProperty(window, "use", {
     };
   }
 });
-Object.assign(window, { h, html, stateful, handle, useValue, css, styled: { new: css } });
+Object.assign(window, { h, html, stateful, handle, useValue, css, rule, styled: { new: css, rule: rule } });
 
 // This wraps the target in a proxy, doing 2 things:
 // - whenever a property is accessed, update the reference stack
@@ -173,6 +173,10 @@ export function h(type, props, ...children) {
     let elm = type.apply(newthis, [slot]);
     elm.$ = newthis;
     newthis.root = elm;
+    if (newthis.css) {
+      elm.classList.add(newthis.css);
+      elm.classList.add("self");
+    }
     return elm;
   }
 
@@ -334,6 +338,33 @@ export function h(type, props, ...children) {
     }
   }
 
+  useProp("class", classlist => {
+    if (typeof classlist === "string") {
+      elm.className = classlist;
+      return;
+    }
+
+    if (isAJSReferences(classlist)) {
+      handle(classlist, classname => elm.className = classname);
+      return;
+    }
+
+    for (const name of classlist) {
+      if (isAJSReferences(name)) {
+        let oldvalue = null;
+        handle(name, value => {
+          if (typeof oldvalue === "string") {
+            elm.classList.remove(oldvalue);
+          }
+          elm.classList.add(value);
+          oldvalue = value;
+        });
+      } else {
+        elm.classList.add(name);
+      }
+    }
+  });
+
   // apply the non-reactive properties
   for (const name in props) {
     const prop = props[name];
@@ -345,11 +376,6 @@ export function h(type, props, ...children) {
       JSXAddAttributes(elm, name, prop);
     }
   }
-
-  useProp("css", classname => {
-    elm.classList.add(classname);
-    elm.classList.add("self");
-  });
 
   return elm;
 }
@@ -393,11 +419,6 @@ function JSXAddChild(child, cb) {
 
 // Where properties are assigned to elements, and where the *non-reactive* syntax sugar goes
 function JSXAddAttributes(elm, name, prop) {
-  if (name === "class") {
-    elm.className = prop;
-    return;
-  }
-
   if (typeof prop === "function" && name === "mount") {
     prop(elm);
     return;
@@ -433,7 +454,7 @@ function JSXAddAttributes(elm, name, prop) {
   elm.setAttribute(name, prop);
 }
 
-function parse_css(uid, css) {
+function scopify_css(uid, css) {
   const virtualDoc = document.implementation.createHTMLDocument("");
   const virtualStyleElement = document.createElement("style");
   virtualDoc.body.appendChild(virtualStyleElement);
@@ -452,8 +473,8 @@ function parse_css(uid, css) {
 
   return cssParsed;
 }
-export function css(strings, ...values) {
-  const uid = `alicecss-${Array(16)
+function tagcss(strings, values, isblock) {
+  const uid = `dream-${Array(16)
     .fill(0)
     .map(() => {
       return Math.floor(Math.random() * 16).toString(16);
@@ -477,10 +498,13 @@ export function css(strings, ...values) {
           flattened_template[current_i] = String(val);
           let parsed = flattened_template.join("");
           if (parsed != oldparsed)
-            styleElement.textContent = parse_css(
-              uid,
-              parsed,
-            );
+            if (isblock)
+              styleElement.textContent = scopify_css(
+                uid,
+                parsed,
+              );
+            else
+              styleElement.textContent = `.${uid} { ${parsed}; }`
           oldparsed = parsed;
         });
       } else {
@@ -489,12 +513,22 @@ export function css(strings, ...values) {
     }
   }
 
-  styleElement.textContent = parse_css(
-    uid,
-    flattened_template.join(""),
-  );
+  if (isblock) {
+    styleElement.textContent = scopify_css(
+      uid,
+      flattened_template.join(""),
+    );
+  } else {
+    styleElement.textContent = `.${uid} { ${flattened_template.join("")}; }`
+  }
 
   return uid;
+}
+export function rule(strings, ...values) {
+  return tagcss(strings, values, false)
+}
+export function css(strings, ...values) {
+  return tagcss(strings, values, true);
 }
 
 export function html(strings, ...values) {
