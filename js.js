@@ -167,7 +167,7 @@ export function h(type, props, ...children) {
 
     newthis.children = [];
     for (const child of children) {
-      JSXAddChild(child, newthis.children.push.bind(slot));
+      JSXAddChild(child, newthis.children.push.bind(newthis.children));
     }
 
     let elm = type.apply(newthis);
