@@ -1,5 +1,5 @@
-## What is AliceJS?
-AliceJS is a reactive JSX-based rendering library with **no virtual dom**
+## What is Dreamland?
+dreamland.js is a reactive JSX-based rendering library with **no virtual dom**
 
 ## Why do we need another javascript framework????
 React is great, but the API is unnecesarily complex and bloated. AliceJS lets you write code where what you see is what you get, no trickery.
