@@ -33,4 +33,5 @@ interface Element {
 type DLComponent<T> = {
   css: DLCSS,
   root: Element,
+  children: Element[],
 } & T;
