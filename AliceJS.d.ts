@@ -34,4 +34,5 @@ type DLComponent<T> = {
   css: DLCSS,
   root: Element,
   children: Element[],
+  mount?: () => void,
 } & T;

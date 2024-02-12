@@ -30,7 +30,7 @@ Object.defineProperty(window, "use", {
     };
   }
 });
-Object.assign(window, { h, stateful, handle, useValue });
+Object.assign(window, { isAJSReferences, h, stateful, handle, useValue });
 
 // This wraps the target in a proxy, doing 2 things:
 // - whenever a property is accessed, update the reference stack
@@ -177,6 +177,8 @@ export function h(type, props, ...children) {
       elm.classList.add(newthis.css);
       elm.classList.add("self");
     }
+    if (typeof newthis.mount === "function")
+      newthis.mount();
     return elm;
   }
 
@@ -195,11 +197,6 @@ export function h(type, props, ...children) {
     callback(prop);
     delete props[name];
   }
-
-  // insert an element at the start
-  useProp("before", callback => {
-    JSXAddChild(callback());
-  })
 
   // if/then/else syntax
   useProp("if", condition => {
@@ -250,71 +247,6 @@ export function h(type, props, ...children) {
     delete props["then"];
     delete props["else"];
   });
-
-  if ("for" in props && "do" in props) {
-    const predicate = props["for"];
-    const closure = props["do"];
-
-    if (isAJSReferences(predicate)) {
-      const __elms = [];
-      let lastpredicate = [];
-      handle(predicate, val => {
-        if (
-          Object.keys(val).length &&
-          Object.keys(val).length == lastpredicate.length
-        ) {
-          let i = 0;
-          for (const index in val) {
-            if (
-              deepEqual(val[index], lastpredicate[index])
-            ) {
-              continue;
-            }
-            const part = closure(val[index], index, val);
-            elm.replaceChild(part, __elms[i]);
-            __elms[i] = part;
-
-            i += 1;
-          }
-          lastpredicate = Object.keys(
-            JSON.parse(JSON.stringify(val)),
-          );
-        } else {
-          for (const part of __elms) {
-            part.remove();
-          }
-          for (const index in val) {
-            const value = val[index];
-
-            const part = closure(value, index, val);
-            if (part instanceof HTMLElement) {
-              __elms.push(part);
-              elm.appendChild(part);
-            }
-          }
-
-          lastpredicate = [];
-        }
-      });
-    } else {
-      for (const index in predicate) {
-        const value = predicate[index];
-
-        const part = closure(value, index, predicate);
-        if (part instanceof Node) elm.appendChild(part);
-
-      }
-    }
-
-    delete props["for"];
-    delete props["do"];
-  }
-
-
-  // insert an element at the end
-  useProp("after", callback => {
-    JSXAddChild(callback());
-  })
 
   for (const name in props) {
     const references = props[name];
@@ -433,22 +365,6 @@ function JSXAddAttributes(elm, name, prop) {
         prop(...args);
       });
     }
-    return;
-  }
-
-  if (typeof prop === "function" && name.startsWith("observe")) {
-    const observerclass = window[`${name.substring(8)}Observer`];
-    if (!observerclass) {
-      console.error(`Observer ${name} does not exist`);
-      return;
-    }
-    const observer = new observerclass(entries => {
-      for (const entry of entries) {
-        window.$el = elm;
-        prop(entry);
-      }
-    });
-    observer.observe(elm);
     return;
   }
 

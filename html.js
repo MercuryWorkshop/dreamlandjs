@@ -1,4 +1,4 @@
-
+Object.assign(window, { html });
 export function html(strings, ...values) {
   let flattened = "";
   let markers = {};
