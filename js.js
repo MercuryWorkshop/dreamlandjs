@@ -248,6 +248,71 @@ export function h(type, props, ...children) {
     delete props["else"];
   });
 
+  if ("for" in props && "do" in props) {
+    const predicate = props["for"];
+    const closure = props["do"];
+
+    if (isAJSReferences(predicate)) {
+      const __elms = [];
+      let lastpredicate = [];
+      handle(predicate, val => {
+        if (
+          Object.keys(val).length &&
+          Object.keys(val).length == lastpredicate.length
+        ) {
+          let i = 0;
+          for (const index in val) {
+            if (
+              deepEqual(val[index], lastpredicate[index])
+            ) {
+              continue;
+            }
+            const part = closure(val[index], index, val);
+            elm.replaceChild(part, __elms[i]);
+            __elms[i] = part;
+
+            i += 1;
+          }
+          lastpredicate = Object.keys(
+            JSON.parse(JSON.stringify(val)),
+          );
+        } else {
+          for (const part of __elms) {
+            part.remove();
+          }
+          for (const index in val) {
+            const value = val[index];
+
+            const part = closure(value, index, val);
+            if (part instanceof HTMLElement) {
+              __elms.push(part);
+              elm.appendChild(part);
+            }
+          }
+
+          lastpredicate = [];
+        }
+      });
+    } else {
+      for (const index in predicate) {
+        const value = predicate[index];
+
+        const part = closure(value, index, predicate);
+        if (part instanceof Node) elm.appendChild(part);
+
+      }
+    }
+
+    delete props["for"];
+    delete props["do"];
+  }
+
+
+  // insert an element at the end
+  useProp("after", callback => {
+    JSXAddChild(callback());
+  })
+
   for (const name in props) {
     const references = props[name];
     if (isAJSReferences(references) && name.startsWith("bind:")) {
