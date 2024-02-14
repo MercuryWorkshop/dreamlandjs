@@ -45,10 +45,11 @@ export function stateful(target) {
       return Reflect.get(target, property, proxy);
     },
     set(target, property, val) {
+      let trap = Reflect.set(target, property, val);
       for (const listener of target[ALICEJS_STATEFUL_LISTENERS]) {
         listener(target, property, val);
       }
-      return Reflect.set(target, property, val);
+      return trap;
     },
   });
 
@@ -257,8 +258,8 @@ export function h(type, props, ...children) {
       let lastpredicate = [];
       handle(predicate, val => {
         if (
-          Object.keys(val).length &&
-          Object.keys(val).length == lastpredicate.length
+          val.length &&
+          val.length == lastpredicate.length
         ) {
           let i = 0;
           for (const index in val) {
@@ -273,9 +274,7 @@ export function h(type, props, ...children) {
 
             i += 1;
           }
-          lastpredicate = Object.keys(
-            JSON.parse(JSON.stringify(val)),
-          );
+          lastpredicate = JSON.parse(JSON.stringify(val));
         } else {
           for (const part of __elms) {
             part.remove();
@@ -290,7 +289,7 @@ export function h(type, props, ...children) {
             }
           }
 
-          lastpredicate = [];
+          lastpredicate = JSON.parse(JSON.stringify(val));
         }
       });
     } else {
