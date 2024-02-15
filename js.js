@@ -1,52 +1,77 @@
-// The global list of "references", as captured by the proxy in stateful
-let __reference_stack = [];
+// whether to return the true value from a stateful object or a "trap" containing the pointer
+let __use_trap = false;
 
 // We add some extra properties into various objects throughout, better to use symbols and not interfere
-let ALICEJS_REFERENCES_MAPPING = Symbol();
-let ALICEJS_REFERENCES_MARKER = Symbol();
-let ALICEJS_STATEFUL_LISTENERS = Symbol();
+let USE_MAPFN = Symbol();
 
 // Say you have some code like
 //// let state = stateful({
-////    a: 1
+////    a: stateful({
+////      b: 1
+////    })
 //// })
-//// let elm = <p>{window.use(state.a)}</p>
+//// let elm = <p>{window.use(state.a.b)}</p>
 //
 // According to the standard, the order of events is as follows:
-// - the getter for window.use gets called, setting __reference_stack to an empty list
-// - the proxy for state.a is triggered, pushing { state, "a", Proxy(state) } onto __reference_stack
-// - the function that the getter returns is called, popping everything off the stack
-// - the JSX factory h() is now passed the *reference* of state.a, not the value
+// - the getter for window.use gets called, setting __use_trap true
+// - the proxy for state.a is triggered and instead of returning the normal value it returns the trap
+// - the trap proxy is triggered, storing ["a", "b"] as the order of events
+// - the function that the getter of `use` returns is called, setting __use_trap to false and restoring order
+// - the JSX factory h() is now passed the trap, which essentially contains a set of pointers pointing to the theoretical value of b
+// - with the setter on the stateful proxy, we can listen to any change in any of the nested layers and call whatever listeners registered
+// - the result is full intuitive reactivity with minimal overhead
 Object.defineProperty(window, "use", {
   get: () => {
-    __reference_stack = [];
-    return (_sink, mapping) => {
-      let references = __reference_stack;
-      __reference_stack = [];
-
-      references[ALICEJS_REFERENCES_MARKER] = true;
-      if (mapping) references[ALICEJS_REFERENCES_MAPPING] = mapping;
-      return references;
+    __use_trap = true;
+    return (ptr, mapping) => {
+      __use_trap = false;
+      if (mapping) ptr[USE_MAPFN] = mapping;
+      return ptr;
     };
   }
 });
-Object.assign(window, { isAJSReferences, h, stateful, handle, useValue });
+Object.assign(window, { isDLPtr, h, stateful, handle, useValue });
 
+
+const TARGET = Symbol();
+const PROXY = Symbol();
+const STEPS = Symbol();
+const LISTENERS = Symbol();
+const TRAPS = new Map;
 // This wraps the target in a proxy, doing 2 things:
-// - whenever a property is accessed, update the reference stack
+// - whenever a property is accessed, return a "trap" that catches and records accessors
 // - whenever a property is set, notify the subscribed listeners
 // This is what makes our "pass-by-reference" magic work
 export function stateful(target) {
-  target[ALICEJS_STATEFUL_LISTENERS] = [];
+  target[LISTENERS] = [];
+  target[TARGET] = target;
 
   const proxy = new Proxy(target, {
     get(target, property, proxy) {
-      __reference_stack.push({ target, property, proxy });
+      if (__use_trap) {
+        let sym = Symbol();
+        let trap = new Proxy({
+          [TARGET]: target,
+          [PROXY]: proxy,
+          [STEPS]: [property],
+          [Symbol.toPrimitive]: () => sym,
+        }, {
+          get(target, property) {
+            if (property === TARGET || property === PROXY || property === STEPS || property === Symbol.toPrimitive) return target[property];
+            property = TRAPS.get(property) || property;
+            target[STEPS].push(property);
+            return trap;
+          }
+        });
+        TRAPS.set(sym, trap);
+
+        return trap;
+      }
       return Reflect.get(target, property, proxy);
     },
     set(target, property, val) {
       let trap = Reflect.set(target, property, val);
-      for (const listener of target[ALICEJS_STATEFUL_LISTENERS]) {
+      for (const listener of target[LISTENERS]) {
         listener(target, property, val);
       }
       return trap;
@@ -56,71 +81,58 @@ export function stateful(target) {
   return proxy;
 }
 
-export function isAJSReferences(arr) {
-  return arr instanceof Array && ALICEJS_REFERENCES_MARKER in arr
+export function isDLPtr(arr) {
+  return arr instanceof Object && TARGET in arr
 }
 
 // This lets you subscribe to a stateful object
-export function handle(references, callback) {
-  if (!isAJSReferences(references))
-    throw new Error("Not an AliceJS reference set!");
+export function handle(ptr, callback) {
+  const resolvedSteps = [];
 
-  if (ALICEJS_REFERENCES_MAPPING in references) {
-    const mapping = references[ALICEJS_REFERENCES_MAPPING];
-    const used_props = [];
-    const used_targets = [];
-
-    const values = new Map();
-
-    const pairs = [];
-
-    const partial_update = (target, prop, val) => {
-      if (used_props.includes(prop) && used_targets.includes(target)) {
-        values.get(target)[prop] = val;
-      }
-    };
-
-    const full_update = () => {
-      const flattened_values = pairs.map(
-        (pair) => values.get(pair[0])[pair[1]],
-      );
-
-      const value = mapping(...flattened_values.reverse());
-
-      callback(value);
-    };
-
-    for (const p of references) {
-      const target = p.target;
-      const prop = p.property;
-
-      used_props.push(prop);
-      used_targets.push(target);
-
-      pairs.push([target, prop]);
-
-      if (!values.has(target)) {
-        values.set(target, {});
-      }
-
-      partial_update(target, prop, target[prop]);
-
-      target[ALICEJS_STATEFUL_LISTENERS].push((t, p, v) => {
-        partial_update(t, p, v);
-        full_update();
-      });
+  function resolve() {
+    let val = ptr[TARGET];
+    for (const step of resolvedSteps) {
+      val = val[step];
+      if (typeof val !== "object") break;
     }
-    full_update();
-  } else {
-    const reference = references[references.length - 1];
-    const subscription = (target, prop, val) => {
-      if (prop === reference.property && target === reference.target) {
-        callback(val);
-      }
-    };
-    reference.target[ALICEJS_STATEFUL_LISTENERS].push(subscription);
-    subscription(reference.target, reference.property, reference.target[reference.property]);
+    return val;
   }
+
+  // inject ourselves into nested objects
+  const curry = (target, i) => function subscription(tgt, prop, val) {
+    if (prop === resolvedSteps[i] && target === tgt) {
+      callback(resolve());
+
+      if (typeof val === "object") {
+        let v = val[LISTENERS];
+        if (v && !v.includes(subscription)) {
+          v.push(curry(val[TARGET], i + 1));
+        }
+      }
+    }
+  };
+
+
+  // imagine we have a `use(state.a[state.b])`
+  // simply recursively resolve any of the intermediate steps until we get to the final value
+  // this will "misfire" occassionaly with a scenario like state.a[state.b][state.c] and call the listener more than needed
+  // it is up to the caller to not implode
+  for (let i in ptr[STEPS]) {
+    let step = ptr[STEPS][i];
+    if (typeof step === "object" && step[TARGET]) {
+      handle(step, val => {
+        resolvedSteps[i] = val;
+        callback(resolve());
+      });
+      continue;
+    }
+    resolvedSteps[i] = step;
+  }
+
+  let sub = curry(ptr[TARGET], 0);
+  ptr[TARGET][LISTENERS].push(sub);
+
+  sub(ptr[TARGET], resolvedSteps[0], ptr[TARGET][resolvedSteps[0]]);
 }
 
 export function useValue(references) {
@@ -134,17 +146,18 @@ export function h(type, props, ...children) {
     let newthis = stateful(Object.create(type.prototype));
 
     for (const name in props) {
-      const references = props[name];
-      if (isAJSReferences(references) && name.startsWith("bind:")) {
-        let reference = references[references.length - 1];
+      const ptr = props[name];
+      if (isDLPtr(ptr) && name.startsWith("bind:")) {
+
         const propname = name.substring(5);
         if (propname == "this") {
-          reference.proxy[reference.property] = newthis;
+          // todo! support nesting
+          ptr[PROXY][ptr[STEPS][0]] = newthis;
         } else {
           // component two way data binding!! (exact same behavior as svelte:bind)
           let isRecursive = false;
 
-          handle(references, value => {
+          handle(ptr, value => {
             if (isRecursive) {
               isRecursive = false;
               return;
@@ -158,7 +171,7 @@ export function h(type, props, ...children) {
               return;
             }
             isRecursive = true;
-            reference.proxy[reference.property] = value;
+            ptr[PROXY][ptr[STEPS][0]] = value;
           });
         }
         delete props[name];
@@ -204,7 +217,7 @@ export function h(type, props, ...children) {
     let thenblock = props["then"];
     let elseblock = props["else"];
 
-    if (isAJSReferences(condition)) {
+    if (isDLPtr(condition)) {
       if (thenblock) elm.appendChild(thenblock);
       if (elseblock) elm.appendChild(elseblock);
 
@@ -253,7 +266,7 @@ export function h(type, props, ...children) {
     const predicate = props["for"];
     const closure = props["do"];
 
-    if (isAJSReferences(predicate)) {
+    if (isDLPtr(predicate)) {
       const __elms = [];
       let lastpredicate = [];
       handle(predicate, val => {
@@ -313,21 +326,21 @@ export function h(type, props, ...children) {
   })
 
   for (const name in props) {
-    const references = props[name];
-    if (isAJSReferences(references) && name.startsWith("bind:")) {
-      let reference = references[references.length - 1];
+    const ptr = props[name];
+    if (isDLPtr(ptr) && name.startsWith("bind:")) {
       const propname = name.substring(5);
       if (propname == "this") {
-        reference.proxy[reference.property] = elm;
+        // todo! support nesting
+        ptr[PROXY][ptr[STEPS][0]] = elm;
       } else if (propname == "value") {
-        handle(references, value => elm.value = value);
+        handle(ptr, value => elm.value = value);
         elm.addEventListener("change", () => {
-          reference.proxy[reference.property] = elm.value;
+          ptr[PROXY][ptr[STEPS][0]] = elm.value;
         })
       } else if (propname == "checked") {
-        handle(references, value => elm.checked = value);
+        handle(ptr, value => elm.checked = value);
         elm.addEventListener("click", () => {
-          reference.proxy[reference.property] = elm.checked;
+          ptr[PROXY][ptr[STEPS][0]] = elm.checked;
         })
       }
       delete props[name];
@@ -340,13 +353,13 @@ export function h(type, props, ...children) {
       return;
     }
 
-    if (isAJSReferences(classlist)) {
+    if (isDLPtr(classlist)) {
       handle(classlist, classname => elm.className = classname);
       return;
     }
 
     for (const name of classlist) {
-      if (isAJSReferences(name)) {
+      if (isDLPtr(name)) {
         let oldvalue = null;
         handle(name, value => {
           if (typeof oldvalue === "string") {
@@ -364,7 +377,7 @@ export function h(type, props, ...children) {
   // apply the non-reactive properties
   for (const name in props) {
     const prop = props[name];
-    if (isAJSReferences(prop)) {
+    if (isDLPtr(prop)) {
       handle(prop, (val) => {
         JSXAddAttributes(elm, name, val);
       });
@@ -378,7 +391,7 @@ export function h(type, props, ...children) {
 
 // glue for nested children
 function JSXAddChild(child, cb) {
-  if (isAJSReferences(child)) {
+  if (isDLPtr(child)) {
     let appended = [];
     handle(child, (val) => {
       if (appended.length > 1) {
