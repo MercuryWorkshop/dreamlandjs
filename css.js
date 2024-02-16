@@ -37,7 +37,7 @@ function tagcss(strings, values, isblock) {
     if (values[i]) {
       const prop = values[i];
 
-      if (isAJSReferences(prop)) {
+      if (isDLPtr(prop)) {
         const current_i = flattened_template.length;
         let oldparsed;
         handle(prop, (val) => {
