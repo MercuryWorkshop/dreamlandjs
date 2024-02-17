@@ -57,7 +57,7 @@ export function stateful(target) {
           [Symbol.toPrimitive]: () => sym,
         }, {
           get(target, property) {
-            if (property === TARGET || property === PROXY || property === STEPS || property === Symbol.toPrimitive) return target[property];
+            if ([TARGET, PROXY, STEPS, USE_MAPFN, Symbol.toPrimitive].includes(property)) return target[property];
             property = TRAPS.get(property) || property;
             target[STEPS].push(property);
             return trap;
@@ -89,19 +89,23 @@ export function isDLPtr(arr) {
 export function handle(ptr, callback) {
   const resolvedSteps = [];
 
-  function resolve() {
+  function update() {
     let val = ptr[TARGET];
     for (const step of resolvedSteps) {
       val = val[step];
       if (typeof val !== "object") break;
     }
-    return val;
+
+    let mapfn = ptr[USE_MAPFN];
+    console.log(mapfn);
+    if (mapfn) val = mapfn(val);
+    callback(val);
   }
 
   // inject ourselves into nested objects
   const curry = (target, i) => function subscription(tgt, prop, val) {
     if (prop === resolvedSteps[i] && target === tgt) {
-      callback(resolve());
+      update();
 
       if (typeof val === "object") {
         let v = val[LISTENERS];
@@ -122,7 +126,7 @@ export function handle(ptr, callback) {
     if (typeof step === "object" && step[TARGET]) {
       handle(step, val => {
         resolvedSteps[i] = val;
-        callback(resolve());
+        update();
       });
       continue;
     }
