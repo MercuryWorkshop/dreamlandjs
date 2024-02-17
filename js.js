@@ -97,7 +97,6 @@ export function handle(ptr, callback) {
     }
 
     let mapfn = ptr[USE_MAPFN];
-    console.log(mapfn);
     if (mapfn) val = mapfn(val);
     callback(val);
   }
