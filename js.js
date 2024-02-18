@@ -200,7 +200,8 @@ export function h(type, props, ...children) {
   }
 
 
-  const elm = document.createElement(type);
+  let xmlns = props?.xmlns;
+  const elm = xmlns ? document.createElementNS(xmlns, type) : document.createElement(type);
 
   for (const child of children) {
     JSXAddChild(child, elm.appendChild.bind(elm));
@@ -388,6 +389,10 @@ export function h(type, props, ...children) {
       JSXAddAttributes(elm, name, prop);
     }
   }
+
+  // hack to fix svgs
+  if (xmlns)
+    elm.innerHTML = elm.innerHTML
 
   return elm;
 }
