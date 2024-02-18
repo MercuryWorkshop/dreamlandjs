@@ -20,10 +20,10 @@ function scopify_css(uid, css) {
   return cssParsed;
 }
 function tagcss(strings, values, isblock) {
-  const uid = `dream-${Array(16)
+  const uid = `dl${Array(5)
     .fill(0)
     .map(() => {
-      return Math.floor(Math.random() * 16).toString(16);
+      return Math.floor(Math.random() * 36).toString(36);
     })
     .join("")}`;
 

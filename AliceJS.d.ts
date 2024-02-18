@@ -1,5 +1,7 @@
 declare namespace JSX {
-  export type IntrinsicElements = { [index: string]: any };
+  export type IntrinsicElements = {
+    [index: string]: any
+  };
 }
 
 declare function h(
@@ -26,19 +28,28 @@ declare var styled: { new: typeof css, rule: typeof rule };
 
 type DLCSS = string;
 
+declare var $el: HTMLElement;
+
 interface Element {
-  $: DLComponent<any>
+  $: OuterComponentTypes & { [index: string | symbol]: any }
 }
 
 interface DLElement<T> extends Element {
-  $: T
+  $: T & OuterComponentTypes
 }
 
-declare var $el: HTMLElement;
+type ComponentElement<T extends (...args: any) => any> = DLElement<ReturnType<T>>;
 
-type DLComponent<T> = {
-  css: DLCSS,
+type OuterComponentTypes = {
   root: Element,
   children: Element[],
+}
+type InnerComponentTypes = {
+  css: DLCSS,
   mount?: () => void,
-} & T;
+}
+type ComponentTypes = OuterComponentTypes & InnerComponentTypes;
+
+type Component<Public, Private> = ((this: Public & Private & ComponentTypes, _props: Public) => DLElement<Public>);
+
+
