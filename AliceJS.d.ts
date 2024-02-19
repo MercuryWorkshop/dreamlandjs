@@ -2,6 +2,15 @@ declare namespace JSX {
   export type IntrinsicElements = {
     [index: string]: any
   };
+  type ElementType = string | Component<any, any>;
+  type Element = DLElement<any>;
+
+  interface ElementAttributesProperty {
+    props: {};
+  }
+  interface ElementChildrenAttribute {
+    children: {};
+  }
 }
 
 declare function h(
@@ -38,7 +47,7 @@ interface DLElement<T> extends Element {
   $: T & OuterComponentTypes
 }
 
-type ComponentElement<T extends (...args: any) => any> = DLElement<ReturnType<T>>;
+type ComponentElement<T extends (...args: any) => any> = ReturnType<T>;
 
 type OuterComponentTypes = {
   root: Element,
@@ -50,6 +59,19 @@ type InnerComponentTypes = {
 }
 type ComponentTypes = OuterComponentTypes & InnerComponentTypes;
 
-type Component<Public, Private> = ((this: Public & Private & ComponentTypes, _props: Public) => DLElement<Public>);
+type ArrayOrSingular<T extends []> = T | T[keyof T];
+
+type Component<Public, Private, Constructed extends string | symbol | number = never> =
+  (
+    (
+      this: Public & Private & ComponentTypes,
+      props: (
+        [Constructed] extends [never] ? Public : Omit<Public, Constructed>
+      ) &
+      {
+        children?: ArrayOrSingular<Private extends { children: any } ? Private["children"] : never>
+      },
+    ) => DLElement<Public>
+  )
 
 
