@@ -1,5 +1,5 @@
 Object.assign(window, { css, rule, styled: { new: css, rule: rule } });
-
+const cssmap = {};
 function scopify_css(uid, css) {
   const virtualDoc = document.implementation.createHTMLDocument("");
   const virtualStyleElement = document.createElement("style");
@@ -20,6 +20,9 @@ function scopify_css(uid, css) {
   return cssParsed;
 }
 function tagcss(strings, values, isblock) {
+  let cached = cssmap[strings[0]];
+  let cachable = strings.length == 1;
+  if (cachable && cached) return cached;
   const uid = `dl${Array(5)
     .fill(0)
     .map(() => {
@@ -67,6 +70,8 @@ function tagcss(strings, values, isblock) {
   } else {
     styleElement.textContent = `.${uid} { ${flattened_template.join("")}; }`
   }
+
+  if (cachable) cssmap[strings[0]] = uid;
 
   return uid;
 }
