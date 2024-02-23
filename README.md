@@ -59,7 +59,7 @@ To get started with AliceJS, add this to the compileroptions of your `tsconfig.j
 ```json
 "jsx":"react",
 "jsxFactory":"h",
-"jsxFragmentFactory":"YOU_CANT_USE_FRAGMENTS",
+"jsxFragmentFactory":"Fragment",
 "types": ["@mercuryworkshop/alicejs"],
 ```
 and run `npm install @mercuryworkshop/alicejs`

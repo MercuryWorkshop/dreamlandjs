@@ -2,7 +2,7 @@ declare namespace JSX {
   export type IntrinsicElements = {
     [index: string]: any
   };
-  type ElementType = string | Component<any, any>;
+  type ElementType = Fragment | string | Component<any, any>;
   type Element = DLElement<any>;
 
   interface ElementAttributesProperty {
@@ -41,6 +41,9 @@ declare var styled: { new: typeof css, rule: typeof rule };
 type DLCSS = string;
 
 declare var $el: HTMLElement;
+
+type Fragment = { readonly fragment: unique symbol };
+declare var Fragment: Fragment;
 
 interface Element {
   $: OuterComponentTypes & { [index: string | symbol]: any }

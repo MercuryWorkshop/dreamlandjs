@@ -1,3 +1,5 @@
+export const Fragment = Symbol();
+
 // whether to return the true value from a stateful object or a "trap" containing the pointer
 let __use_trap = false;
 
@@ -30,13 +32,14 @@ Object.defineProperty(window, "use", {
     };
   }
 });
-Object.assign(window, { isDLPtr, h, stateful, handle, useValue, $if });
+Object.assign(window, { isDLPtr, h, stateful, handle, useValue, $if, Fragment });
 
 
 const TARGET = Symbol();
 const PROXY = Symbol();
 const STEPS = Symbol();
 const LISTENERS = Symbol();
+const IF = Symbol();
 const TRAPS = new Map;
 // This wraps the target in a proxy, doing 2 things:
 // - whenever a property is accessed, return a "trap" that catches and records accessors
@@ -90,18 +93,8 @@ export function $if(condition, then, otherwise) {
   otherwise ??= document.createTextNode("");
   then ??= document.createTextNode("");
   if (!isDLPtr(condition)) return condition ? then : otherwise;
-  let root = then;
-  handle(condition, v => {
-    if (v) {
-      root.replaceWith(then);
-      root = then;
-    } else {
-      root.replaceWith(otherwise);
-      root = otherwise;
-    }
-  })
 
-  return root;
+  return { [IF]: condition, then, otherwise };
 }
 
 // This lets you subscribe to a stateful object
@@ -164,7 +157,9 @@ export function useValue(references) {
 
 // Actual JSX factory. Responsible for creating the HTML elements and all of the *reactive* syntactic sugar
 export function h(type, props, ...children) {
+  if (type === Fragment) return children;
   if (typeof type === "function") {
+    // functional components. create the stateful object
     let newthis = stateful(Object.create(type.prototype));
 
     for (const name in props) {
@@ -222,8 +217,26 @@ export function h(type, props, ...children) {
   let xmlns = props?.xmlns;
   const elm = xmlns ? document.createElementNS(xmlns, type) : document.createElement(type);
 
+
   for (const child of children) {
-    JSXAddChild(child, elm.appendChild.bind(elm));
+    let cond = !isDLPtr(child) && child[IF];
+    if (cond) {
+      let appended = null;
+      handle(cond, v => {
+        let before = appended?.[0]?.previousSibling;
+        if (appended)
+          appended.forEach(a => a.remove());
+
+        appended = JSXAddChild(v ? child.then : child.otherwise, el => {
+          if (before) {
+            before.after(el)
+            before = el;
+          }
+          else elm.appendChild(el)
+        })
+      })
+    } else
+      JSXAddChild(child, elm.appendChild.bind(elm));
   }
 
   if (!props) return elm;
@@ -308,21 +321,16 @@ function JSXAddChild(child, cb) {
   if (isDLPtr(child)) {
     let appended = [];
     handle(child, (val) => {
-      if (appended.length > 1) {
-        // this is why we don't encourage arrays (jank)
-        appended.forEach(n => n.remove());
-        appended = JSXAddChild(val, cb);
-      } else if (appended.length > 0) {
-        let old = appended[0];
-        appended = JSXAddChild(val, cb);
-        if (appended[0]) {
-          old.replaceWith(appended[0])
-        } else {
-          old.remove();
+      let v = appended[0]?.previousSibling;
+      appended.forEach(n => n.remove());
+      appended = JSXAddChild(val, el => {
+        if (v) {
+          v.after(el);
+          v = el;
         }
-      } else {
-        appended = JSXAddChild(val, cb);
-      }
+        else
+          cb(el);
+      });
     });
   } else if (child instanceof Node) {
     cb(child);
@@ -332,6 +340,7 @@ function JSXAddChild(child, cb) {
     for (const childchild of child) {
       elms = elms.concat(JSXAddChild(childchild, cb));
     }
+    if (!elms[0]) elms = JSXAddChild("", cb);
     return elms;
   } else {
     let node = document.createTextNode(child);

@@ -4,8 +4,8 @@ export function $store(target, ident, type) {
   target = JSON.parse(stored) ?? target;
 
   addEventListener("beforeunload", () => {
-    localStorage.setItem(JSON.stringify(target));
     console.info("[dreamland.js]: saving " + ident);
+    localStorage.setItem(ident, JSON.stringify(target));
   });
 
   return stateful(target);
