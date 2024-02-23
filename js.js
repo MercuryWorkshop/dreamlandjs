@@ -30,7 +30,7 @@ Object.defineProperty(window, "use", {
     };
   }
 });
-Object.assign(window, { isDLPtr, h, stateful, handle, useValue });
+Object.assign(window, { isDLPtr, h, stateful, handle, useValue, $if });
 
 
 const TARGET = Symbol();
@@ -42,7 +42,7 @@ const TRAPS = new Map;
 // - whenever a property is accessed, return a "trap" that catches and records accessors
 // - whenever a property is set, notify the subscribed listeners
 // This is what makes our "pass-by-reference" magic work
-export function stateful(target) {
+export function stateful(target, hook) {
   target[LISTENERS] = [];
   target[TARGET] = target;
 
@@ -70,6 +70,7 @@ export function stateful(target) {
       return Reflect.get(target, property, proxy);
     },
     set(target, property, val) {
+      if (hook) hook(target, property, val);
       let trap = Reflect.set(target, property, val);
       for (const listener of target[LISTENERS]) {
         listener(target, property, val);
@@ -85,6 +86,24 @@ export function isDLPtr(arr) {
   return arr instanceof Object && TARGET in arr
 }
 
+export function $if(condition, then, otherwise) {
+  otherwise ??= document.createTextNode("");
+  then ??= document.createTextNode("");
+  if (!isDLPtr(condition)) return condition ? then : otherwise;
+  let root = then;
+  handle(condition, v => {
+    if (v) {
+      root.replaceWith(then);
+      root = then;
+    } else {
+      root.replaceWith(otherwise);
+      root = otherwise;
+    }
+  })
+
+  return root;
+}
+
 // This lets you subscribe to a stateful object
 export function handle(ptr, callback) {
   const resolvedSteps = [];
@@ -93,7 +112,7 @@ export function handle(ptr, callback) {
     let val = ptr[TARGET];
     for (const step of resolvedSteps) {
       val = val[step];
-      if (typeof val !== "object") break;
+      if (!val || typeof val !== "object") break;
     }
 
     let mapfn = ptr[USE_MAPFN];
@@ -106,7 +125,7 @@ export function handle(ptr, callback) {
     if (prop === resolvedSteps[i] && target === tgt) {
       update();
 
-      if (typeof val === "object") {
+      if (val && typeof val === "object") {
         let v = val[LISTENERS];
         if (v && !v.includes(subscription)) {
           v.push(curry(val[TARGET], i + 1));
@@ -215,119 +234,6 @@ export function h(type, props, ...children) {
     callback(prop);
     delete props[name];
   }
-
-  // if/then/else syntax
-  useProp("if", condition => {
-    let thenblock = props["then"];
-    let elseblock = props["else"];
-
-    if (isDLPtr(condition)) {
-      if (thenblock) elm.appendChild(thenblock);
-      if (elseblock) elm.appendChild(elseblock);
-
-      handle(condition, val => {
-        if (thenblock) {
-          if (val) {
-            thenblock.style.display = "";
-            if (elseblock) elseblock.style.display = "none";
-          } else {
-            thenblock.style.display = "none";
-
-            if (elseblock) elseblock.style.display = "";
-          }
-        } else {
-          if (val) {
-            elm.style.display = "";
-          } else {
-            elm.style.display = "none";
-          }
-        }
-      });
-    } else {
-      if (thenblock) {
-        if (condition) {
-          elm.appendChild(thenblock);
-        } else if (elseblock) {
-          elm.appendChild(elseblock);
-        }
-      } else {
-        if (condition) {
-          elm.appendChild(thenblock);
-        } else if (elseblock) {
-          elm.appendChild(elseblock);
-        } else {
-          elm.style.display = "none";
-          return document.createTextNode("");
-        }
-      }
-    }
-
-    delete props["then"];
-    delete props["else"];
-  });
-
-  if ("for" in props && "do" in props) {
-    const predicate = props["for"];
-    const closure = props["do"];
-
-    if (isDLPtr(predicate)) {
-      const __elms = [];
-      let lastpredicate = [];
-      handle(predicate, val => {
-        if (
-          val.length &&
-          val.length == lastpredicate.length
-        ) {
-          let i = 0;
-          for (const index in val) {
-            if (
-              deepEqual(val[index], lastpredicate[index])
-            ) {
-              continue;
-            }
-            const part = closure(val[index], index, val);
-            elm.replaceChild(part, __elms[i]);
-            __elms[i] = part;
-
-            i += 1;
-          }
-          lastpredicate = JSON.parse(JSON.stringify(val));
-        } else {
-          for (const part of __elms) {
-            part.remove();
-          }
-          for (const index in val) {
-            const value = val[index];
-
-            const part = closure(value, index, val);
-            if (part instanceof HTMLElement) {
-              __elms.push(part);
-              elm.appendChild(part);
-            }
-          }
-
-          lastpredicate = JSON.parse(JSON.stringify(val));
-        }
-      });
-    } else {
-      for (const index in predicate) {
-        const value = predicate[index];
-
-        const part = closure(value, index, predicate);
-        if (part instanceof Node) elm.appendChild(part);
-
-      }
-    }
-
-    delete props["for"];
-    delete props["do"];
-  }
-
-
-  // insert an element at the end
-  useProp("after", callback => {
-    JSXAddChild(callback());
-  })
 
   for (const name in props) {
     const ptr = props[name];
@@ -454,31 +360,4 @@ function JSXAddAttributes(elm, name, prop) {
   }
 
   elm.setAttribute(name, prop);
-}
-
-function deepEqual(object1, object2) {
-  const keys1 = Object.keys(object1);
-  const keys2 = Object.keys(object2);
-
-  if (keys1.length !== keys2.length) {
-    return false;
-  }
-
-  for (const key of keys1) {
-    const val1 = object1[key];
-    const val2 = object2[key];
-    const areObjects = isObject(val1) && isObject(val2);
-    if (
-      (areObjects && !deepEqual(val1, val2)) ||
-      (!areObjects && val1 !== val2)
-    ) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-function isObject(object) {
-  return object != null && typeof object === "object";
 }

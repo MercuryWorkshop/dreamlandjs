@@ -18,6 +18,7 @@ declare function h(
   props?: { [index: string]: any } | null,
   ...children: (HTMLElement | string)[]
 ): Node;
+declare function $if(condition: DLPointer<any> | any, then?: Element, otherwise?: Element): HTMLElement;
 
 type DLPointer<T> = { readonly __symbol: unique symbol, readonly __signature: T };
 
@@ -28,6 +29,8 @@ type Stateful<T> = T & { readonly symbol: unique symbol };
 
 
 declare function stateful<T>(target: T): Stateful<T>;
+declare function $state<T>(target: T): Stateful<T>;
+declare function $store<T>(target: T, ident: string, backing: "localstorage"): Stateful<T>;
 
 declare function handle<T>(references: DLPointer<T>, callback: (value: T) => void): void;
 
