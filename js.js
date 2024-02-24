@@ -85,13 +85,13 @@ export function stateful(target, hook) {
   return proxy;
 }
 
+let isobj = (o) => o instanceof Object;
 export function isDLPtr(arr) {
-  return arr instanceof Object && TARGET in arr
+  return isobj(arr) && TARGET in arr
 }
 
 export function $if(condition, then, otherwise) {
   otherwise ??= document.createTextNode("");
-  then ??= document.createTextNode("");
   if (!isDLPtr(condition)) return condition ? then : otherwise;
 
   return { [IF]: condition, then, otherwise };
@@ -99,13 +99,13 @@ export function $if(condition, then, otherwise) {
 
 // This lets you subscribe to a stateful object
 export function handle(ptr, callback) {
-  const resolvedSteps = [];
+  let step, resolvedSteps = [];
 
   function update() {
     let val = ptr[TARGET];
-    for (const step of resolvedSteps) {
+    for (step of resolvedSteps) {
       val = val[step];
-      if (!val || typeof val !== "object") break;
+      if (!isobj(val)) break;
     }
 
     let mapfn = ptr[USE_MAPFN];
@@ -118,7 +118,7 @@ export function handle(ptr, callback) {
     if (prop === resolvedSteps[i] && target === tgt) {
       update();
 
-      if (val && typeof val === "object") {
+      if (val instanceof Object) {
         let v = val[LISTENERS];
         if (v && !v.includes(subscription)) {
           v.push(curry(val[TARGET], i + 1));
@@ -134,7 +134,7 @@ export function handle(ptr, callback) {
   // it is up to the caller to not implode
   for (let i in ptr[STEPS]) {
     let step = ptr[STEPS][i];
-    if (typeof step === "object" && step[TARGET]) {
+    if (isobj(step) && step[TARGET]) {
       handle(step, val => {
         resolvedSteps[i] = val;
         update();
@@ -155,10 +155,33 @@ export function useValue(references) {
   return reference.proxy[reference.property];
 }
 
+function JSXAddFixedWrapper(ptr, cb, $if) {
+  let before, appended, first, flag;
+  handle(ptr, val => {
+    first = appended?.[0];
+    if (first)
+      before = first.previousSibling || (flag = first.parentNode);
+    if (appended)
+      appended.forEach(a => a.remove());
+
+    appended = JSXAddChild($if ? (val ? $if.then : $if.otherwise) : val, el => {
+      if (before) {
+        if (flag) {
+          before.prepend(el)
+          flag = null;
+        }
+        else before.after(el);
+        before = el;
+      }
+      else cb(el)
+    })
+  })
+}
+
 // Actual JSX factory. Responsible for creating the HTML elements and all of the *reactive* syntactic sugar
 export function h(type, props, ...children) {
-  if (type === Fragment) return children;
-  if (typeof type === "function") {
+  if (type == Fragment) return children;
+  if (typeof type == "function") {
     // functional components. create the stateful object
     let newthis = stateful(Object.create(type.prototype));
 
@@ -208,6 +231,7 @@ export function h(type, props, ...children) {
       elm.classList.add(newthis.css);
       elm.classList.add("self");
     }
+    elm.setAttribute("data-component", type.name);
     if (typeof newthis.mount === "function")
       newthis.mount();
     return elm;
@@ -219,24 +243,12 @@ export function h(type, props, ...children) {
 
 
   for (const child of children) {
-    let cond = !isDLPtr(child) && child[IF];
+    let cond = child && !isDLPtr(child) && child[IF];
+    let bappend = elm.append.bind(elm);
     if (cond) {
-      let appended = null;
-      handle(cond, v => {
-        let before = appended?.[0]?.previousSibling;
-        if (appended)
-          appended.forEach(a => a.remove());
-
-        appended = JSXAddChild(v ? child.then : child.otherwise, el => {
-          if (before) {
-            before.after(el)
-            before = el;
-          }
-          else elm.appendChild(el)
-        })
-      })
+      JSXAddFixedWrapper(cond, bappend, child);
     } else
-      JSXAddChild(child, elm.appendChild.bind(elm));
+      JSXAddChild(child, bappend);
   }
 
   if (!props) return elm;
@@ -318,32 +330,21 @@ export function h(type, props, ...children) {
 
 // glue for nested children
 function JSXAddChild(child, cb) {
+  let childchild, elms, node;
   if (isDLPtr(child)) {
-    let appended = [];
-    handle(child, (val) => {
-      let v = appended[0]?.previousSibling;
-      appended.forEach(n => n.remove());
-      appended = JSXAddChild(val, el => {
-        if (v) {
-          v.after(el);
-          v = el;
-        }
-        else
-          cb(el);
-      });
-    });
+    JSXAddFixedWrapper(child, cb);
   } else if (child instanceof Node) {
     cb(child);
     return [child];
   } else if (child instanceof Array) {
-    let elms = [];
-    for (const childchild of child) {
+    elms = [];
+    for (childchild of child) {
       elms = elms.concat(JSXAddChild(childchild, cb));
     }
     if (!elms[0]) elms = JSXAddChild("", cb);
     return elms;
   } else {
-    let node = document.createTextNode(child);
+    node = document.createTextNode(child);
     cb(node);
     return [node];
   }
