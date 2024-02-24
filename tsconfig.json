@@ -11,7 +11,7 @@
 
     "jsx":"react",
     "jsxFactory":"h",
-    "jsxFragmentFactory":"YOU_CANT_USE_FRAGMENTS",
+    "jsxFragmentFactory":"Fragment",
 
     "sourceMap": true,
     "sourceRoot": "", 
@@ -22,7 +22,7 @@
 
     "noUncheckedIndexedAccess": true
   },
-  "include": ["./examples/*.ts","./examples/*.tsx", "./AliceJS.d.ts"],
+  "include": ["./examples/*.ts","./examples/*.tsx", "./DreamlandJS.d.ts"],
   "exclude": [
     "node_modules/**/*"
   ]
