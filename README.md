@@ -66,7 +66,7 @@ and run `npm install @mercuryworkshop/dreamlandjs`
 
 If you prefer using modules and are using a bundler, simply `import "@mercuryworkshop/dreamlandjs";` into at least one file you're using.
 
-If you don't like using modules, just add `<script src="://unpkg.com/@mercuryworkshop/dreamlandjs"></script>` to your html, and you can use AliceJS as normal.
+If you don't like using modules, just add `<script src="://unpkg.com/@mercuryworkshop/dreamlandjs"></script>` to your html, and you can use dreamland as normal.
 
 dreamland can even be used without a build step, here's the counter example in plain JS
 ```javascript

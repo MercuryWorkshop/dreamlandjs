@@ -107,8 +107,8 @@ function Counter() {
 //     <div className={"as"}>
 //       <Counter />
 //       {/* <div> */}
-//       {/*   <h1>AliceJS Examples</h1> */}
-//       {/*   <p>Some examples of AliceJS components. Code is in examples/</p> */}
+//       {/*   <h1>Dreamland Examples</h1> */}
+//       {/*   <p>Some examples of dreamland.js components. Code is in examples/</p> */}
 //       {/* </div> */}
 //       {/* <examples> */}
 //       {/*   <Counter a="b" bind:this={use(this.counterobj)} bind:counter={use(this.c)} /> */}
