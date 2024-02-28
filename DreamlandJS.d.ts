@@ -76,6 +76,7 @@ type Component<Public, Private, Constructed extends string | symbol | number = n
       ) &
       {
         children?: ArrayOrSingular<Private extends { children: any } ? Private["children"] : never>
+        [index: `${'bind:'}${string}`]: any
       },
     ) => DLElement<Public>
   )

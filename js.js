@@ -1,10 +1,12 @@
 export const Fragment = Symbol();
 
+// We add some extra properties into various objects throughout, better to use symbols and not interfere. this is just a tiny optimization
+const [USE_MAPFN, TARGET, PROXY, STEPS, LISTENERS, IF] = [, , , , , ,].fill().map(Symbol);
+
+
 // whether to return the true value from a stateful object or a "trap" containing the pointer
 let __use_trap = false;
 
-// We add some extra properties into various objects throughout, better to use symbols and not interfere
-let USE_MAPFN = Symbol();
 
 // Say you have some code like
 //// let state = stateful({
@@ -34,12 +36,6 @@ Object.defineProperty(window, "use", {
 });
 Object.assign(window, { isDLPtr, h, stateful, handle, useValue, $if, Fragment });
 
-
-const TARGET = Symbol();
-const PROXY = Symbol();
-const STEPS = Symbol();
-const LISTENERS = Symbol();
-const IF = Symbol();
 const TRAPS = new Map;
 // This wraps the target in a proxy, doing 2 things:
 // - whenever a property is accessed, return a "trap" that catches and records accessors
