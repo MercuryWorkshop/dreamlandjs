@@ -1,5 +1,5 @@
 {
-  "name": "@mercuryworkshop/dreamlandjs",
+  "name": "dreamland",
   "version": "0.0.1",
   "description": "A utilitarian HTML rendering library",
   "scripts": {
@@ -10,7 +10,8 @@
     "html",
     "jsx",
     "framework",
-    "dreamlandjs"
+    "dreamlandjs",
+    "dreamland"
   ],
   "author": "MercuryWorkshop",
   "repository": "https://github.com/MercuryWorkshop/dreamlandjs",
