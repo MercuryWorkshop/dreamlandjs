@@ -49,7 +49,7 @@ interface Element {
   $: OuterComponentTypes & { [index: string | symbol]: any }
 }
 
-interface DLElement<T> extends Element {
+interface DLElement<T> extends HTMLElement {
   $: T & OuterComponentTypes
 }
 
