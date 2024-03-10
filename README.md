@@ -86,6 +86,31 @@ First install dreamland (`npm install dreamland`), then add this to the compiler
 ```
 and run `npm install dreamland`.
 
-In the entry point of the app, add the line `import "dreamland"` into at least one file to bundle dreamland with the rest of the code.
+In the entry point of the app, add the line `import "dreamland"` into at least one file to bundle dreamland with the rest of the code. Now you can use dreamland with tsx syntax.
+
+```tsx
+// typescript syntax for defining components
+const App: Component<{
+  // component properties. if you had a component that took a property like `<Button text="..." /> you would use a type like the one in the following line
+  // text: string
+},{
+  // types for internal state
+  counter: number
+}> = function() {
+  this.counter = 0;
+  return (
+    <div>
+      <button on:click={() => this.counter++}>Click me!</button>
+      <p>
+       {use(this.counter)}
+      </p>
+    </div>
+  );
+}
+
+window.addEventListener("load", () => {
+  document.body.appendChild(<App/>);
+});
+```
 
 See the [Wiki](https://github.com/MercuryWorkshop/dreamlandjs/wiki) for more information.
