@@ -1,10 +1,10 @@
 {
   "name": "dreamland",
-  "version": "0.0.1",
+  "version": "0.0.2-beta-1",
   "description": "A utilitarian HTML rendering library",
   "scripts": {
-    "build": "esbuild --minify --bundle DreamlandJS.js --outfile=index.js && esbuild --minify --bundle css.js js.js html.js --outdir=dist/ && tsc",
-    "watch": "esbuild --watch=forever --bundle DreamlandJS.js --outfile=index.js & tsc --watch"
+    "build": "rollup -c",
+    "watch": "rollup -cw"
   },
   "keywords": [
     "html",
@@ -16,12 +16,40 @@
   "author": "MercuryWorkshop",
   "repository": "https://github.com/MercuryWorkshop/dreamlandjs",
   "license": "MIT",
-  "browser": "./index.js",
-  "node": "./index.js",
+  "browser": "./dist/dev/index.js",
   "types": "./DreamlandJS.d.ts",
+  "node": "./dist/dev/index.js",
+  "exports": {
+    "./dev": {
+      "default": "./dist/dev/index.js",
+      "types": "./DreamlandJS.d.ts"
+    },
+    "./js": {
+      "default": "./dist/js.js",
+      "types": "./DreamlandJS.d.ts"
+    },
+    "./css": {
+      "default": "./dist/css.js",
+      "types": "./DreamlandJS.d.ts"
+    },
+    "./html": {
+      "default": "./dist/html.js",
+      "types": "./DreamlandJS.d.ts"
+    },
+    "./store": {
+      "default": "./dist/store.js",
+      "types": "./DreamlandJS.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "DreamlandJS.d.ts"
+  ],
+
   "devDependencies": {
-    "esbuild": "^0.19.11",
-    "google-closure-compiler": "^20231112.0.0",
+    "rollup": "^4.12.1",
+    "@rollup/plugin-strip": "^3.0.4",
+    "rollup-plugin-terser": "^7.0.2",
     "typescript": "^5.3.3"
   }
 }

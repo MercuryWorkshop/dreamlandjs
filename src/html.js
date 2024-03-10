@@ -1,5 +1,5 @@
 Object.assign(window, { html });
-export function html(strings, ...values) {
+function html(strings, ...values) {
   let flattened = "";
   let markers = {};
   for (const i in strings) {

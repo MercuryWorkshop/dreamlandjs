@@ -75,10 +75,10 @@ function tagcss(strings, values, isblock) {
 
   return uid;
 }
-export function rule(strings, ...values) {
+function rule(strings, ...values) {
   return tagcss(strings, values, false)
 }
-export function css(strings, ...values) {
+function css(strings, ...values) {
   return tagcss(strings, values, true);
 }
 

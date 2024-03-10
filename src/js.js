@@ -1,4 +1,6 @@
-export const Fragment = Symbol();
+import { assert } from "./asserts";
+
+const Fragment = Symbol();
 
 // We add some extra properties into various objects throughout, better to use symbols and not interfere. this is just a tiny optimization
 const [USE_MAPFN, TARGET, PROXY, STEPS, LISTENERS, IF] = [, , , , , ,].fill().map(Symbol);
@@ -28,20 +30,22 @@ Object.defineProperty(window, "use", {
   get: () => {
     __use_trap = true;
     return (ptr, mapping) => {
+      assert(isDLPtr(ptr), "a value was passed into use() that was not part of a stateful context");
       __use_trap = false;
       if (mapping) ptr[USE_MAPFN] = mapping;
       return ptr;
     };
   }
 });
-Object.assign(window, { isDLPtr, h, stateful, handle, useValue, $if, Fragment });
+Object.assign(window, { isDLPtr, h, stateful, handle, $if, Fragment });
 
 const TRAPS = new Map;
 // This wraps the target in a proxy, doing 2 things:
 // - whenever a property is accessed, return a "trap" that catches and records accessors
 // - whenever a property is set, notify the subscribed listeners
 // This is what makes our "pass-by-reference" magic work
-export function stateful(target, hook) {
+function stateful(target, hook) {
+  assert(target instanceof Object, "stateful() requires an object");
   target[LISTENERS] = [];
   target[TARGET] = target;
 
@@ -82,11 +86,11 @@ export function stateful(target, hook) {
 }
 
 let isobj = (o) => o instanceof Object;
-export function isDLPtr(arr) {
+function isDLPtr(arr) {
   return isobj(arr) && TARGET in arr
 }
 
-export function $if(condition, then, otherwise) {
+function $if(condition, then, otherwise) {
   otherwise ??= document.createTextNode("");
   if (!isDLPtr(condition)) return condition ? then : otherwise;
 
@@ -94,7 +98,9 @@ export function $if(condition, then, otherwise) {
 }
 
 // This lets you subscribe to a stateful object
-export function handle(ptr, callback) {
+function handle(ptr, callback) {
+  assert(isDLPtr(ptr), "handle() requires a stateful object");
+  assert(typeof callback === "function", "handle() requires a callback function");
   let step, resolvedSteps = [];
 
   function update() {
@@ -146,11 +152,6 @@ export function handle(ptr, callback) {
   sub(ptr[TARGET], resolvedSteps[0], ptr[TARGET][resolvedSteps[0]]);
 }
 
-export function useValue(references) {
-  let reference = references[references.length - 1];
-  return reference.proxy[reference.property];
-}
-
 function JSXAddFixedWrapper(ptr, cb, $if) {
   let before, appended, first, flag;
   handle(ptr, val => {
@@ -175,7 +176,7 @@ function JSXAddFixedWrapper(ptr, cb, $if) {
 }
 
 // Actual JSX factory. Responsible for creating the HTML elements and all of the *reactive* syntactic sugar
-export function h(type, props, ...children) {
+function h(type, props, ...children) {
   if (type == Fragment) return children;
   if (typeof type == "function") {
     // functional components. create the stateful object
@@ -183,7 +184,8 @@ export function h(type, props, ...children) {
 
     for (const name in props) {
       const ptr = props[name];
-      if (isDLPtr(ptr) && name.startsWith("bind:")) {
+      if (name.startsWith("bind:")) {
+        assert(isDLPtr(ptr), "bind: requires a reference pointer from use");
 
         const propname = name.substring(5);
         if (propname == "this") {
@@ -258,7 +260,8 @@ export function h(type, props, ...children) {
 
   for (const name in props) {
     const ptr = props[name];
-    if (isDLPtr(ptr) && name.startsWith("bind:")) {
+    if (name.startsWith("bind:")) {
+      assert(isDLPtr(ptr), "bind: requires a reference pointer from use");
       const propname = name.substring(5);
       if (propname == "this") {
         // todo! support nesting
@@ -279,6 +282,7 @@ export function h(type, props, ...children) {
   }
 
   useProp("class", classlist => {
+    assert(typeof classlist === "string" || classlist instanceof Array, "class must be a string or array");
     if (typeof classlist === "string") {
       elm.className = classlist;
       return;
