@@ -284,12 +284,12 @@ function h(type, props, ...children) {
   useProp("class", classlist => {
     assert(typeof classlist === "string" || classlist instanceof Array, "class must be a string or array");
     if (typeof classlist === "string") {
-      elm.className = classlist;
+      elm.setAttribute("class", classlist);
       return;
     }
 
     if (isDLPtr(classlist)) {
-      handle(classlist, classname => elm.className = classname);
+      handle(classlist, classname => elm.setAttribute("class", classname));
       return;
     }
 
