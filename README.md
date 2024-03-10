@@ -85,7 +85,7 @@ First install dreamland (`npm install dreamland`), then add this to the compiler
 "types": ["dreamland"],
 ```
 
-In the entry point of the app, add the line `import "dreamland"` into at least one file to bundle dreamland with the rest of the code. Now you can use dreamland with tsx syntax.
+In the entry point of the app, add the line `import "dreamland/dev"` into at least one file to bundle dreamland with the rest of the code. Now you can use dreamland with tsx syntax.
 
 ```tsx
 // typescript syntax for defining components
