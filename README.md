@@ -1,8 +1,8 @@
 ## What is Dreamland?
-dreamland.js is a reactive JSX-based rendering library with **no virtual dom**
+dreamland.js is a reactive JSX-inspired rendering library with **no virtual dom** and **no build step**
 
-## Why do we need another javascript framework????
-React is great, but the API is unnecesarily complex and bloated. Dreamland lets you write code where what you see is what you get, no trickery.
+## Why Dreamland?
+We've found frameworks such as React to be cumbersome, with more than just a few footguns. Dreamland can get you fast results with brutal simplicity. See the [Wiki](https://github.com/MercuryWorkshop/dreamlandjs/wiki) for more information.
 
 ## What does it look like?
 Here's a simple counter app
@@ -52,23 +52,13 @@ ReactDOM.render(
   document.getElementById("root")
 );
 ```
+The idea of dreamland is to get some of the convience of big framworks at a ridiculously tiny size (~3kb, smaller than preact) with less hurdles. 
 
-dreamland.js provides a simple and intuitive API at a low cost (~3kb, smaller than preact), while maintaining performance and ease of use
+# Getting Started
+Dreamland can be integrated into plain-javascript applications gradually and seamlessly. See the [Wiki](https://github.com/MercuryWorkshop/dreamlandjs/wiki) for learning the concepts that dreamland uses.
 
-To get started with dreamland, add this to the compileroptions of your `tsconfig.json`
-```json
-"jsx":"react",
-"jsxFactory":"h",
-"jsxFragmentFactory":"Fragment",
-"types": ["dreamland"],
-```
-and run `npm install dreamland`
-
-If you prefer using modules and are using a bundler, simply `import "@mercuryworkshop/dreamlandjs";` into at least one file you're using.
-
-If you don't like using modules, just add `<script src="://unpkg.com/dreamland"></script>` to your html, and you can use dreamland as normal.
-
-dreamland can even be used without a build step, here's the counter example in plain JS
+## Plain JS
+In your HTML file, add `<script src="https://unpkg.com/dreamland"></script>` somewhere. This unlocks the html builder allowing you to start writing dreamland code, such as the example shown below
 ```javascript
 function App() {
   this.counter = 0;
@@ -86,6 +76,16 @@ window.addEventListener("load", () => {
   document.body.appendChild(h(App));
 });
 ```
+## Typescript + Bundler (vite, rollup, webpack, esbuild, etc)
+First install dreamland (`npm install dreamland`), then add this to the compileroptions of your `tsconfig.json` to setup JSX.
+```json
+"jsx":"react",
+"jsxFactory":"h",
+"jsxFragmentFactory":"Fragment",
+"types": ["dreamland"],
+```
+and run `npm install dreamland`.
 
+In the entry point of the app, add the line `import "dreamland"` into at least one file to bundle dreamland with the rest of the code.
 
-See the examples/ directory for more.
+See the [Wiki](https://github.com/MercuryWorkshop/dreamlandjs/wiki) for more information.
