@@ -1,9 +1,12 @@
 import { assert } from "./asserts";
 
-const Fragment = Symbol();
+// enables a small terser optimization
+let document = self.document;
+
+let Fragment = Symbol();
 
 // We add some extra properties into various objects throughout, better to use symbols and not interfere. this is just a tiny optimization
-const [USE_MAPFN, TARGET, PROXY, STEPS, LISTENERS, IF] = [, , , , , ,].fill().map(Symbol);
+let [USE_MAPFN, TARGET, PROXY, STEPS, LISTENERS, IF] = [, , , , , ,].fill().map(Symbol);
 
 
 // whether to return the true value from a stateful object or a "trap" containing the pointer
@@ -39,7 +42,7 @@ Object.defineProperty(window, "use", {
 });
 Object.assign(window, { isDLPtr, h, stateful, handle, $if, Fragment });
 
-const TRAPS = new Map;
+let TRAPS = new Map;
 // This wraps the target in a proxy, doing 2 things:
 // - whenever a property is accessed, return a "trap" that catches and records accessors
 // - whenever a property is set, notify the subscribed listeners
@@ -48,8 +51,9 @@ function stateful(target, hook) {
   assert(target instanceof Object, "stateful() requires an object");
   target[LISTENERS] = [];
   target[TARGET] = target;
+  let TOPRIMITIVE = Symbol.toPrimitive;
 
-  const proxy = new Proxy(target, {
+  let proxy = new Proxy(target, {
     get(target, property, proxy) {
       if (__use_trap) {
         let sym = Symbol();
@@ -57,10 +61,10 @@ function stateful(target, hook) {
           [TARGET]: target,
           [PROXY]: proxy,
           [STEPS]: [property],
-          [Symbol.toPrimitive]: () => sym,
+          [TOPRIMITIVE]: _ => sym,
         }, {
           get(target, property) {
-            if ([TARGET, PROXY, STEPS, USE_MAPFN, Symbol.toPrimitive].includes(property)) return target[property];
+            if ([TARGET, PROXY, STEPS, USE_MAPFN, TOPRIMITIVE].includes(property)) return target[property];
             property = TRAPS.get(property) || property;
             target[STEPS].push(property);
             return trap;
@@ -75,7 +79,7 @@ function stateful(target, hook) {
     set(target, property, val) {
       if (hook) hook(target, property, val);
       let trap = Reflect.set(target, property, val);
-      for (const listener of target[LISTENERS]) {
+      for (let listener of target[LISTENERS]) {
         listener(target, property, val);
       }
       return trap;
@@ -86,6 +90,7 @@ function stateful(target, hook) {
 }
 
 let isobj = (o) => o instanceof Object;
+let isfn = (o) => typeof o === "function";
 function isDLPtr(arr) {
   return isobj(arr) && TARGET in arr
 }
@@ -100,7 +105,7 @@ function $if(condition, then, otherwise) {
 // This lets you subscribe to a stateful object
 function handle(ptr, callback) {
   assert(isDLPtr(ptr), "handle() requires a stateful object");
-  assert(typeof callback === "function", "handle() requires a callback function");
+  assert(isfn(callback), "handle() requires a callback function");
   let step, resolvedSteps = [];
 
   function update() {
@@ -116,7 +121,7 @@ function handle(ptr, callback) {
   }
 
   // inject ourselves into nested objects
-  const curry = (target, i) => function subscription(tgt, prop, val) {
+  let curry = (target, i) => function subscription(tgt, prop, val) {
     if (prop === resolvedSteps[i] && target === tgt) {
       update();
 
@@ -177,11 +182,11 @@ function JSXAddFixedWrapper(ptr, cb, $if) {
 
 // returns a function that sets a reference
 // the currying is a small optimization
-const curryset = ptr => val =>{ 
+let curryset = ptr => val => {
   let next = ptr[PROXY];
   let steps = ptr[STEPS];
-  let i =0;
-  for (;i<steps.length-1;i++) {
+  let i = 0;
+  for (; i < steps.length - 1; i++) {
     next = next[steps[i]];
     if (!isobj(next)) return;
   }
@@ -195,13 +200,13 @@ function h(type, props, ...children) {
     // functional components. create the stateful object
     let newthis = stateful(Object.create(type.prototype));
 
-    for (const name in props) {
-      const ptr = props[name];
+    for (let name in props) {
+      let ptr = props[name];
       if (name.startsWith("bind:")) {
         assert(isDLPtr(ptr), "bind: requires a reference pointer from use");
 
-        const set = curryset(ptr);
-        const propname = name.substring(5);
+        let set = curryset(ptr);
+        let propname = name.substring(5);
         if (propname == "this") {
           set(newthis);
         } else {
@@ -231,7 +236,7 @@ function h(type, props, ...children) {
     Object.assign(newthis, props);
 
     newthis.children = [];
-    for (const child of children) {
+    for (let child of children) {
       JSXAddChild(child, newthis.children.push.bind(newthis.children));
     }
 
@@ -239,8 +244,9 @@ function h(type, props, ...children) {
     elm.$ = newthis;
     newthis.root = elm;
     if (newthis.css) {
-      elm.classList.add(newthis.css);
-      elm.classList.add("self");
+      let cl = elm.classList
+      cl.add(newthis.css);
+      cl.add("self");
     }
     elm.setAttribute("data-component", type.name);
     if (typeof newthis.mount === "function")
@@ -250,10 +256,10 @@ function h(type, props, ...children) {
 
 
   let xmlns = props?.xmlns;
-  const elm = xmlns ? document.createElementNS(xmlns, type) : document.createElement(type);
+  let elm = xmlns ? document.createElementNS(xmlns, type) : document.createElement(type);
 
 
-  for (const child of children) {
+  for (let child of children) {
     let cond = child && !isDLPtr(child) && child[IF];
     let bappend = elm.append.bind(elm);
     if (cond) {
@@ -264,19 +270,19 @@ function h(type, props, ...children) {
 
   if (!props) return elm;
 
-  function useProp(name, callback) {
+  let useProp = (name, callback) => {
     if (!(name in props)) return;
     let prop = props[name];
     callback(prop);
     delete props[name];
   }
 
-  for (const name in props) {
-    const ptr = props[name];
+  for (let name in props) {
+    let ptr = props[name];
     if (name.startsWith("bind:")) {
       assert(isDLPtr(ptr), "bind: requires a reference pointer from use");
-      const propname = name.substring(5);
-      
+      let propname = name.substring(5);
+
       // create the function to set the value of the pointer 
       let set = curryset(ptr);
       if (propname == "this") {
@@ -304,7 +310,7 @@ function h(type, props, ...children) {
       return;
     }
 
-    for (const name of classlist) {
+    for (let name of classlist) {
       if (isDLPtr(name)) {
         let oldvalue = null;
         handle(name, value => {
@@ -321,8 +327,8 @@ function h(type, props, ...children) {
   });
 
   // apply the non-reactive properties
-  for (const name in props) {
-    const prop = props[name];
+  for (let name in props) {
+    let prop = props[name];
     if (isDLPtr(prop)) {
       handle(prop, (val) => {
         JSXAddAttributes(elm, name, val);
@@ -365,10 +371,10 @@ function JSXAddChild(child, cb) {
 function JSXAddAttributes(elm, name, prop) {
   if (name.startsWith("on:")) {
     assert(typeof prop === "function", "on: requires a function");
-    const names = name.substring(3);
-    for (const name of names.split("$")) {
+    let names = name.substring(3);
+    for (let name of names.split("$")) {
       elm.addEventListener(name, (...args) => {
-        window.$el = elm;
+        self.$el = elm;
         prop(...args);
       });
     }
