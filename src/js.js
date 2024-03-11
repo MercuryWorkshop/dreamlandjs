@@ -175,6 +175,19 @@ function JSXAddFixedWrapper(ptr, cb, $if) {
   })
 }
 
+// returns a function that sets a reference
+// the currying is a small optimization
+const curryset = ptr => val =>{ 
+  let next = ptr[PROXY];
+  let steps = ptr[STEPS];
+  let i =0;
+  for (;i<steps.length-1;i++) {
+    next = next[steps[i]];
+    if (!isobj(next)) return;
+  }
+  next[steps[i]] = val;
+}
+
 // Actual JSX factory. Responsible for creating the HTML elements and all of the *reactive* syntactic sugar
 function h(type, props, ...children) {
   if (type == Fragment) return children;
@@ -187,10 +200,10 @@ function h(type, props, ...children) {
       if (name.startsWith("bind:")) {
         assert(isDLPtr(ptr), "bind: requires a reference pointer from use");
 
+        const set = curryset(ptr);
         const propname = name.substring(5);
         if (propname == "this") {
-          // todo! support nesting
-          ptr[PROXY][ptr[STEPS][0]] = newthis;
+          set(newthis);
         } else {
           // component two way data binding!! (exact same behavior as svelte:bind)
           let isRecursive = false;
@@ -209,7 +222,7 @@ function h(type, props, ...children) {
               return;
             }
             isRecursive = true;
-            ptr[PROXY][ptr[STEPS][0]] = value;
+            set(value);
           });
         }
         delete props[name];
@@ -263,19 +276,17 @@ function h(type, props, ...children) {
     if (name.startsWith("bind:")) {
       assert(isDLPtr(ptr), "bind: requires a reference pointer from use");
       const propname = name.substring(5);
+      
+      // create the function to set the value of the pointer 
+      let set = curryset(ptr);
       if (propname == "this") {
-        // todo! support nesting
-        ptr[PROXY][ptr[STEPS][0]] = elm;
+        set(elm);
       } else if (propname == "value") {
         handle(ptr, value => elm.value = value);
-        elm.addEventListener("change", () => {
-          ptr[PROXY][ptr[STEPS][0]] = elm.value;
-        })
+        elm.addEventListener("change", () => set(elm.value))
       } else if (propname == "checked") {
         handle(ptr, value => elm.checked = value);
-        elm.addEventListener("click", () => {
-          ptr[PROXY][ptr[STEPS][0]] = elm.checked;
-        })
+        elm.addEventListener("click", () => set(elm.checked))
       }
       delete props[name];
     }
@@ -352,13 +363,8 @@ function JSXAddChild(child, cb) {
 
 // Where properties are assigned to elements, and where the *non-reactive* syntax sugar goes
 function JSXAddAttributes(elm, name, prop) {
-  if (typeof prop === "function" && name === "mount") {
-    window.$el = elm;
-    prop(elm);
-    return;
-  }
-
-  if (typeof prop === "function" && name.startsWith("on:")) {
+  if (name.startsWith("on:")) {
+    assert(typeof prop === "function", "on: requires a function");
     const names = name.substring(3);
     for (const name of names.split("$")) {
       elm.addEventListener(name, (...args) => {
