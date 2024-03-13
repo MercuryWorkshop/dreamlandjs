@@ -2,7 +2,7 @@
 dreamland.js is a reactive JSX-inspired rendering library with **no virtual dom** and **no build step**
 
 ## Why Dreamland?
-We've found frameworks such as React to be cumbersome, with more than just a few footguns. Dreamland can get you fast results with brutal simplicity. See the [Wiki](https://github.com/MercuryWorkshop/dreamlandjs/wiki) for more information.
+We've found frameworks such as React to be cumbersome, with more than just a few footguns. Dreamland can get you fast results with brutal simplicity. See the [documentation](https://dreamland.js.org) for more information.
 
 ## What does it look like?
 Here's a simple counter app
@@ -112,4 +112,4 @@ window.addEventListener("load", () => {
 });
 ```
 
-See the [Wiki](https://github.com/MercuryWorkshop/dreamlandjs/wiki) for more information.
+See the [documentation](https://dreamland.js.org) for more information.
