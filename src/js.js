@@ -32,7 +32,8 @@ let __use_trap = false;
 Object.defineProperty(window, "use", {
   get: () => {
     __use_trap = true;
-    return (ptr, mapping) => {
+    return (ptr, mapping, ...rest) => {
+      if (ptr instanceof Array) return usestr(ptr, mapping, ...rest);
       assert(isDLPtr(ptr), "a value was passed into use() that was not part of a stateful context");
       __use_trap = false;
       if (mapping) ptr[USE_MAPFN] = mapping;
@@ -40,6 +41,36 @@ Object.defineProperty(window, "use", {
     };
   }
 });
+const usestr = (strings, ...values) => {
+  __use_trap = false;
+
+  let state = stateful({});
+  const flattened_template = [];
+  for (const i in strings) {
+    flattened_template.push(strings[i]);
+    if (values[i]) {
+      const prop = values[i];
+
+      if (isDLPtr(prop)) {
+        const current_i = flattened_template.length;
+        let oldparsed;
+        handle(prop, (val) => {
+          flattened_template[current_i] = String(val);
+          let parsed = flattened_template.join("");
+          if (parsed != oldparsed)
+            state.string = parsed
+          oldparsed = parsed;
+        });
+      } else {
+        flattened_template.push(String(prop));
+      }
+    }
+  }
+
+  state.string = flattened_template.join("");
+
+  return use(state.string);
+};
 Object.assign(window, { isDLPtr, h, stateful, handle, $if, Fragment });
 
 let TRAPS = new Map;
@@ -48,7 +79,7 @@ let TRAPS = new Map;
 // - whenever a property is set, notify the subscribed listeners
 // This is what makes our "pass-by-reference" magic work
 function stateful(target, hook) {
-  assert(target instanceof Object, "stateful() requires an object");
+  assert(isobj(target), "stateful() requires an object");
   target[LISTENERS] = [];
   target[TARGET] = target;
   let TOPRIMITIVE = Symbol.toPrimitive;
@@ -125,7 +156,7 @@ function handle(ptr, callback) {
     if (prop === resolvedSteps[i] && target === tgt) {
       update();
 
-      if (val instanceof Object) {
+      if (isobj(val)) {
         let v = val[LISTENERS];
         if (v && !v.includes(subscription)) {
           v.push(curry(val[TARGET], i + 1));
@@ -293,6 +324,17 @@ function h(type, props, ...children) {
       } else if (propname == "checked") {
         handle(ptr, value => elm.checked = value);
         elm.addEventListener("click", () => set(elm.checked))
+      }
+      delete props[name];
+    }
+    if (name == "style" && isobj(ptr)) {
+      for (let key in ptr) {
+        let prop = ptr[key];
+        if (isDLPtr(prop)) {
+          handle(prop, value => elm.style[key] = value);
+        } else {
+          elm.style[key] = prop;
+        }
       }
       delete props[name];
     }
