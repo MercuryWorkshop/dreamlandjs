@@ -1,20 +1,21 @@
 html {
-  padding: 0;
-  margin: 0;
-  width: 100vw;
-  height: 100vh;
+    padding: 0;
+    margin: 0;
+    width: 100vw;
+    height: 100vh;
 }
 body {
-  background-color: #191724;
+    background-color: #191724;
 }
 
 .box {
-  background-color: #1f1d2e;
-  border-radius: 25px;
-  padding:2em;
+    background-color: #1f1d2e;
+    border-radius: 25px;
+    padding: 2em;
 }
 
-p,h1 {
-  font-family: "serif";
-  color: #e0def4;
+p,
+h1 {
+    font-family: 'serif';
+    color: #e0def4;
 }

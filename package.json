@@ -1,55 +1,56 @@
 {
-  "name": "dreamland",
-  "version": "0.0.3",
-  "description": "A utilitarian HTML rendering library",
-  "scripts": {
-    "build": "rollup -c",
-    "watch": "rollup -cw"
-  },
-  "keywords": [
-    "html",
-    "jsx",
-    "framework",
-    "dreamlandjs",
-    "dreamland"
-  ],
-  "author": "MercuryWorkshop",
-  "repository": "https://github.com/MercuryWorkshop/dreamlandjs",
-  "license": "MIT",
-  "browser": "./dist/dev/index.js",
-  "types": "./DreamlandJS.d.ts",
-  "node": "./dist/dev/index.js",
-  "exports": {
-    "./dev": {
-      "default": "./dist/dev/index.js",
-      "types": "./DreamlandJS.d.ts"
+    "name": "dreamland",
+    "version": "0.0.4",
+    "description": "A utilitarian HTML rendering library",
+    "scripts": {
+        "build": "rollup -c && prettier . --check",
+        "watch": "rollup -cw",
+        "publish": "npm publish --access public"
     },
-    "./js": {
-      "default": "./dist/js.js",
-      "types": "./DreamlandJS.d.ts"
+    "keywords": [
+        "html",
+        "jsx",
+        "framework",
+        "dreamlandjs",
+        "dreamland"
+    ],
+    "author": "MercuryWorkshop",
+    "repository": "https://github.com/MercuryWorkshop/dreamlandjs",
+    "license": "MIT",
+    "browser": "./dist/dev/index.js",
+    "types": "./DreamlandJS.d.ts",
+    "node": "./dist/dev/index.js",
+    "exports": {
+        "./dev": {
+            "default": "./dist/dev/index.js",
+            "types": "./DreamlandJS.d.ts"
+        },
+        "./js": {
+            "default": "./dist/js.js",
+            "types": "./DreamlandJS.d.ts"
+        },
+        "./css": {
+            "default": "./dist/css.js",
+            "types": "./DreamlandJS.d.ts"
+        },
+        "./html": {
+            "default": "./dist/html.js",
+            "types": "./DreamlandJS.d.ts"
+        },
+        "./store": {
+            "default": "./dist/store.js",
+            "types": "./DreamlandJS.d.ts"
+        }
     },
-    "./css": {
-      "default": "./dist/css.js",
-      "types": "./DreamlandJS.d.ts"
-    },
-    "./html": {
-      "default": "./dist/html.js",
-      "types": "./DreamlandJS.d.ts"
-    },
-    "./store": {
-      "default": "./dist/store.js",
-      "types": "./DreamlandJS.d.ts"
+    "files": [
+        "dist",
+        "DreamlandJS.d.ts"
+    ],
+    "devDependencies": {
+        "@rollup/plugin-strip": "^3.0.4",
+        "prettier": "^3.2.5",
+        "rollup": "^4.12.1",
+        "rollup-plugin-terser": "^7.0.2",
+        "typescript": "^5.3.3"
     }
-  },
-  "files": [
-    "dist",
-    "DreamlandJS.d.ts"
-  ],
-
-  "devDependencies": {
-    "rollup": "^4.12.1",
-    "@rollup/plugin-strip": "^3.0.4",
-    "rollup-plugin-terser": "^7.0.2",
-    "typescript": "^5.3.3"
-  }
 }

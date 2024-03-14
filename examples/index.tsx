@@ -1,40 +1,39 @@
 function Counter() {
-  this.css = css`
-    self {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-    }
+    this.css = css`
+        self {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
 
-    button {
-      border-radius: 5px;
-      border: none;
-      outline: none;
-      width: 10em;
-      height:5em;
-      background-color: #f6c177;
-    }
+        button {
+            border-radius: 5px;
+            border: none;
+            outline: none;
+            width: 10em;
+            height: 5em;
+            background-color: #f6c177;
+        }
 
-    p {
-      font-size: 20px;
-    }
-`;
+        p {
+            font-size: 20px;
+        }
+    `
 
-  this.counter ??= 0;
+    this.counter ??= 0
 
-  return (
-    <div class="box">
-      <h1>Counter</h1>
-      <p>
-        Value: {use(this.counter)}
-      </p>
-      <button on:click={() => this.counter++} >Click me!</button>
-      <p>
-        is {use(this.counter)} odd? {use(this.counter, p => p % 2 == 1)}
-      </p>
-    </div>
-  )
+    return (
+        <div class="box">
+            <h1>Counter</h1>
+            <p>Value: {use(this.counter)}</p>
+            <button on:click={() => this.counter++}>Click me!</button>
+            <p>
+                is {use(this.counter)} odd?{' '}
+                {use(this.counter, (p) => p % 2 == 1)}
+            </p>
+        </div>
+    )
 }
 //
 // function ToDoList() {
@@ -120,14 +119,20 @@ function Counter() {
 //   );
 // }
 
-window.addEventListener("load", () => {
-  document.body.appendChild(<Counter />);
-});
+window.addEventListener('load', () => {
+    document.body.appendChild(<Counter />)
+})
 
-let a = stateful({ b: stateful({ c: stateful({ d: 0 }) }), array: [[1, 2, 3], [4, 5, 6], [7, 8, 9]] }) as any;
-let r = use(a.array[a.b.c.d][a.b.c.d]);
+let a = stateful({
+    b: stateful({ c: stateful({ d: 0 }) }),
+    array: [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+    ],
+}) as any
+let r = use(a.array[a.b.c.d][a.b.c.d])
 
-
-handle(r, v => {
-  console.log(v);
-});
+handle(r, (v) => {
+    console.log(v)
+})

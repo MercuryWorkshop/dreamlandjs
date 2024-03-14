@@ -1,29 +1,23 @@
 {
-  "compilerOptions": {
+    "compilerOptions": {
+        "lib": ["ESNext", "dom"],
+        "outDir": "./examples/lib",
+        "removeComments": true,
+        "target": "ES6",
 
-    "lib": [
-      "ESNext",
-      "dom"
-    ], 
-    "outDir": "./examples/lib",
-    "removeComments": true, 
-    "target": "ES6",
+        "jsx": "react",
+        "jsxFactory": "h",
+        "jsxFragmentFactory": "Fragment",
 
-    "jsx":"react",
-    "jsxFactory":"h",
-    "jsxFragmentFactory":"Fragment",
+        "sourceMap": true,
+        "sourceRoot": "",
 
-    "sourceMap": true,
-    "sourceRoot": "", 
+        "alwaysStrict": false,
+        "noImplicitAny": false,
+        "strictNullChecks": false,
 
-    "alwaysStrict": false, 
-    "noImplicitAny": false, 
-    "strictNullChecks":false, 
-
-    "noUncheckedIndexedAccess": true
-  },
-  "include": ["./examples/*.ts","./examples/*.tsx", "./DreamlandJS.d.ts"],
-  "exclude": [
-    "node_modules/**/*"
-  ]
+        "noUncheckedIndexedAccess": true
+    },
+    "include": ["./examples/*.ts", "./examples/*.tsx", "./DreamlandJS.d.ts"],
+    "exclude": ["node_modules/**/*"]
 }
