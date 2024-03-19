@@ -1,9 +1,9 @@
 {
     "name": "dreamland",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "description": "A utilitarian HTML rendering library",
     "scripts": {
-        "build": "rollup -c && prettier . --check",
+        "build": "rollup -c && prettier -w .",
         "watch": "rollup -cw",
         "publish": "npm publish --access public"
     },
@@ -18,33 +18,33 @@
     "repository": "https://github.com/MercuryWorkshop/dreamlandjs",
     "license": "MIT",
     "browser": "./dist/dev/index.js",
-    "types": "./DreamlandJS.d.ts",
+    "types": "./dreamland.d.ts",
     "node": "./dist/dev/index.js",
     "exports": {
         "./dev": {
             "default": "./dist/dev/index.js",
-            "types": "./DreamlandJS.d.ts"
+            "types": "./dreamland.d.ts"
         },
         "./js": {
             "default": "./dist/js.js",
-            "types": "./DreamlandJS.d.ts"
+            "types": "./dreamland.d.ts"
         },
         "./css": {
             "default": "./dist/css.js",
-            "types": "./DreamlandJS.d.ts"
+            "types": "./dreamland.d.ts"
         },
         "./html": {
             "default": "./dist/html.js",
-            "types": "./DreamlandJS.d.ts"
+            "types": "./dreamland.d.ts"
         },
         "./store": {
             "default": "./dist/store.js",
-            "types": "./DreamlandJS.d.ts"
+            "types": "./dreamland.d.ts"
         }
     },
     "files": [
         "dist",
-        "DreamlandJS.d.ts"
+        "dreamland.d.ts"
     ],
     "devDependencies": {
         "@rollup/plugin-strip": "^3.0.4",
