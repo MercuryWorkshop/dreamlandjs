@@ -1,6 +1,8 @@
-Object.assign(window, { css, rule: css, styled: { new: css, rule: css } })
+Object.assign(window, { css, styled: { new: css, rule: css } })
 const cssmap = {}
-export function css(strings, ...values) {
+
+
+export function css(strings, values = []) {
     let str = ''
     for (let f of strings) {
         str += f + (values.shift() || '')
@@ -19,8 +21,27 @@ export function css(strings, ...values) {
     const styleElement = document.createElement('style')
     document.head.appendChild(styleElement)
 
-    styleElement.textContent = `.${uid} { ${str}; }`
-    cssmap[str] = uid
 
+    // kind of a hack. when css nesting stablizes this can be removed
+    styleElement.textContent = str;
+    let newstr = "";
+    let selfstr = "";
+    while (!styleElement.sheet.cssRules.length) {
+        let [first, ...rest] = str.split("\n");
+        selfstr += first + "\n";
+        str = rest.join("\n");
+        styleElement.textContent = str;
+    }
+
+
+    for (const rule of styleElement.sheet.cssRules) {
+        rule.selectorText = `.${uid} ${rule.selectorText}`
+        newstr += rule.cssText + "\n";
+    }
+
+    styleElement.textContent = `.${uid} {${selfstr}}` + "\n" + newstr;
+    console.log(styleElement.textContent);
+
+    cssmap[str] = uid
     return uid
 }
