@@ -3,7 +3,7 @@ import { assert } from './asserts'
 // enables a small terser optimization
 let document = self.document
 
-let Fragment = Symbol()
+export const Fragment = Symbol()
 
 // We add some extra properties into various objects throughout, better to use symbols and not interfere. this is just a tiny optimization
 let [USE_MAPFN, TARGET, PROXY, STEPS, LISTENERS, IF] = [, , , , , ,]

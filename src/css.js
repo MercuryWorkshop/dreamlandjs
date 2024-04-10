@@ -19,17 +19,19 @@ export function css(strings, ...values) {
     const styleElement = document.createElement('style')
     document.head.appendChild(styleElement)
 
-    // kind of a hack. when css nesting stablizes this can be removed
-    styleElement.textContent = str
     let newstr = ''
     let selfstr = ''
-    while (!styleElement.sheet.cssRules.length) {
-        let [first, ...rest] = str.split('\n');
-        if (!first) break;
+
+    // compat layer for older browsers. when css nesting stablizes this can be removed
+    for (; ;) {
+        let [first, ...rest] = str.split('\n')
+        if (first.trim().endsWith('{')) break;
+
         selfstr += first + '\n'
         str = rest.join('\n')
-        styleElement.textContent = str
     }
+    styleElement.textContent = str
+
 
     for (const rule of styleElement.sheet.cssRules) {
         rule.selectorText = `.${uid} ${rule.selectorText}`
@@ -37,6 +39,7 @@ export function css(strings, ...values) {
     }
 
     styleElement.textContent = `.${uid} {${selfstr}}` + '\n' + newstr
+    console.log(styleElement.textContent)
 
     cssmap[str] = uid
     return uid

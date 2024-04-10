@@ -1,11 +1,9 @@
 function Counter() {
     this.css = css`
-        self {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-        }
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
 
         button {
             border-radius: 5px;

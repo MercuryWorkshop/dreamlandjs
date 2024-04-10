@@ -98,7 +98,9 @@ export default (args) => {
     }
 
     const devOutput = {
-        format: 'cjs',
+        format: 'iife',
+        name: 'window',
+        extend: true,
         sourcemap: true,
         ...sharedOutput,
     }
@@ -108,7 +110,7 @@ export default (args) => {
     return [
         {
             input: 'src/main.js',
-            output, 
+            output,
             plugins: plugins,
         },
     ]
