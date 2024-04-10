@@ -23,12 +23,14 @@ export function css(strings, ...values) {
     let selfstr = ''
 
     // compat layer for older browsers. when css nesting stablizes this can be removed
+    str += '\n'
     for (;;) {
         let [first, ...rest] = str.split('\n')
-        if (!first || first.trim().endsWith('{')) break
+        if (first.trim().endsWith('{')) break
 
         selfstr += first + '\n'
         str = rest.join('\n')
+        if (!str) break
     }
     styleElement.textContent = str
 
