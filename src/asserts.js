@@ -18,9 +18,3 @@ export function assert(condition, message) {
         panic(message)
     }
 }
-dev: assert.eq = (a, b) => {
-    if (a != b) panic('Assertion failed: ' + a + ' != ' + b)
-}
-dev: assert.neq = (a, b) => {
-    if (a == b) panic('Assertion failed: ' + a + ' == ' + b)
-}
