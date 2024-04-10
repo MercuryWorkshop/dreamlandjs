@@ -1,4 +1,3 @@
-Object.assign(window, { css, styled: { new: css, rule: css } })
 const cssmap = {}
 
 export function css(strings, ...values) {

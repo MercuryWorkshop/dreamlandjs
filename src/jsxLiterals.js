@@ -1,5 +1,4 @@
-Object.assign(window, { html })
-function html(strings, ...values) {
+export function html(strings, ...values) {
     let flattened = ''
     let markers = {}
     for (const i in strings) {

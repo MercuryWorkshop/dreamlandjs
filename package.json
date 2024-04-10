@@ -3,8 +3,7 @@
     "version": "0.0.6",
     "description": "A utilitarian HTML rendering library",
     "scripts": {
-        "build": "rollup -c && prettier -w .",
-        "watch": "rollup -cw",
+        "build": "rollup -c --dloutput dist/minimal.js --disable-css --disable-jsxLiterals --disable-usestring --disable-stores && rollup -c --dloutput dist/dev.js --dev --enable-css --enable-jsxLiterals --enable-usestring --enable-stores && rollup -c --dloutput dist/all.js --enable-css --enable-jsxLiterals --enable-usestring --enable-stores && prettier -w .",
         "publish": "npm publish --access public"
     },
     "keywords": [
@@ -17,28 +16,20 @@
     "author": "MercuryWorkshop",
     "repository": "https://github.com/MercuryWorkshop/dreamlandjs",
     "license": "MIT",
-    "browser": "./dist/dev/index.js",
+    "browser": "./dist/all.js",
     "types": "./dreamland.d.ts",
-    "node": "./dist/dev/index.js",
+    "node": "./dist/all.js",
     "exports": {
         "./dev": {
-            "default": "./dist/dev/index.js",
+            "default": "./dist/dev.js",
             "types": "./dreamland.d.ts"
         },
-        "./js": {
-            "default": "./dist/js.js",
+        "./minimal": {
+            "default": "./dist/minimal.js",
             "types": "./dreamland.d.ts"
         },
-        "./css": {
-            "default": "./dist/css.js",
-            "types": "./dreamland.d.ts"
-        },
-        "./html": {
-            "default": "./dist/html.js",
-            "types": "./dreamland.d.ts"
-        },
-        "./store": {
-            "default": "./dist/store.js",
+        ".": {
+            "default": "./dist/all.js",
             "types": "./dreamland.d.ts"
         }
     },
@@ -52,5 +43,8 @@
         "prettier": "^3.2.5",
         "rollup": "^4.13.0",
         "typescript": "^5.4.2"
+    },
+    "dependencies": {
+        "rollup-plugin-strip-code": "^0.2.7"
     }
 }

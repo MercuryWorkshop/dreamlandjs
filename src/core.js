@@ -33,7 +33,9 @@ Object.defineProperty(window, 'use', {
     get: () => {
         __use_trap = true
         return (ptr, mapping, ...rest) => {
+            /* FEATURE.USESTRING.START */
             if (ptr instanceof Array) return usestr(ptr, mapping, ...rest)
+            /* FEATURE.USESTRING.END */
             assert(
                 isDLPtr(ptr),
                 'a value was passed into use() that was not part of a stateful context'
@@ -44,6 +46,8 @@ Object.defineProperty(window, 'use', {
         }
     },
 })
+
+/* FEATURE.USESTRING.START */
 const usestr = (strings, ...values) => {
     __use_trap = false
 
@@ -73,14 +77,14 @@ const usestr = (strings, ...values) => {
 
     return use(state.string)
 }
-Object.assign(window, { isDLPtr, h, stateful, handle, $if, Fragment })
+/* FEATURE.USESTRING.END */
 
 let TRAPS = new Map()
 // This wraps the target in a proxy, doing 2 things:
 // - whenever a property is accessed, return a "trap" that catches and records accessors
 // - whenever a property is set, notify the subscribed listeners
 // This is what makes our "pass-by-reference" magic work
-function stateful(target, hook) {
+export function stateful(target, hook) {
     assert(isobj(target), 'stateful() requires an object')
     target[LISTENERS] = []
     target[TARGET] = target
@@ -136,11 +140,11 @@ function stateful(target, hook) {
 
 let isobj = (o) => o instanceof Object
 let isfn = (o) => typeof o === 'function'
-function isDLPtr(arr) {
+export function isDLPtr(arr) {
     return isobj(arr) && TARGET in arr
 }
 
-function $if(condition, then, otherwise) {
+export function $if(condition, then, otherwise) {
     otherwise ??= document.createTextNode('')
     if (!isDLPtr(condition)) return condition ? then : otherwise
 
@@ -148,7 +152,7 @@ function $if(condition, then, otherwise) {
 }
 
 // This lets you subscribe to a stateful object
-function handle(ptr, callback) {
+export function handle(ptr, callback) {
     assert(isDLPtr(ptr), 'handle() requires a stateful object')
     assert(isfn(callback), 'handle() requires a callback function')
     let step,
@@ -239,7 +243,7 @@ let curryset = (ptr) => (val) => {
 }
 
 // Actual JSX factory. Responsible for creating the HTML elements and all of the *reactive* syntactic sugar
-function h(type, props, ...children) {
+export function h(type, props, ...children) {
     if (type == Fragment) return children
     if (typeof type == 'function') {
         // functional components. create the stateful object

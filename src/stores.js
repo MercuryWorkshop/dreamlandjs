@@ -1,5 +1,4 @@
-Object.assign(window, { $store })
-function $store(target, ident, type) {
+export function $store(target, ident, type) {
     let stored = localStorage.getItem(ident)
     target = JSON.parse(stored) ?? target
 
