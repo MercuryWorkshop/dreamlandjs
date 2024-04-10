@@ -25,7 +25,7 @@ export function css(strings, ...values) {
     // compat layer for older browsers. when css nesting stablizes this can be removed
     for (;;) {
         let [first, ...rest] = str.split('\n')
-        if (first.trim().endsWith('{')) break
+        if (!first || first.trim().endsWith('{')) break
 
         selfstr += first + '\n'
         str = rest.join('\n')
