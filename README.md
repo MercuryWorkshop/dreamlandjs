@@ -4,7 +4,7 @@ dreamland.js is a reactive JSX-inspired rendering library with **no virtual dom*
 
 ## Why Dreamland?
 
-We've found frameworks such as React to be cumbersome, with more than just a few footguns. Dreamland can get you fast results with brutal simplicity. See the [documentation](https://dreamland.js.org) for more information.
+For a lot of projects, big frameworks like react don't make sense, but it would be too cumbersome to write everything in plain javascript. dreamland can give you back some of the convience of react, with a tiny bundle size, no build step, and compatibility with plain DOM operations.
 
 ## What does it look like?
 
@@ -58,11 +58,11 @@ The idea of dreamland is to get some of the convience of big framworks at a ridi
 
 # Getting Started
 
-Dreamland can be integrated into plain-javascript applications gradually and seamlessly. See the [Wiki](https://github.com/MercuryWorkshop/dreamlandjs/wiki) for learning the concepts that dreamland uses.
+dreamland can be integrated into plain-javascript applications gradually and seamlessly. See the [website](https://dreamland.js.org) to learn the concepts that dreamland uses.
 
 ## Plain JS
 
-In your HTML file, add `<script src="https://unpkg.com/dreamland"></script>` somewhere. This unlocks the html builder allowing you to start writing dreamland code, such as the example shown below
+In your HTML file, add `<script src="https://unpkg.com/dreamland"></script>` somewhere. This contains the html builder allowing you to start writing dreamland code in plain JS, such as the example shown below
 
 ```javascript
 function App() {
@@ -80,6 +80,20 @@ window.addEventListener('load', () => {
 })
 ```
 
+Note that this is a development build. For production, you should pin the version and use either the "all" or "minimal" bundle depending on the features you want (ex. https://unpkg.com/dreamland@0.0.8/dist/all.js)
+
+## Building a custom bundle
+
+If you care about the bundle size, it is reccommended to serve a custom bundle with only the features you need.
+
+```bash
+git clone https://MercuryWorkshop/dreamland
+cd dreamland
+npm install
+npm rollup -c --file path/to/output.js --enable-jsxLiterals --disable-css
+# see https://dreamland.js.org/docs/building for more options
+```
+
 ## Typescript + Bundler (vite, rollup, webpack, esbuild, etc)
 
 First install dreamland (`npm install dreamland`), then add this to the compileroptions of your `tsconfig.json` to setup JSX.
@@ -91,7 +105,9 @@ First install dreamland (`npm install dreamland`), then add this to the compiler
 "types": ["dreamland"],
 ```
 
-In the entry point of the app, add the line `import "dreamland"` into at least one file to bundle dreamland with the rest of the code. Now you can use dreamland with tsx syntax.
+In the entry point of the app, add the line `import "dreamland/dev"` into at least one file to bundle dreamland with the rest of the code. Now you can use dreamland with tsx syntax.
+
+In production, you can use `import "dreamland"` instead of `import "dreamland/dev"` to use the production build, or (reccommended) vendor in a custom build.
 
 ```tsx
 // typescript syntax for defining components
