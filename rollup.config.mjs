@@ -108,10 +108,7 @@ export default (args) => {
     return [
         {
             input: 'src/main.js',
-            output: {
-                file: args.dloutput,
-                ...output,
-            },
+            output, 
             plugins: plugins,
         },
     ]
