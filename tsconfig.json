@@ -18,6 +18,6 @@
 
         "noUncheckedIndexedAccess": true
     },
-    "include": ["./examples/*.ts", "./examples/*.tsx", "./DreamlandJS.d.ts"],
+    "include": ["./examples/*.ts", "./examples/*.tsx", "./dreamland.d.ts"],
     "exclude": ["node_modules/**/*"]
 }

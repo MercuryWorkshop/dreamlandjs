@@ -24,7 +24,8 @@ export function css(strings, ...values) {
     let newstr = ''
     let selfstr = ''
     while (!styleElement.sheet.cssRules.length) {
-        let [first, ...rest] = str.split('\n')
+        let [first, ...rest] = str.split('\n');
+        if (!first) break;
         selfstr += first + '\n'
         str = rest.join('\n')
         styleElement.textContent = str
@@ -36,7 +37,6 @@ export function css(strings, ...values) {
     }
 
     styleElement.textContent = `.${uid} {${selfstr}}` + '\n' + newstr
-    console.log(styleElement.textContent)
 
     cssmap[str] = uid
     return uid
