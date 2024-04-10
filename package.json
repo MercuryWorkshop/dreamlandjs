@@ -19,10 +19,8 @@
     "browser": "./dist/all.js",
     "types": "./dreamland.d.ts",
     "node": "./dist/all.js",
-
     "unpkg": "./dist/dev.js",
     "jsdelivr": "./dist/dev.js",
-    
     "exports": {
         "./dev": {
             "default": "./dist/dev.js",
