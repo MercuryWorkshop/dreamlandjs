@@ -1,12 +1,15 @@
 import { assert } from './asserts'
 
 // saves a few characters, since document will never change
-let doc = document;
+let doc = document
 
 export const Fragment = Symbol()
 
 // We add some extra properties into various objects throughout, better to use symbols and not interfere. this is just a tiny optimization
-let [USE_MAPFN, TARGET, PROXY, STEPS, LISTENERS, IF] = Array.from([, , , , , ,], Symbol)
+let [USE_MAPFN, TARGET, PROXY, STEPS, LISTENERS, IF] = Array.from(
+    [, , , , , ,],
+    Symbol
+)
 
 // whether to return the true value from a stateful object or a "trap" containing the pointer
 let __use_trap = false
@@ -304,9 +307,7 @@ export function h(type, props, ...children) {
     }
 
     let xmlns = props?.xmlns
-    let elm = xmlns
-        ? doc.createElementNS(xmlns, type)
-        : doc.createElement(type)
+    let elm = xmlns ? doc.createElementNS(xmlns, type) : doc.createElement(type)
 
     for (let child of children) {
         let cond = child && !isDLPtr(child) && child[IF]
