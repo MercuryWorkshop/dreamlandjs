@@ -87,20 +87,26 @@ export default (args) => {
         )
     }
 
-    const sharedOutput = {}
-
-    const iifeOutput = {
+    const sharedOutput = {
         format: 'iife',
         name: 'window',
         extend: true,
+        plugins: [
+            {
+                name: "iife-plus",
+                renderChunk(code) {
+                    return code.replace("(this.window=this.window||{});", "(window)")
+                }
+            }
+        ],
+    }
+
+    const iifeOutput = {
         sourcemap: true,
         ...sharedOutput,
     }
 
     const devOutput = {
-        format: 'iife',
-        name: 'window',
-        extend: true,
         sourcemap: true,
         ...sharedOutput,
     }
@@ -110,6 +116,7 @@ export default (args) => {
     return [
         {
             input: 'src/main.js',
+            external: ['window'],
             output,
             plugins: plugins,
         },
