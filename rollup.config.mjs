@@ -93,11 +93,14 @@ export default (args) => {
         extend: true,
         plugins: [
             {
-                name: "iife-plus",
+                name: 'iife-plus',
                 renderChunk(code) {
-                    return code.replace("(this.window=this.window||{});", "(window)")
-                }
-            }
+                    return code.replace(
+                        /\(this\.window.?=.?this\.window.?\|\|.?\{\}\);/,
+                        '(window)'
+                    )
+                },
+            },
         ],
     }
 
