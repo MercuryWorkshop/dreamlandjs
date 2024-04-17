@@ -95,6 +95,8 @@ export default (args) => {
             {
                 name: 'iife-plus',
                 renderChunk(code) {
+                    // iife output doesn't support globals, and the name:"window" hack they told me to use on github doesn't work with a bundler
+                    // regex is good enough
                     return code.replace(
                         /\(this\.window.?=.?this\.window.?\|\|.?\{\}\);/,
                         '(window)'
