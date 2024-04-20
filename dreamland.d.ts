@@ -39,9 +39,11 @@ declare function $state<T>(target: T): Stateful<T>
 declare function $store<T>(
     target: T,
     options: {
-        ident: string,
-        backing: "localstorage" | { read: () => string, write: (value: string) => void },
-        autosave: "auto" | "manual" | "beforeunload"
+        ident: string
+        backing:
+            | 'localstorage'
+            | { read: () => string; write: (value: string) => void }
+        autosave: 'auto' | 'manual' | 'beforeunload'
     }
 ): Stateful<T>
 
@@ -90,9 +92,9 @@ type Component<
     props: ([Constructed] extends [never]
         ? Public
         : Omit<Public, Constructed>) & {
-            children?: ArrayOrSingular<
-                Private extends { children: any } ? Private['children'] : never
-            >
-            [index: `${'bind:'}${string}`]: any
-        }
+        children?: ArrayOrSingular<
+            Private extends { children: any } ? Private['children'] : never
+        >
+        [index: `${'bind:'}${string}`]: any
+    }
 ) => DLElement<Public>
