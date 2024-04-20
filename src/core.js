@@ -1,15 +1,18 @@
 import { assert } from './asserts'
 
+import {
+    LISTENERS,
+    STATEHOOK,
+    USE_MAPFN,
+    TARGET,
+    PROXY,
+    STEPS,
+    IF,
+} from './consts'
 // saves a few characters, since document will never change
 let doc = document
 
 export const Fragment = Symbol()
-
-// We add some extra properties into various objects throughout, better to use symbols and not interfere. this is just a tiny optimization
-let [USE_MAPFN, TARGET, PROXY, STEPS, LISTENERS, IF] = Array.from(
-    [, , , , , ,],
-    Symbol
-)
 
 // whether to return the true value from a stateful object or a "trap" containing the pointer
 let __use_trap = false
@@ -85,7 +88,7 @@ let TRAPS = new Map()
 // - whenever a property is accessed, return a "trap" that catches and records accessors
 // - whenever a property is set, notify the subscribed listeners
 // This is what makes our "pass-by-reference" magic work
-export function stateful(target, hook) {
+export function stateful(target) {
     assert(isobj(target), 'stateful() requires an object')
     target[LISTENERS] = []
     target[TARGET] = target
@@ -127,11 +130,16 @@ export function stateful(target, hook) {
             return Reflect.get(target, property, proxy)
         },
         set(target, property, val) {
-            if (hook) hook(target, property, val)
             let trap = Reflect.set(target, property, val)
             for (let listener of target[LISTENERS]) {
                 listener(target, property, val)
             }
+
+            /* FEATURE.STORES.START */
+            if (target[STATEHOOK])
+                target[STATEHOOK](target, property, target[property])
+            /* FEATURE.STORES.END */
+
             return trap
         },
     })
@@ -141,8 +149,13 @@ export function stateful(target, hook) {
 
 let isobj = (o) => o instanceof Object
 let isfn = (o) => typeof o === 'function'
+
+export function isStateful(obj) {
+    return isobj(obj) && LISTENERS in obj
+}
+
 export function isDLPtr(arr) {
-    return isobj(arr) && TARGET in arr
+    return isobj(arr) && STEPS in arr
 }
 
 export function $if(condition, then, otherwise) {
