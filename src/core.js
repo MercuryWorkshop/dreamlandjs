@@ -18,8 +18,8 @@ export const Fragment = Symbol()
 let __use_trap = false
 
 // Say you have some code like
-//// let state = stateful({
-////    a: stateful({
+//// let state = $state({
+////    a: $state({
 ////      b: 1
 ////    })
 //// })
@@ -55,7 +55,7 @@ Object.defineProperty(window, 'use', {
 const usestr = (strings, ...values) => {
     __use_trap = false
 
-    let state = stateful({})
+    let state = $state({})
     const flattened_template = []
     for (const i in strings) {
         flattened_template.push(strings[i])
@@ -88,8 +88,8 @@ let TRAPS = new Map()
 // - whenever a property is accessed, return a "trap" that catches and records accessors
 // - whenever a property is set, notify the subscribed listeners
 // This is what makes our "pass-by-reference" magic work
-export function stateful(target) {
-    assert(isobj(target), 'stateful() requires an object')
+export function $state(target) {
+    assert(isobj(target), '$state() requires an object')
     target[LISTENERS] = []
     target[TARGET] = target
     let TOPRIMITIVE = Symbol.toPrimitive
@@ -261,7 +261,7 @@ export function h(type, props, ...children) {
     if (type == Fragment) return children
     if (typeof type == 'function') {
         // functional components. create the stateful object
-        let newthis = stateful(Object.create(type.prototype))
+        let newthis = $state(Object.create(type.prototype))
 
         for (let name in props) {
             let ptr = props[name]

@@ -1,3 +1,5 @@
+import { h } from './core'
+
 export function html(strings, ...values) {
     let flattened = ''
     let markers = {}

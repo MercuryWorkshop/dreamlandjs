@@ -1,5 +1,5 @@
 import { assert } from './asserts'
-import { isDLPtr, isStateful, stateful } from './core'
+import { isDLPtr, isStateful, $state } from './core'
 
 import {
     LISTENERS,
@@ -126,7 +126,7 @@ export function $store(target, { ident, backing, autosave }) {
                 }
             }
             if (obj.stateful && autosave == 'auto') tgt[STATEHOOK] = autohook
-            let newobj = obj.stateful ? stateful(tgt) : tgt
+            let newobj = obj.stateful ? $state(tgt) : tgt
             objcache[i] = newobj
             return newobj
         }
@@ -148,7 +148,7 @@ export function $store(target, { ident, backing, autosave }) {
             assert('Unknown autosave type: ' + autosave)
     }
 
-    return stateful(target)
+    return $state(target)
 }
 
 export function saveAllStores() {

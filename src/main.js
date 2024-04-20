@@ -2,6 +2,8 @@ import { VERSION } from './consts'
 export { VERSION as DLVERSION }
 
 export * from './core'
+// $state was named differently in older versions
+export { $state as stateful } from './core'
 
 /* FEATURE.CSS.START */
 export * from './css'
