@@ -17,7 +17,7 @@ export function $store(target, { ident, backing, autosave }) {
     let read, write
     if (typeof backing === 'string') {
         switch (backing) {
-            case 'local':
+            case 'localstorage':
                 read = () => localStorage.getItem(ident)
                 write = (ident, data) => {
                     localStorage.setItem(ident, data)
@@ -27,9 +27,8 @@ export function $store(target, { ident, backing, autosave }) {
                 assert('Unknown store type: ' + backing)
         }
     } else {
-        ; ({ read, write } = backing)
+        ;({ read, write } = backing)
     }
-
 
     let save = () => {
         console.info('[dreamland.js]: saving ' + ident)
@@ -51,7 +50,7 @@ export function $store(target, { ident, backing, autosave }) {
             for (let key in tgt) {
                 let value = tgt[key]
 
-                if (isDLPtr(value)) continue // i don't think we should be serializing pointers?
+                if (isDLPtr(value)) continue // i don"t think we should be serializing pointers?
                 switch (typeof value) {
                     case 'string':
                     case 'number':
@@ -61,11 +60,22 @@ export function $store(target, { ident, backing, autosave }) {
                         break
 
                     case 'object':
-                        assert(
-                            value.__proto__ === Object.prototype,
-                            'Only plain objects are supported'
-                        )
-                        obj.values[key] = ser(value)
+                        if (value instanceof Array) {
+                            obj.values[key] = value.map((v) => {
+                                if (typeof v === 'object') {
+                                    return ser(v)
+                                } else {
+                                    return JSON.stringify(v)
+                                }
+                            })
+                            break
+                        } else {
+                            assert(
+                                value.__proto__ === Object.prototype,
+                                'Only plain objects are supported'
+                            )
+                            obj.values[key] = ser(value)
+                        }
                         break
 
                     case 'symbol':
@@ -85,9 +95,8 @@ export function $store(target, { ident, backing, autosave }) {
     }
 
     let autohook = (target, prop, value) => {
-        if (isStateful(value))
-            value[TARGET][STATEHOOK] = autohook;
-        save();
+        if (isStateful(value)) value[TARGET][STATEHOOK] = autohook
+        save()
     }
 
     let destack = JSON.parse(read(ident))
@@ -103,11 +112,20 @@ export function $store(target, { ident, backing, autosave }) {
                 if (typeof value === 'string') {
                     tgt[key] = JSON.parse(value)
                 } else {
-                    tgt[key] = de(value)
+                    if (value instanceof Array) {
+                        tgt[key] = value.map((v) => {
+                            if (typeof v === 'string') {
+                                return JSON.parse(v)
+                            } else {
+                                return de(v)
+                            }
+                        })
+                    } else {
+                        tgt[key] = de(value)
+                    }
                 }
             }
-            if (obj.stateful && autosave == "auto")
-                tgt[STATEHOOK] = autohook;
+            if (obj.stateful && autosave == 'auto') tgt[STATEHOOK] = autohook
             let newobj = obj.stateful ? stateful(tgt) : tgt
             objcache[i] = newobj
             return newobj
@@ -115,7 +133,6 @@ export function $store(target, { ident, backing, autosave }) {
 
         target = de(0)
     }
-
 
     delegates.push(save)
     switch (autosave) {
@@ -125,13 +142,11 @@ export function $store(target, { ident, backing, autosave }) {
         case 'manual':
             break
         case 'auto':
-            target[STATEHOOK] = autohook;
-            break;
+            target[STATEHOOK] = autohook
+            break
         default:
             assert('Unknown autosave type: ' + autosave)
     }
-
-
 
     return stateful(target)
 }
