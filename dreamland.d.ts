@@ -34,8 +34,10 @@ declare function useValue<T>(trap: DLPointer<T>): T
 
 type Stateful<T> = T & { readonly symbol: unique symbol }
 
-declare function stateful<T>(target: T): Stateful<T>
+// legacy name for $state
+type stateful = typeof $state;
 declare function $state<T>(target: T): Stateful<T>
+
 declare function $store<T>(
     target: T,
     options: {
@@ -96,5 +98,5 @@ type Component<
             Private extends { children: any } ? Private['children'] : never
         >
         [index: `${'bind:'}${string}`]: any
-    }
+            }
 ) => DLElement<Public>

@@ -1,6 +1,3 @@
-examples/lib/
 dist/
 node_modules
-index.js
-a.js
-index.html
+pnpm-lock.yaml
