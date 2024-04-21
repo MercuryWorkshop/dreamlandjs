@@ -91,6 +91,7 @@ export default (args) => {
         format: 'iife',
         name: 'window',
         extend: true,
+        strict: false,
         plugins: [
             {
                 name: 'iife-plus',
