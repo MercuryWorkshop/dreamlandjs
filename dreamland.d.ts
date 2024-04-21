@@ -30,6 +30,10 @@ type DLPointer<T> = {
 }
 
 declare function use<T>(sink: T, mapping?: (arg: T) => any): DLPointer<T>
+declare function use(
+    template: TemplateStringsArray,
+    ...params: any[]
+): DLPointer<string>
 declare function useValue<T>(trap: DLPointer<T>): T
 
 type Stateful<T> = T & { readonly symbol: unique symbol }
