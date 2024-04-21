@@ -16,6 +16,7 @@ export function css(strings, ...values) {
         })
         .join('')}`
 
+    cssmap[str] = uid
     const styleElement = document.createElement('style')
     document.head.appendChild(styleElement)
 
@@ -41,6 +42,5 @@ export function css(strings, ...values) {
 
     styleElement.textContent = `.${uid} {${selfstr}}` + '\n' + newstr
 
-    cssmap[str] = uid
     return uid
 }
