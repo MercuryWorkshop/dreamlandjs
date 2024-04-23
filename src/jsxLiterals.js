@@ -1,32 +1,53 @@
+import { assert } from './asserts'
 import { h } from './core'
 
 export function html(strings, ...values) {
+    // normalize the strings array, it would otherwise give us an object
+    strings = [...strings]
     let flattened = ''
     let markers = {}
-    for (const i in strings) {
+    for (let i = 0; i < strings.length; i++) {
         let string = strings[i]
         let value = values[i]
+
+        // since self closing tags don't exist in regular html, look for the pattern <tag /> enclosing a function, and replace it with `<tag`
+        let match =
+            values[i] instanceof Function && /^ *\/\>/.exec(strings[i + 1])
+        if (/\< *$/.test(string) && match) {
+            strings[i + 1] = strings[i + 1].substr(
+                match.index + match[0].length
+            )
+        }
 
         flattened += string
         if (i < values.length) {
             let dupe = Object.values(markers).findIndex((v) => v == value)
+            let marker
             if (dupe !== -1) {
-                flattened += Object.keys(markers)[dupe]
+                marker = Object.keys(markers)[dupe]
             } else {
-                let marker =
+                marker =
                     'm' +
                     Array(16)
                         .fill(0)
                         .map(() => Math.floor(Math.random() * 16).toString(16))
                         .join('')
                 markers[marker] = value
-                flattened += marker
+            }
+
+            flattened += marker
+
+            // close the self closing tag
+            if (match) {
+                flattened += `></${marker}>`
             }
         }
     }
     let dom = new DOMParser().parseFromString(flattened, 'text/html')
-    if (dom.body.children.length !== 1)
-        throw 'html builder needs exactly one child'
+    assert(
+        dom.body.children.length == 1,
+        'html builder needs exactly one child'
+    )
 
     function wraph(elm) {
         let nodename = elm.nodeName.toLowerCase()
