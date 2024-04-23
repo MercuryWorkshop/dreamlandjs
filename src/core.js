@@ -8,7 +8,10 @@ import {
     PROXY,
     STEPS,
     IF,
+    cssBoundary,
 } from './consts'
+
+
 // saves a few characters, since document will never change
 let doc = document
 
@@ -309,11 +312,13 @@ export function h(type, props, ...children) {
         let elm = type.apply(newthis)
         elm.$ = newthis
         newthis.root = elm
+        /* FEATURE.CSS.START */
+        let cl = elm.classList
         if (newthis.css) {
-            let cl = elm.classList
             cl.add(newthis.css)
-            cl.add('self')
         }
+        cl.add(cssBoundary)
+        /* FEATURE.CSS.END */
         elm.setAttribute('data-component', type.name)
         if (typeof newthis.mount === 'function') newthis.mount()
         return elm

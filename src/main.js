@@ -1,26 +1,27 @@
-import { VERSION } from './consts'
-export { VERSION as DLVERSION }
+import { DLVERSION } from './consts'
+
+export { DLVERSION }
 
 export * from './core'
 // $state was named differently in older versions
 export { $state as stateful } from './core'
 
 /* FEATURE.CSS.START */
-export * from './css'
+export { css, scope } from './css'
 /* FEATURE.CSS.END */
 
 /* FEATURE.JSXLITERALS.START */
-export * from './jsxLiterals'
+export { html } from './jsxLiterals'
 /* FEATURE.JSXLITERALS.END */
 
 /* FEATURE.STORES.START */
-export * from './stores'
+export { $store } from './stores'
 /* FEATURE.STORES.END */
 
 /* DEV.START */
 import { log } from './asserts'
 
-log('Version: ' + VERSION)
+log('Version: ' + DLVERSION)
 console.warn(
     'This is a DEVELOPER build of dreamland.js. It is not suitable for production use.'
 )
