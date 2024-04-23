@@ -33,6 +33,9 @@ export default (args) => {
         usestring: false,
         stores: false,
     }
+    const polyfills = {
+        scope: true,
+    }
 
     for (const arg in args) {
         if (arg.startsWith('disable-')) {
@@ -43,6 +46,14 @@ export default (args) => {
             const feature = arg.slice(7)
             features[feature] = true
         }
+        if (arg.startsWith('polyfill-')) {
+            const feature = arg.slice(9)
+            polyfills[feature] = true
+        }
+        if (arg.startsWith('dont-polyfill-')) {
+            const feature = arg.slice(14)
+            polyfills[feature] = false
+        }
     }
 
     for (const [feature, enabled] of Object.entries(features)) {
@@ -51,6 +62,16 @@ export default (args) => {
                 stripCode({
                     start_comment: `FEATURE.${feature.toUpperCase()}.START`,
                     end_comment: `FEATURE.${feature.toUpperCase()}.END`,
+                })
+            )
+        }
+    }
+    for (const [fill, enabled] of Object.entries(polyfills)) {
+        if (!enabled) {
+            plugins.push(
+                stripCode({
+                    start_comment: `POLYFILL.${fill.toUpperCase()}.START`,
+                    end_comment: `POLYFILL.${fill.toUpperCase()}.END`,
                 })
             )
         }
