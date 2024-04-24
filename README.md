@@ -84,7 +84,7 @@ Note that this is a development build. For production, you should pin the versio
 
 ## Building a custom bundle
 
-If you care about the bundle size, it is reccommended to serve a custom bundle with only the features you need.
+If you care about the bundle size, it is recommended to serve a custom bundle with only the features you need.
 
 ```bash
 git clone https://MercuryWorkshop/dreamland
