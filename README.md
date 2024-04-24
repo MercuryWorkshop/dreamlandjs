@@ -54,7 +54,7 @@ ReactDOM.render(
 )
 ```
 
-The idea of dreamland is to get some of the convience of big framworks at a ridiculously tiny size (~3kb, smaller than preact) with less hurdles.
+The idea of dreamland is to get some of the convience of big frameworks at a ridiculously tiny size (~3kb, smaller than preact) with less hurdles.
 
 # Getting Started
 
