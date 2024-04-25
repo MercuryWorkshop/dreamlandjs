@@ -1,10 +1,19 @@
+<h1 align="center">dreamland.js</h1>
+<p align="center"><img src="./static/logo.png" alt="logo" height="100"></p>
+<p align="center">A utilitarian JSX framework for plain javascript</p>
+
+<div align="center">
+  <img src="https://img.shields.io/github/issues/MercuryWorkshop/dreamlandjs?style=for-the-badge&color=purple" height="25"/>
+  <img src="https://img.shields.io/github/stars/MercuryWorkshop/dreamlandjs?style=for-the-badge" height="25"/>
+</div>
+
 ## What is Dreamland?
 
 dreamland.js is a reactive JSX-inspired rendering library with **no virtual dom** and **no build step**
 
 ## Why Dreamland?
 
-For a lot of projects, big frameworks like react don't make sense, but it would be too cumbersome to write everything in plain javascript. dreamland can give you back some of the convience of react, with a tiny bundle size, no build step, and compatibility with plain DOM operations.
+For a lot of projects, bulky frameworks like react don't make sense, but it would be too cumbersome to write everything in plain javascript. dreamland can integrate directly into plain js projects, and give you back some of the convience of big frameworks with a tiny bundle size, no build step, and compatibility with plain DOM operations.
 
 ## What does it look like?
 
