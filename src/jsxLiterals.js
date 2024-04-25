@@ -58,7 +58,7 @@ export function html(strings, ...values) {
                 if (!text) break
                 if (!text.includes(marker)) continue
                 let before
-                    ;[before, text] = text.split(marker)
+                ;[before, text] = text.split(marker)
                 children = [
                     ...children.slice(0, i),
                     before,

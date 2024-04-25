@@ -1,39 +1,37 @@
-import { cssBoundary } from "./consts"
+import { cssBoundary } from './consts'
 
 const cssmap = {}
 
-
-
 /* POLYFILL.SCOPE.START */
-let scopeSupported;
+let scopeSupported
 
 window.addEventListener('load', () => {
-    const style = document.createElement('style');
-    style.textContent = '@scope (.test) { :scope { color: red } }';
-    document.head.appendChild(style);
+    const style = document.createElement('style')
+    style.textContent = '@scope (.test) { :scope { color: red } }'
+    document.head.appendChild(style)
 
-    const testElement = document.createElement('div');
-    testElement.className = 'test';
-    document.body.appendChild(testElement);
+    const testElement = document.createElement('div')
+    testElement.className = 'test'
+    document.body.appendChild(testElement)
 
-    const computedColor = getComputedStyle(testElement).color;
-    document.head.removeChild(style);
-    document.body.removeChild(testElement);
+    const computedColor = getComputedStyle(testElement).color
+    document.head.removeChild(style)
+    document.body.removeChild(testElement)
 
     scopeSupported = computedColor == 'rgb(255, 0, 0)'
-});
+})
 
-const depth = 50;
+const depth = 50
 // polyfills @scope for firefox and older browsers, using a :not selector recursively increasing in depth
 // depth 50 means that after 50 layers of nesting, switching between an unrelated component and the target component, it will eventually stop applying styles (or let them leak into children)
 // this is slow. please ask mozilla to implement @scope
 function polyfill_scope(target) {
     let boundary = `:not(${target}).${cssBoundary}`
-    let g = (str, i) => `${str} *${i > depth ? "" : `:not(${g(str + " " + ((i % 2 == 0) ? target : boundary), i + 1)})`}`
+    let g = (str, i) =>
+        `${str} *${i > depth ? '' : `:not(${g(str + ' ' + (i % 2 == 0 ? target : boundary), i + 1)})`}`
     return `:not(${g(boundary, 0)})`
 }
 /* POLYFILL.SCOPE.END */
-
 
 export function genuid() {
     return `dl${Array(5)
@@ -57,14 +55,13 @@ const csstag = (scoped) =>
 export const css = csstag(false)
 export const scope = csstag(true)
 
-
 function parseCombinedCss(str) {
     let newstr = ''
     let selfstr = ''
 
     // compat layer for older browsers. when css nesting stablizes this can be removed
     str += '\n'
-    for (; ;) {
+    for (;;) {
         let [first, ...rest] = str.split('\n')
         if (first.trim().endsWith('{')) break
 
@@ -80,9 +77,8 @@ function genCss(str, scoped) {
     let cached = cssmap[str]
     if (cached) return cached
 
-    const uid = genuid();
+    const uid = genuid()
     cssmap[str] = uid
-
 
     const styleElement = document.createElement('style')
     document.head.appendChild(styleElement)
@@ -90,11 +86,11 @@ function genCss(str, scoped) {
     if (scoped) {
         /* POLYFILL.SCOPE.START */
         if (!scopeSupported) {
-            [newstr, selfstr, str] = parseCombinedCss(str)
+            ;[newstr, selfstr, str] = parseCombinedCss(str)
 
             styleElement.textContent = str
 
-            let scoped = polyfill_scope(`.${uid}`, 50);
+            let scoped = polyfill_scope(`.${uid}`, 50)
             for (const rule of styleElement.sheet.cssRules) {
                 rule.selectorText = `.${uid} ${rule.selectorText}${scoped}`
                 newstr += rule.cssText + '\n'
@@ -107,7 +103,7 @@ function genCss(str, scoped) {
 
         styleElement.textContent = `@scope (.${uid}) to (:not(.${uid}).dl-boundary *) { :scope { ${str} } }`
     } else {
-        [newstr, selfstr, str] = parseCombinedCss(str)
+        ;[newstr, selfstr, str] = parseCombinedCss(str)
 
         styleElement.textContent = str
 

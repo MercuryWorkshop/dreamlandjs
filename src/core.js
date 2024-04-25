@@ -11,7 +11,6 @@ import {
     cssBoundary,
 } from './consts'
 
-
 // saves a few characters, since document will never change
 let doc = document
 
