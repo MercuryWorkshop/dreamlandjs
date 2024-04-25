@@ -63,7 +63,7 @@ ReactDOM.render(
 )
 ```
 
-The idea of dreamland is to get some of the convience of big framworks at a ridiculously tiny size (~3kb, smaller than preact) with less hurdles.
+The idea of dreamland is to get some of the convience of big frameworks at a ridiculously tiny size (~3kb, smaller than preact) with less hurdles.
 
 # Getting Started
 
@@ -93,7 +93,7 @@ Note that this is a development build. For production, you should pin the versio
 
 ## Building a custom bundle
 
-If you care about the bundle size, it is reccommended to serve a custom bundle with only the features you need.
+If you care about the bundle size, it is recommended to serve a custom bundle with only the features you need.
 
 ```bash
 git clone https://MercuryWorkshop/dreamland
