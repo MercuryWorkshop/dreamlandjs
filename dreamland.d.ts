@@ -14,7 +14,7 @@ declare namespace JSX {
 }
 
 declare function h(
-    type: string,
+    type: string | Component<any, any, any>,
     props?: { [index: string]: any } | null,
     ...children: (HTMLElement | string)[]
 ): Node
@@ -59,6 +59,7 @@ declare function handle<T>(
 ): void
 
 declare function css(strings: TemplateStringsArray, ...values: any): string
+type scope = typeof css
 
 type DLCSS = string
 

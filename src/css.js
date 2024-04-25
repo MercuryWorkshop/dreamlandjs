@@ -83,6 +83,7 @@ function genCss(str, scoped) {
     const styleElement = document.createElement('style')
     document.head.appendChild(styleElement)
 
+    let newstr, selfstr
     if (scoped) {
         /* POLYFILL.SCOPE.START */
         if (!scopeSupported) {
