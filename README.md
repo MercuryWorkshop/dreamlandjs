@@ -1,77 +1,23 @@
 <h1 align="center">dreamland.js</h1>
 <p align="center"><img src="./static/logo.png" alt="logo" height="100"></p>
-<p align="center">A utilitarian JSX framework for plain javascript</p>
+<p align="center">A utilitarian framework for creating simple UI in javascript</p>
 
 <div align="center">
   <img src="https://img.shields.io/github/issues/MercuryWorkshop/dreamlandjs?style=for-the-badge&color=purple" height="25"/>
   <img src="https://img.shields.io/github/stars/MercuryWorkshop/dreamlandjs?style=for-the-badge" height="25"/>
 </div>
 
-## What is Dreamland?
+dreamland is a reactive JSX-inspired UI library with **no virtual dom** and **no build step**. It is less than 3kb minified (smaller than preact), gradually integrates with existing plain JS projects
 
-dreamland.js is a reactive JSX-inspired rendering library with **no virtual dom** and **no build step**
-
-## Why Dreamland?
-
-For a lot of projects, bulky frameworks like react don't make sense, but it would be too cumbersome to write everything in plain javascript. dreamland can integrate directly into plain js projects, and give you back some of the convience of big frameworks with a tiny bundle size, no build step, and compatibility with plain DOM operations.
-
-## What does it look like?
-
-Here's a simple counter app
-
-```jsx
-function App() {
-    this.counter = 0
-    return (
-        <div>
-            <button on:click={() => this.counter++}>Click me!</button>
-            <p>{use(this.counter)}</p>
-        </div>
-    )
-}
-
-window.addEventListener('load', () => {
-    document.body.appendChild(<App />)
-})
-```
-
-Compare that to the equivalent code in react:
-
-```jsx
-import { React, useState } from 'react'
-
-function App() {
-    const [counter, setCounter] = useState(0)
-
-    const increase = () => {
-        setCounter((count) => count + 1)
-    }
-
-    return (
-        <div>
-            <button onClick={increase}>Click me!</button>
-            <p>Value: {counter}</p>
-        </div>
-    )
-}
-
-ReactDOM.render(
-    <React.StrictMode>
-        <App />
-    </React.StrictMode>,
-    document.getElementById('root')
-)
-```
-
-The idea of dreamland is to get some of the convience of big frameworks at a ridiculously tiny size (~3kb, smaller than preact) with less hurdles.
+[Get started with dreamland](https://dreamland.js.org/getting-started) | [Documentation](https://dreamland.js.org) | [Examples](https://dreamland.js.org/examples) | [Discord](https://discord.gg/GKKF3CmHPA)
 
 # Getting Started
 
-dreamland can be integrated into plain-javascript applications gradually and seamlessly. See the [website](https://dreamland.js.org) to learn the concepts that dreamland uses.
-
 ## Plain JS
 
-In your HTML file, add `<script src="https://unpkg.com/dreamland"></script>` somewhere. This contains the html builder allowing you to start writing dreamland code in plain JS, such as the example shown below
+dreamland can be integrated into plain javascript applications gradually and seamlessly. See the [website](https://dreamland.js.org) to learn the concepts that dreamland uses.
+
+To get started, in your HTML file, add `<script src="https://unpkg.com/dreamland"></script>` somewhere. This contains the html builder allowing you to start writing dreamland code in plain JS, such as the example shown below
 
 ```javascript
 function App() {
@@ -89,18 +35,18 @@ window.addEventListener('load', () => {
 })
 ```
 
-Note that this is a development build. For production, you should pin the version and use either the "all" or "minimal" bundle depending on the features you want (ex. https://unpkg.com/dreamland@0.0.8/dist/all.js)
+Note that this is a development build. For production, you should pin the version and use either the "all" or "minimal" bundle depending on the features you want (ex. https://unpkg.com/dreamland@1.0.0/dist/all.js)
 
 ## Building a custom bundle
 
 If you care about the bundle size, it is recommended to serve a custom bundle with only the features you need.
 
 ```bash
-git clone https://MercuryWorkshop/dreamland
+git clone https://github.com/MercuryWorkshop/dreamland
 cd dreamland
 npm install
 npm rollup -c --file path/to/output.js --enable-jsxLiterals --disable-css
-# see https://dreamland.js.org/docs/building for more options
+# see https://dreamland.js.org/building for more options
 ```
 
 ## Typescript + Bundler (vite, rollup, webpack, esbuild, etc)
@@ -143,5 +89,7 @@ window.addEventListener('load', () => {
     document.body.appendChild(<App />)
 })
 ```
+
+Note: If you are using plain jsx and not tsx, you will need to change your bundler's config so it uses the proper jsx globals. If you are using vite with plain jsx, use [vite-plugin-dreamland](https://www.npmjs.com/package/vite-plugin-dreamland)
 
 See the [documentation](https://dreamland.js.org) for more information.
