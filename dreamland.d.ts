@@ -39,7 +39,7 @@ declare function useValue<T>(trap: DLPointer<T>): T
 type Stateful<T> = T & { readonly symbol: unique symbol }
 
 // legacy name for $state
-type stateful = typeof $state
+declare var stateful: typeof $state
 declare function $state<T>(target: T): Stateful<T>
 
 declare function $store<T>(
@@ -59,7 +59,7 @@ declare function handle<T>(
 ): void
 
 declare function css(strings: TemplateStringsArray, ...values: any): string
-type scope = typeof css
+declare var scope: typeof css
 
 type DLCSS = string
 
