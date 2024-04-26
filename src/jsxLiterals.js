@@ -13,8 +13,8 @@ export function html(strings, ...values) {
 
         // since self closing tags don't exist in regular html, look for the pattern <tag /> enclosing a function, and replace it with `<tag`
         let match =
-            values[i] instanceof Function && /^ *\/\>/.exec(strings[i + 1])
-        if (/\< *$/.test(string) && match) {
+            values[i] instanceof Function && /^ *\/>/.exec(strings[i + 1])
+        if (/< *$/.test(string) && match) {
             strings[i + 1] = strings[i + 1].substr(
                 match.index + match[0].length
             )

@@ -1,15 +1,7 @@
 import { assert } from './asserts'
 import { isDLPtr, isStateful, $state } from './core'
 
-import {
-    LISTENERS,
-    STATEHOOK,
-    USE_MAPFN,
-    TARGET,
-    PROXY,
-    STEPS,
-    IF,
-} from './consts'
+import { STATEHOOK, TARGET } from './consts'
 
 const delegates = []
 

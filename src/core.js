@@ -105,7 +105,7 @@ export function $state(target) {
                         [TARGET]: target,
                         [PROXY]: proxy,
                         [STEPS]: [property],
-                        [TOPRIMITIVE]: (_) => sym,
+                        [TOPRIMITIVE]: () => sym,
                     },
                     {
                         get(target, property) {
