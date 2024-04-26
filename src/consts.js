@@ -4,4 +4,4 @@ export const DLVERSION = '0.0.9'
 export const [USE_MAPFN, TARGET, PROXY, STEPS, LISTENERS, IF, STATEHOOK] =
     Array.from(Array(7), Symbol)
 
-export const cssBoundary = 'dl-boundary'
+export const cssBoundary = 'dlcomponent'

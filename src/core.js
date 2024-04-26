@@ -11,6 +11,10 @@ import {
     cssBoundary,
 } from './consts'
 
+/* FEATURE.CSS.START */
+import { cssmap, genCss, genuid } from './css'
+/* FEATURE.CSS.END */
+
 // saves a few characters, since document will never change
 let doc = document
 
@@ -309,14 +313,18 @@ export function h(type, props, ...children) {
         }
 
         let elm = type.apply(newthis)
-        assert(!elm instanceof Array, 'Functional component cannot return a Fragment');
-        assert(elm instanceof Node, 'Functional component must return a Node');
+        assert(
+            !(elm instanceof Array),
+            'Functional component cannot return a Fragment'
+        )
+        assert(elm instanceof Node, 'Functional component must return a Node')
         elm.$ = newthis
         newthis.root = elm
         /* FEATURE.CSS.START */
         let cl = elm.classList
-        if (newthis.css) {
-            cl.add(newthis.css)
+        let css = newthis.css
+        if (css) {
+            cl.add(genCss(`${type.name}-${genuid()}`, css, true))
         }
         cl.add(cssBoundary)
         /* FEATURE.CSS.END */

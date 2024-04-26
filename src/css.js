@@ -1,6 +1,6 @@
 import { cssBoundary } from './consts'
 
-const cssmap = {}
+export const cssmap = {}
 
 /* POLYFILL.SCOPE.START */
 let scopeSupported
@@ -34,7 +34,7 @@ function polyfill_scope(target) {
 /* POLYFILL.SCOPE.END */
 
 export function genuid() {
-    return `dl${Array(5)
+    return `${Array(4)
         .fill(0)
         .map(() => {
             return Math.floor(Math.random() * 36).toString(36)
@@ -49,7 +49,7 @@ const csstag = (scoped) =>
             str += f + (values.shift() || '')
         }
 
-        return genCss(str, scoped)
+        return genCss(genuid(), str, scoped)
     }
 
 export const css = csstag(false)
@@ -61,7 +61,7 @@ function parseCombinedCss(str) {
 
     // compat layer for older browsers. when css nesting stablizes this can be removed
     str += '\n'
-    for (;;) {
+    for (;  ;) {
         let [first, ...rest] = str.split('\n')
         if (first.trim().endsWith('{')) break
 
@@ -73,11 +73,10 @@ function parseCombinedCss(str) {
     return [newstr, selfstr, str]
 }
 
-function genCss(str, scoped) {
+export function genCss(uid, str, scoped) {
     let cached = cssmap[str]
     if (cached) return cached
 
-    const uid = genuid()
     cssmap[str] = uid
 
     const styleElement = document.createElement('style')
@@ -102,7 +101,7 @@ function genCss(str, scoped) {
         }
         /* POLYFILL.SCOPE.END */
 
-        styleElement.textContent = `@scope (.${uid}) to (:not(.${uid}).dl-boundary *) { :scope { ${str} } }`
+        styleElement.textContent = `@scope (.${uid}) to (:not(.${uid}).${cssBoundary} *) { :scope { ${str} } }`
     } else {
         ;[newstr, selfstr, str] = parseCombinedCss(str)
 
