@@ -46,9 +46,7 @@
         "@rollup/plugin-terser": "^0.4.4",
         "prettier": "^3.2.5",
         "rollup": "^4.13.0",
-        "typescript": "^5.4.2"
-    },
-    "dependencies": {
+        "typescript": "^5.4.2",
         "rollup-plugin-strip-code": "^0.2.7"
     }
 }
