@@ -309,6 +309,8 @@ export function h(type, props, ...children) {
         }
 
         let elm = type.apply(newthis)
+        assert(!elm instanceof Array, 'Functional component cannot return a Fragment');
+        assert(elm instanceof Node, 'Functional component must return a Node');
         elm.$ = newthis
         newthis.root = elm
         /* FEATURE.CSS.START */
