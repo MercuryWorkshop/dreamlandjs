@@ -49,7 +49,7 @@ const csstag = (scoped) =>
             str += f + (values.shift() || '')
         }
 
-        return genCss(genuid(), str, scoped)
+        return genCss('dl' + genuid(), str, scoped)
     }
 
 export const css = csstag(false)
@@ -61,7 +61,7 @@ function parseCombinedCss(str) {
 
     // compat layer for older browsers. when css nesting stablizes this can be removed
     str += '\n'
-    for (;  ;) {
+    for (;;) {
         let [first, ...rest] = str.split('\n')
         if (first.trim().endsWith('{')) break
 

@@ -12,7 +12,7 @@ import {
 } from './consts'
 
 /* FEATURE.CSS.START */
-import { cssmap, genCss, genuid } from './css'
+import { genCss, genuid } from './css'
 /* FEATURE.CSS.END */
 
 // saves a few characters, since document will never change
