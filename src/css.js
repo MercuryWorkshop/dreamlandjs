@@ -4,8 +4,8 @@ export const cssmap = {}
 
 /* POLYFILL.SCOPE.START */
 let scopeSupported
-
-window.addEventListener('load', () => {
+function checkScopeSupported() {
+    if (scopeSupported) return true;
     const style = document.createElement('style')
     style.textContent = '@scope (.test) { :scope { color: red } }'
     document.head.appendChild(style)
@@ -19,8 +19,8 @@ window.addEventListener('load', () => {
     document.body.removeChild(testElement)
 
     scopeSupported = computedColor == 'rgb(255, 0, 0)'
-})
-
+    return scopeSupported;
+}
 const depth = 50
 // polyfills @scope for firefox and older browsers, using a :not selector recursively increasing in depth
 // depth 50 means that after 50 layers of nesting, switching between an unrelated component and the target component, it will eventually stop applying styles (or let them leak into children)
@@ -61,7 +61,7 @@ function parseCombinedCss(str) {
 
     // compat layer for older browsers. when css nesting stablizes this can be removed
     str += '\n'
-    for (;;) {
+    for (; ;) {
         let [first, ...rest] = str.split('\n')
         if (first.trim().endsWith('{')) break
 
@@ -85,7 +85,7 @@ export function genCss(uid, str, scoped) {
     let newstr, selfstr
     if (scoped) {
         /* POLYFILL.SCOPE.START */
-        if (!scopeSupported) {
+        if (!checkScopeSupported()) {
             ;[newstr, selfstr, str] = parseCombinedCss(str)
 
             styleElement.textContent = str
