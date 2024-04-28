@@ -5,7 +5,7 @@ export const cssmap = {}
 /* POLYFILL.SCOPE.START */
 let scopeSupported
 function checkScopeSupported() {
-    if (scopeSupported) return true;
+    if (scopeSupported) return true
     const style = document.createElement('style')
     style.textContent = '@scope (.test) { :scope { color: red } }'
     document.head.appendChild(style)
@@ -19,7 +19,7 @@ function checkScopeSupported() {
     document.body.removeChild(testElement)
 
     scopeSupported = computedColor == 'rgb(255, 0, 0)'
-    return scopeSupported;
+    return scopeSupported
 }
 const depth = 50
 // polyfills @scope for firefox and older browsers, using a :not selector recursively increasing in depth
@@ -61,7 +61,7 @@ function parseCombinedCss(str) {
 
     // compat layer for older browsers. when css nesting stablizes this can be removed
     str += '\n'
-    for (; ;) {
+    for (;;) {
         let [first, ...rest] = str.split('\n')
         if (first.trim().endsWith('{')) break
 

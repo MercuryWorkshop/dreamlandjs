@@ -439,7 +439,6 @@ export function h(type, props, ...children) {
 
 // glue for nested children
 function JSXAddChild(child, cb) {
-
     let childchild, elms, node
     if (isDLPtr(child)) {
         JSXAddFixedWrapper(child, cb)
