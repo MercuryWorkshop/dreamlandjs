@@ -318,6 +318,10 @@ export function h(type, props, ...children) {
             'Functional component cannot return a Fragment'
         )
         assert(elm instanceof Node, 'Functional component must return a Node')
+        assert(
+            !('$' in elm),
+            'Functional component cannot have another functional component at root level'
+        ) // reasoning: it would overwrite data-component and make a mess of the css
         elm.$ = newthis
         newthis.root = elm
         /* FEATURE.CSS.START */
@@ -337,11 +341,8 @@ export function h(type, props, ...children) {
     let elm = xmlns ? doc.createElementNS(xmlns, type) : doc.createElement(type)
 
     for (let child of children) {
-        let cond = child && !isDLPtr(child) && child[IF]
         let bappend = elm.append.bind(elm)
-        if (cond) {
-            JSXAddFixedWrapper(cond, bappend, child)
-        } else JSXAddChild(child, bappend)
+        JSXAddChild(child, bappend)
     }
 
     if (!props) return elm
@@ -438,14 +439,18 @@ export function h(type, props, ...children) {
 
 // glue for nested children
 function JSXAddChild(child, cb) {
+
     let childchild, elms, node
     if (isDLPtr(child)) {
         JSXAddFixedWrapper(child, cb)
+    } else if (isobj(child) && IF in child) {
+        JSXAddFixedWrapper(child[IF], cb, child)
     } else if (child instanceof Node) {
         cb(child)
         return [child]
     } else if (child instanceof Array) {
         elms = []
+
         for (childchild of child) {
             elms = elms.concat(JSXAddChild(childchild, cb))
         }
