@@ -55,11 +55,18 @@ const csstag = (scoped) =>
 export const css = csstag(false)
 export const scope = csstag(true)
 
-function parseCombinedCss(str) {
+export function genCss(uid, str, scoped) {
+    let cached = cssmap[str]
+    if (cached) return cached
+
+    cssmap[str] = uid
+
+    const styleElement = document.createElement('style')
+    document.head.appendChild(styleElement)
+
     let newstr = ''
     let selfstr = ''
 
-    // compat layer for older browsers. when css nesting stablizes this can be removed
     str += '\n'
     for (;;) {
         let [first, ...rest] = str.split('\n')
@@ -70,29 +77,15 @@ function parseCombinedCss(str) {
         if (!str) break
     }
 
-    return [newstr, selfstr, str]
-}
-
-export function genCss(uid, str, scoped) {
-    let cached = cssmap[str]
-    if (cached) return cached
-
-    cssmap[str] = uid
-
-    const styleElement = document.createElement('style')
-    document.head.appendChild(styleElement)
-
-    let newstr, selfstr
+    styleElement.textContent = str
     if (scoped) {
         /* POLYFILL.SCOPE.START */
         if (!checkScopeSupported()) {
-            ;[newstr, selfstr, str] = parseCombinedCss(str)
-
-            styleElement.textContent = str
-
             let scoped = polyfill_scope(`.${uid}`, 50)
             for (const rule of styleElement.sheet.cssRules) {
-                rule.selectorText = `.${uid} ${rule.selectorText}${scoped}`
+                if (rule.selectorText?.startsWith(':'))
+                    rule.selectorText = `.${uid}${rule.selectorText}`
+                else rule.selectorText = `.${uid} ${rule.selectorText}${scoped}`
                 newstr += rule.cssText + '\n'
             }
 
@@ -101,15 +94,23 @@ export function genCss(uid, str, scoped) {
         }
         /* POLYFILL.SCOPE.END */
 
-        styleElement.textContent = `@scope (.${uid}) to (:not(.${uid}).${cssBoundary} *) { :scope { ${str} } }`
+        let extstr = ''
+        for (const rule of styleElement.sheet.cssRules) {
+            if (!rule.selectorText) {
+                extstr += rule.cssText
+            } else if (rule.selectorText?.startsWith(':')) {
+                rule.selectorText = `.${uid}${rule.selectorText}`
+                extstr += rule.cssText
+            } else {
+                newstr += rule.cssText
+            }
+        }
+
+        styleElement.textContent = `.${uid} {${selfstr}} @scope (.${uid}) to (:not(.${uid}).${cssBoundary} *) { ${newstr} } ${extstr}`
     } else {
-        ;[newstr, selfstr, str] = parseCombinedCss(str)
-
-        styleElement.textContent = str
-
         for (const rule of styleElement.sheet.cssRules) {
             rule.selectorText = `.${uid} ${rule.selectorText}`
-            newstr += rule.cssText + '\n'
+            newstr += rule.cssText
         }
 
         styleElement.textContent = `.${uid} {${selfstr}}` + '\n' + newstr
