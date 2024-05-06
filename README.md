@@ -66,7 +66,7 @@ First install dreamland (`npm install dreamland`), then add this to the compiler
 
 In the entry point of the app, add the line `import "dreamland/dev"` into at least one file to bundle dreamland with the rest of the code. Now you can use dreamland with tsx syntax.
 
-In production, you can use `import "dreamland"` instead of `import "dreamland/dev"` to use the production build, or (reccommended) vendor in a custom build.
+In production, you can use `import "dreamland"` instead of `import "dreamland/dev"` to use the production build, or (recommended) vendor in a custom build.
 
 ```tsx
 // typescript syntax for defining components
