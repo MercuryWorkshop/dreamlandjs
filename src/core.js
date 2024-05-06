@@ -377,7 +377,7 @@ export function h(type, props, ...children) {
             for (let key in ptr) {
                 let prop = ptr[key]
                 if (isDLPtr(prop)) {
-                    handle(prop, (value) => (elm.style[key] = value))
+                    handle(prop, (value) => elm.style.setProperty(key, value))
                 } else {
                     elm.style[key] = prop
                 }
