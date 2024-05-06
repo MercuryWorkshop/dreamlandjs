@@ -1,7 +1,3 @@
-import { DLVERSION } from './consts'
-
-export { DLVERSION }
-
 export * from './core'
 // $state was named differently in older versions
 export { $state as stateful } from './core'

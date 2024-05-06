@@ -2,6 +2,8 @@ import strip from '@rollup/plugin-strip'
 import terser from '@rollup/plugin-terser'
 import stripCode from 'rollup-plugin-strip-code'
 
+import packagemeta from './package.json' assert { type: 'json' }
+
 export default (args) => {
     const plugins = []
 
@@ -82,7 +84,7 @@ export default (args) => {
     )
         .filter(([_, enabled]) => enabled)
         .map(([feature, _]) => `'${feature}'`)
-        .join(', ')}];`
+        .join(', ')}]; const DLVERSION = '${packagemeta.version}'`
     if (args.dev || args.nominify) {
         plugins.push({
             banner() {

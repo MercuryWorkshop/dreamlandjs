@@ -5,8 +5,7 @@
     "scripts": {
         "build": "rollup -c --file dist/minimal.js --disable-css --disable-jsxLiterals --disable-usestring --disable-stores && rollup -c --file dist/dev.js --dev --enable-css --enable-jsxLiterals --enable-usestring --enable-stores && rollup -c --file dist/all.js --enable-css --enable-jsxLiterals --enable-usestring --enable-stores && prettier -w .",
         "watch": "rollup -cw --file dist/dev.js --dev --enable-css --enable-jsxLiterals --enable-usestring --enable-stores",
-        "check": "eslint --fix",
-        "publish": "npm format && npm publish --access public"
+        "check": "eslint --fix"
     },
     "keywords": [
         "html",
