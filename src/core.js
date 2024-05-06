@@ -373,7 +373,7 @@ export function h(type, props, ...children) {
             }
             delete props[name]
         }
-        if (name == 'style' && isobj(ptr)) {
+        if (name == 'style' && isobj(ptr) && !isDLPtr(ptr)) {
             for (let key in ptr) {
                 let prop = ptr[key]
                 if (isDLPtr(prop)) {
