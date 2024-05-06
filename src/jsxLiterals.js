@@ -71,6 +71,8 @@ export function html(strings, ...values) {
         }
 
         let attributes = {}
+
+        if (!elm.attributes) return elm // passthrough comments
         for (const attr of [...elm.attributes]) {
             let val = attr.nodeValue
             if (val in markers) val = markers[val]
