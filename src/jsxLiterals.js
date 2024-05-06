@@ -27,7 +27,7 @@ export function html(strings, ...values) {
             if (dupe !== -1) {
                 marker = Object.keys(markers)[dupe]
             } else {
-                marker = genuid()
+                marker = 'h' + genuid()
                 markers[marker] = value
             }
 
