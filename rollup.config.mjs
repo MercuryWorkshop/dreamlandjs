@@ -84,7 +84,7 @@ export default (args) => {
     )
         .filter(([_, enabled]) => enabled)
         .map(([feature, _]) => `'${feature}'`)
-        .join(', ')}]; const DLVERSION = '${packagemeta.version}'`
+        .join(', ')}]; const DLVERSION = '${packagemeta.version}';`
     if (args.dev || args.nominify) {
         plugins.push({
             banner() {
