@@ -327,8 +327,9 @@ export function h(type, props, ...children) {
         /* FEATURE.CSS.START */
         let cl = elm.classList
         let css = newthis.css
+        let sanitizedName = type.name.replaceAll('$', '-')
         if (css) {
-            cl.add(genCss(`${type.name}-${genuid()}`, css, true))
+            cl.add(genCss(`${sanitizedName}-${genuid()}`, css, true))
         }
         cl.add(cssBoundary)
         /* FEATURE.CSS.END */
