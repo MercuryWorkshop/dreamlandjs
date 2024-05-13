@@ -457,6 +457,9 @@ function JSXAddChild(child, cb) {
         if (!elms[0]) elms = JSXAddChild('', cb)
         return elms
     } else {
+        // this is what makes it so that {null} won't render. the empty string would seem odd coming from other frameworks but it is for the best 
+        if (child === null || child === undefined) child = ''
+
         node = doc.createTextNode(child)
         cb(node)
         return [node]
