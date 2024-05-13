@@ -22,7 +22,7 @@ export function html(strings, ...values) {
 
         flattened += string
         if (i < values.length) {
-            let dupe = Object.values(markers).findIndex((v) => v == value)
+            let dupe = Object.values(markers).findIndex((v) => v === value)
             let marker
             if (dupe !== -1) {
                 marker = Object.keys(markers)[dupe]
