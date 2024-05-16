@@ -3,7 +3,7 @@ import { assert } from './asserts'
 import {
     LISTENERS,
     STATEHOOK,
-    USE_MAPFN,
+    USE_COMPUTED,
     TARGET,
     PROXY,
     STEPS,
@@ -42,17 +42,31 @@ let __use_trap = false
 Object.defineProperty(window, 'use', {
     get: () => {
         __use_trap = true
-        return (ptr, mapping, ...rest) => {
+        return (ptr, transform, ...rest) => {
             /* FEATURE.USESTRING.START */
-            if (ptr instanceof Array) return usestr(ptr, mapping, ...rest)
+            if (ptr instanceof Array) return usestr(ptr, transform, ...rest)
             /* FEATURE.USESTRING.END */
             assert(
-                isDLPtr(ptr),
+                isDLPtrInternal(ptr) || isDLPtr(ptr),
                 'a value was passed into use() that was not part of a stateful context'
             )
             __use_trap = false
-            if (mapping) ptr[USE_MAPFN] = mapping
-            return ptr
+
+            if (isDLPtr(ptr)) {
+                let cloned = [...ptr[USE_COMPUTED]]
+                if (transform) {
+                    cloned.push(transform)
+                }
+                return {
+                    [PROXY]: ptr[PROXY],
+                    [USE_COMPUTED]: cloned,
+                }
+            }
+
+            return {
+                [PROXY]: ptr,
+                [USE_COMPUTED]: transform ? [transform] : [],
+            }
         }
     },
 })
@@ -68,10 +82,10 @@ const usestr = (strings, ...values) => {
         if (values[i]) {
             const prop = values[i]
 
-            if (isDLPtr(prop)) {
+            if (isDLPtrInternal(prop)) {
                 const current_i = flattened_template.length
                 let oldparsed
-                handle(prop, (val) => {
+                handle(use(prop), (val) => {
                     flattened_template[current_i] = String(val)
                     let parsed = flattened_template.join('')
                     if (parsed != oldparsed) state.string = parsed
@@ -118,7 +132,7 @@ export function $state(target) {
                                     TARGET,
                                     PROXY,
                                     STEPS,
-                                    USE_MAPFN,
+                                    USE_COMPUTED,
                                     TOPRIMITIVE,
                                 ].includes(property)
                             )
@@ -160,8 +174,12 @@ export function isStateful(obj) {
     return isobj(obj) && LISTENERS in obj
 }
 
-export function isDLPtr(arr) {
+function isDLPtrInternal(arr) {
     return isobj(arr) && STEPS in arr
+}
+
+export function isDLPtr(arr) {
+    return isobj(arr) && USE_COMPUTED in arr
 }
 
 export function $if(condition, then, otherwise) {
@@ -172,10 +190,13 @@ export function $if(condition, then, otherwise) {
 }
 
 // This lets you subscribe to a stateful object
-export function handle(ptr, callback) {
-    assert(isDLPtr(ptr), 'handle() requires a stateful object')
+export function handle(exptr, callback) {
+    assert(isDLPtr(exptr), 'handle() requires a stateful object')
     assert(isfn(callback), 'handle() requires a callback function')
-    let step,
+
+    let ptr = exptr[PROXY],
+        computed = exptr[USE_COMPUTED],
+        step,
         resolvedSteps = []
 
     function update() {
@@ -185,8 +206,9 @@ export function handle(ptr, callback) {
             if (!isobj(val)) break
         }
 
-        let mapfn = ptr[USE_MAPFN]
-        if (mapfn) val = mapfn(val)
+        for (let transform of computed) {
+            val = transform(val)
+        }
         callback(val)
     }
 
@@ -277,7 +299,7 @@ export function h(type, props, ...children) {
                     'bind: requires a reference pointer from use'
                 )
 
-                let set = curryset(ptr)
+                let set = curryset(ptr[PROXY])
                 let propname = name.substring(5)
                 if (propname == 'this') {
                     set(newthis)
@@ -457,7 +479,7 @@ function JSXAddChild(child, cb) {
         if (!elms[0]) elms = JSXAddChild('', cb)
         return elms
     } else {
-        // this is what makes it so that {null} won't render. the empty string would seem odd coming from other frameworks but it is for the best 
+        // this is what makes it so that {null} won't render. the empty string would seem odd coming from other frameworks but it is for the best
         if (child === null || child === undefined) child = ''
 
         node = doc.createTextNode(child)
