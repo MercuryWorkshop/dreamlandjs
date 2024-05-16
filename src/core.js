@@ -52,24 +52,30 @@ Object.defineProperty(window, 'use', {
             )
             __use_trap = false
 
+
+            let newp = {
+                get value() {
+                    return resolve(newp)
+                }
+            };
+
             if (isDLPtr(ptr)) {
                 let cloned = [...ptr[USE_COMPUTED]]
                 if (transform) {
                     cloned.push(transform)
                 }
-                return {
-                    [PROXY]: ptr[PROXY],
-                    [USE_COMPUTED]: cloned,
-                }
+
+                newp[PROXY] = ptr[PROXY];
+                newp[USE_COMPUTED] = cloned;
+            } else {
+                newp[PROXY] = ptr;
+                newp[USE_COMPUTED] = transform ? [transform] : [];
             }
 
-            return {
-                [PROXY]: ptr,
-                [USE_COMPUTED]: transform ? [transform] : [],
-            }
+            return newp;
         }
-    },
-})
+    }
+});
 
 /* FEATURE.USESTRING.START */
 const usestr = (strings, ...values) => {
@@ -187,6 +193,26 @@ export function $if(condition, then, otherwise) {
     if (!isDLPtr(condition)) return condition ? then : otherwise
 
     return { [IF]: condition, then, otherwise }
+}
+
+
+function resolve(exptr) {
+    let proxy = exptr[PROXY];
+    let steps = proxy[STEPS];
+    let computed = exptr[USE_COMPUTED];
+
+
+    let val = proxy[TARGET];
+    for (let step of steps) {
+        val = val[step];
+        if (!isobj(val)) break;
+    }
+
+    for (let transform of computed) {
+        val = transform(val);
+    }
+
+    return val;
 }
 
 // This lets you subscribe to a stateful object
