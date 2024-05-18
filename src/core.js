@@ -52,12 +52,11 @@ Object.defineProperty(window, 'use', {
             )
             __use_trap = false
 
-
             let newp = {
                 get value() {
                     return resolve(newp)
-                }
-            };
+                },
+            }
 
             if (isDLPtr(ptr)) {
                 let cloned = [...ptr[USE_COMPUTED]]
@@ -65,17 +64,17 @@ Object.defineProperty(window, 'use', {
                     cloned.push(transform)
                 }
 
-                newp[PROXY] = ptr[PROXY];
-                newp[USE_COMPUTED] = cloned;
+                newp[PROXY] = ptr[PROXY]
+                newp[USE_COMPUTED] = cloned
             } else {
-                newp[PROXY] = ptr;
-                newp[USE_COMPUTED] = transform ? [transform] : [];
+                newp[PROXY] = ptr
+                newp[USE_COMPUTED] = transform ? [transform] : []
             }
 
-            return newp;
+            return newp
         }
-    }
-});
+    },
+})
 
 /* FEATURE.USESTRING.START */
 const usestr = (strings, ...values) => {
@@ -86,9 +85,11 @@ const usestr = (strings, ...values) => {
     for (const i in strings) {
         flattened_template.push(strings[i])
         if (values[i]) {
-            const prop = values[i]
+            let prop = values[i]
 
-            if (isDLPtrInternal(prop)) {
+            if (isDLPtrInternal(prop)) prop = use(prop)
+
+            if (isDLPtr(prop)) {
                 const current_i = flattened_template.length
                 let oldparsed
                 handle(use(prop), (val) => {
@@ -195,24 +196,22 @@ export function $if(condition, then, otherwise) {
     return { [IF]: condition, then, otherwise }
 }
 
-
 function resolve(exptr) {
-    let proxy = exptr[PROXY];
-    let steps = proxy[STEPS];
-    let computed = exptr[USE_COMPUTED];
+    let proxy = exptr[PROXY]
+    let steps = proxy[STEPS]
+    let computed = exptr[USE_COMPUTED]
 
-
-    let val = proxy[TARGET];
+    let val = proxy[TARGET]
     for (let step of steps) {
-        val = val[step];
-        if (!isobj(val)) break;
+        val = val[step]
+        if (!isobj(val)) break
     }
 
     for (let transform of computed) {
-        val = transform(val);
+        val = transform(val)
     }
 
-    return val;
+    return val
 }
 
 // This lets you subscribe to a stateful object
@@ -410,7 +409,7 @@ export function h(type, props, ...children) {
             let propname = name.substring(5)
 
             // create the function to set the value of the pointer
-            let set = curryset(ptr)
+            let set = curryset(ptr[PROXY])
             if (propname == 'this') {
                 set(elm)
             } else if (propname == 'value') {
