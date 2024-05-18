@@ -1,8 +1,9 @@
 import strip from '@rollup/plugin-strip'
 import terser from '@rollup/plugin-terser'
 import stripCode from 'rollup-plugin-strip-code'
+import { readFile } from 'node:fs/promises'
 
-import packagemeta from './package.json' assert { type: 'json' }
+const packagemeta = JSON.parse(await readFile('package.json'))
 
 export default (args) => {
     const plugins = []
