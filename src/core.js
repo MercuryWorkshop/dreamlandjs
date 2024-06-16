@@ -421,6 +421,27 @@ export function h(type, props, ...children) {
             }
             delete props[name]
         }
+
+        if (name.startsWith("class:")) {
+            let classname = name.substring(6);
+            if (isDLPtr(ptr)) {
+                handle(ptr, (value) => {
+                    if (value) {
+                        elm.classList.add(classname);
+                    } else {
+                        elm.classList.remove(classname);
+                    }
+                });
+            } else {
+                if (ptr) {
+                    elm.classList.add(classname);
+                }
+            }
+
+
+            delete props[name]
+        }
+
         if (name == 'style' && isobj(ptr) && !isDLPtr(ptr)) {
             for (let key in ptr) {
                 let prop = ptr[key]
@@ -436,22 +457,38 @@ export function h(type, props, ...children) {
 
     useProp('class', (classlist) => {
         assert(
-            typeof classlist === 'string' || classlist instanceof Array,
-            'class must be a string or array'
+            typeof classlist === 'string' || classlist instanceof Array || isDLPtr(classlist),
+            'class must be a string or array (or pointer)'
         )
         if (typeof classlist === 'string') {
             elm.setAttribute('class', classlist)
             return
         }
 
+        /// this will be cleaned up once class arrays are removed
         if (isDLPtr(classlist)) {
-            handle(classlist, (classname) =>
-                elm.setAttribute('class', classname)
-            )
+            let oldvalue = ""
+            handle(classlist, (classname) => {
+                for (let name of oldvalue.split(' ')) {
+                    if (name)
+                        elm.classList.remove(name)
+                }
+                for (let name of classname.split(' ')) {
+                    if (name)
+                        elm.classList.add(name)
+                }
+                oldvalue = classname
+
+            })
             return
         }
 
-        console.log("WARN: class arrays (eg, <div class={['container', 'flex']} />) are deprecated and will be REMOVED in the next release")
+        /* DEV.START */
+        if (!window.dlwarnedclassarrays) {
+            console.error("WARN: class arrays (eg, <div class={['container', 'flex']} />) are deprecated and will be REMOVED in the next release")
+            window.dlwarnedclassarrays = true
+        }
+        /* DEV.END */
 
         for (let name of classlist) {
             if (isDLPtr(name)) {
