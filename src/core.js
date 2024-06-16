@@ -181,7 +181,7 @@ export function isStateful(obj) {
     return isobj(obj) && LISTENERS in obj
 }
 
-function isDLPtrInternal(arr) {
+export function isDLPtrInternal(arr) {
     return isobj(arr) && STEPS in arr
 }
 

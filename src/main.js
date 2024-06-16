@@ -1,6 +1,7 @@
-export * from './core'
+export { Fragment, $state, isStateful, isDLPtr, $if, handle, h } from './core'
+
 // $state was named differently in older versions
-export { $state as stateful } from './core'
+export { $state as stateful }
 
 /* FEATURE.CSS.START */
 export { css, scope } from './css'
@@ -16,6 +17,14 @@ export { $store } from './stores'
 
 /* DEV.START */
 import { log } from './asserts'
+
+// expose internal mechanics
+import * as CONSTS from './consts'
+import { isDLPtrInternal } from './core'
+window.DREAMLAND_SECRET_DEV_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = {
+    ...CONSTS,
+    isDLPtrInternal
+}
 
 log('Version: ' + DLVERSION)
 console.warn(
