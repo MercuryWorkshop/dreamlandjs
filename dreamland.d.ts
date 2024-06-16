@@ -47,15 +47,20 @@ declare function $store<T>(
     options: {
         ident: string
         backing:
-            | 'localstorage'
-            | { read: () => string; write: (value: string) => void }
+        | 'localstorage'
+        | { read: () => string; write: (value: string) => void }
         autosave: 'auto' | 'manual' | 'beforeunload'
     }
 ): Stateful<T>
 
 declare function handle<T>(
-    references: DLPointer<T>,
+    reference: DLPointer<T>,
     callback: (value: T) => void
+): void
+
+declare function useChange<T>(
+    references: DLPointer<T>[],
+    callback: (changedvalue: T) => void
 ): void
 
 declare function css(strings: TemplateStringsArray, ...values: any): string
@@ -99,9 +104,9 @@ type Component<
     props: ([Constructed] extends [never]
         ? Public
         : Omit<Public, Constructed>) & {
-        children?: ArrayOrSingular<
-            Private extends { children: any } ? Private['children'] : never
-        >
-        [index: `${'bind:'}${string}`]: any
-    }
+            children?: ArrayOrSingular<
+                Private extends { children: any } ? Private['children'] : never
+            >
+            [index: `${'bind:'}${string}`]: any
+        }
 ) => DLElement<Public>

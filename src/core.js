@@ -76,6 +76,23 @@ Object.defineProperty(window, 'use', {
     },
 })
 
+Object.defineProperty(window, 'useChange', {
+    get: () => {
+        __use_trap = true
+        return (ptrs, callback) => {
+            __use_trap = false
+            ptrs = ptrs instanceof Array ? ptrs : [ptrs]
+            for (let ptr of ptrs) {
+                assert(
+                    isDLPtrInternal(ptr) || isDLPtr(ptr),
+                    'a value was passed into useChange() that was not part of a stateful context'
+                )
+                handle(use(ptr), callback)
+            }
+        }
+    }
+})
+
 /* FEATURE.USESTRING.START */
 const usestr = (strings, ...values) => {
     __use_trap = false
