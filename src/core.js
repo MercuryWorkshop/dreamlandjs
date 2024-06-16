@@ -451,6 +451,8 @@ export function h(type, props, ...children) {
             return
         }
 
+        console.log("WARN: class arrays (eg, <div class={['container', 'flex']} />) are deprecated and will be REMOVED in the next release")
+
         for (let name of classlist) {
             if (isDLPtr(name)) {
                 let oldvalue = null
