@@ -1,7 +1,4 @@
-export { Fragment, $state, isStateful, isDLPtr, $if, handle, h } from './core'
-
-// $state was named differently in older versions
-export { $state as stateful } from './core'
+export { Fragment, $state, isStateful, isDLPtr, $if, h } from './core'
 
 /* FEATURE.CSS.START */
 export { css, scope } from './css'
