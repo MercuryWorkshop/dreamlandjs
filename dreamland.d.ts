@@ -56,8 +56,8 @@ declare function useChange<T>(
     callback: (changedvalue: T) => void
 ): void
 
-declare function isDLPtr(ptr: any): boolean;
-declare function isStateful(object: any): boolean;
+declare function isDLPtr(ptr: any): boolean
+declare function isStateful(object: any): boolean
 
 declare function css(strings: TemplateStringsArray, ...values: any): string
 
@@ -90,19 +90,13 @@ type ComponentTypes = OuterComponentTypes & InnerComponentTypes
 
 type ArrayOrSingular<T extends []> = T | T[keyof T]
 
-type Component<
-    Props = {},
-    Private = {},
-    Public = {}
-> = (
+type Component<Props = {}, Private = {}, Public = {}> = (
     this: Props & Private & Public & ComponentTypes,
     props: Props & {
         children?: ArrayOrSingular<
             Private extends { children: any } ? Private['children'] : never
         >
-    }
-        &
-        {
-            [K in keyof Props as `bind:${Extract<K, string>}`]: Props[K]
+    } & {
+            [K in keyof Props as `bind:${Extract<K, string>}`]?: Props[K]
         }
 ) => DLElement<Public>

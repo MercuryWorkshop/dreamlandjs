@@ -17,10 +17,11 @@ import { log } from './asserts'
 
 // expose internal mechanics
 import * as CONSTS from './consts'
-import { isDLPtrInternal } from './core'
+import { handle, isDLPtrInternal } from './core'
 window.DREAMLAND_SECRET_DEV_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = {
     ...CONSTS,
     isDLPtrInternal,
+    handle,
 }
 
 log('Version: ' + DLVERSION)
