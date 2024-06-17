@@ -90,7 +90,7 @@ Object.defineProperty(window, 'useChange', {
                 handle(use(ptr), callback)
             }
         }
-    }
+    },
 })
 
 /* FEATURE.USESTRING.START */
@@ -419,6 +419,58 @@ export function h(type, props, ...children) {
         delete props[name]
     }
 
+    useProp('class', (classlist) => {
+        assert(
+            typeof classlist === 'string' ||
+                classlist instanceof Array ||
+                isDLPtr(classlist),
+            'class must be a string or ar ray (r pointer)'
+        )
+        if (typeof classlist === 'string') {
+            elm.setAttribute('class', classlist)
+            return
+        }
+
+        /// this will be cleaned up once class arrays are removed
+        if (isDLPtr(classlist)) {
+            let oldvalue = ''
+            handle(classlist, (classname) => {
+                for (let name of oldvalue.split(' ')) {
+                    if (name) elm.classList.remove(name)
+                }
+                for (let name of classname.split(' ')) {
+                    if (name) elm.classList.add(name)
+                }
+                oldvalue = classname
+            })
+            return
+        }
+
+        /* DEV.START */
+        if (!window.dlwarnedclassarrays) {
+            console.error(
+                "WARN: class arrays (eg, <div class={['container', 'flex']} />) are deprecated and will be REMOVED in the next release"
+            )
+            window.dlwarnedclassarrays = true
+        }
+        /* DEV.END */
+
+        for (let name of classlist) {
+            if (isDLPtr(name)) {
+                let oldvalue = null
+                handle(name, (value) => {
+                    if (typeof oldvalue === 'string') {
+                        elm.classList.remove(oldvalue)
+                    }
+                    elm.classList.add(value)
+                    oldvalue = value
+                })
+            } else {
+                elm.classList.add(name)
+            }
+        }
+    })
+
     for (let name in props) {
         let ptr = props[name]
         if (name.startsWith('bind:')) {
@@ -439,22 +491,21 @@ export function h(type, props, ...children) {
             delete props[name]
         }
 
-        if (name.startsWith("class:")) {
-            let classname = name.substring(6);
+        if (name.startsWith('class:')) {
+            let classname = name.substring(6)
             if (isDLPtr(ptr)) {
                 handle(ptr, (value) => {
                     if (value) {
-                        elm.classList.add(classname);
+                        elm.classList.add(classname)
                     } else {
-                        elm.classList.remove(classname);
+                        elm.classList.remove(classname)
                     }
-                });
+                })
             } else {
                 if (ptr) {
-                    elm.classList.add(classname);
+                    elm.classList.add(classname)
                 }
             }
-
 
             delete props[name]
         }
@@ -471,57 +522,6 @@ export function h(type, props, ...children) {
             delete props[name]
         }
     }
-
-    useProp('class', (classlist) => {
-        assert(
-            typeof classlist === 'string' || classlist instanceof Array || isDLPtr(classlist),
-            'class must be a string or array (or pointer)'
-        )
-        if (typeof classlist === 'string') {
-            elm.setAttribute('class', classlist)
-            return
-        }
-
-        /// this will be cleaned up once class arrays are removed
-        if (isDLPtr(classlist)) {
-            let oldvalue = ""
-            handle(classlist, (classname) => {
-                for (let name of oldvalue.split(' ')) {
-                    if (name)
-                        elm.classList.remove(name)
-                }
-                for (let name of classname.split(' ')) {
-                    if (name)
-                        elm.classList.add(name)
-                }
-                oldvalue = classname
-
-            })
-            return
-        }
-
-        /* DEV.START */
-        if (!window.dlwarnedclassarrays) {
-            console.error("WARN: class arrays (eg, <div class={['container', 'flex']} />) are deprecated and will be REMOVED in the next release")
-            window.dlwarnedclassarrays = true
-        }
-        /* DEV.END */
-
-        for (let name of classlist) {
-            if (isDLPtr(name)) {
-                let oldvalue = null
-                handle(name, (value) => {
-                    if (typeof oldvalue === 'string') {
-                        elm.classList.remove(oldvalue)
-                    }
-                    elm.classList.add(value)
-                    oldvalue = value
-                })
-            } else {
-                elm.classList.add(name)
-            }
-        }
-    })
 
     // apply the non-reactive properties
     for (let name in props) {
