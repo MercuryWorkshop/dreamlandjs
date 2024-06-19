@@ -77,6 +77,7 @@ interface DLElement<T> extends HTMLElement {
 }
 
 type ComponentElement<T extends (...args: any) => any> = ReturnType<T>
+type ComponentType<T extends (...args: any) => any> = ReturnType<T>["$"]
 
 type OuterComponentTypes = {
     root: Element
@@ -97,6 +98,6 @@ type Component<Props = {}, Private = {}, Public = {}> = (
             Private extends { children: any } ? Private['children'] : never
         >
     } & {
-            [K in keyof Props as `bind:${Extract<K, string>}`]?: Props[K]
+            [K in keyof Props as `bind:${Extract<K, string>}`]?: DLPointer<Props[K]>
         }
-) => DLElement<Public>
+) => DLElement<Props & Public>

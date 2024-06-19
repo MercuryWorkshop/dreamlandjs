@@ -395,7 +395,11 @@ export function h(type, props, ...children) {
         if (css) {
             cl.add(genCss(`${sanitizedName}-${genuid()}`, css, true))
         }
-        cl.add(cssBoundary)
+
+        // for ui toolkits, sometimes it's desirable to let outside css leak into the component. the caller has the responsibility of making sure outside css won't break the styles
+        if (!newthis._leak) {
+            cl.add(cssBoundary)
+        }
         /* FEATURE.CSS.END */
         elm.setAttribute('data-component', type.name)
         if (typeof newthis.mount === 'function') newthis.mount()
