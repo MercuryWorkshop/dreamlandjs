@@ -575,6 +575,8 @@ function JSXAddChild(child, cb) {
 
 // Where properties are assigned to elements, and where the *non-reactive* syntax sugar goes
 function JSXAddAttributes(elm, name, prop) {
+    if (!prop) return
+
     if (name.startsWith('on:')) {
         assert(typeof prop === 'function', 'on: requires a function')
         let names = name.substring(3)
