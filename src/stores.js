@@ -48,6 +48,7 @@ export function $store(target, { ident, backing, autosave }) {
                     case 'number':
                     case 'boolean':
                     case 'undefined':
+                        // primitives, serialize as strings
                         obj.values[key] = JSON.stringify(value)
                         break
 
@@ -61,11 +62,15 @@ export function $store(target, { ident, backing, autosave }) {
                                 }
                             })
                             break
+                        } else if (value === null) {
+                            obj.values[key] = 'null'
                         } else {
                             assert(
                                 value.__proto__ === Object.prototype,
-                                'Only plain objects are supported'
+                                'Only plain objects can be serialized in stores'
                             )
+
+                            // if it's not a primitive, store it as a number acting as a pointer
                             obj.values[key] = ser(value)
                         }
                         break
@@ -102,6 +107,7 @@ export function $store(target, { ident, backing, autosave }) {
             for (let key in obj.values) {
                 let value = obj.values[key]
                 if (typeof value === 'string') {
+                    // it's a primitive, easy deser
                     tgt[key] = JSON.parse(value)
                 } else {
                     if (value instanceof Array) {
@@ -123,6 +129,7 @@ export function $store(target, { ident, backing, autosave }) {
             return newobj
         }
 
+        // "0" pointer is the root object
         target = de(0)
     }
 
