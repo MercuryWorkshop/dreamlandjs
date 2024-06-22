@@ -70,7 +70,14 @@ export default (args) => {
         }
     }
     for (const [fill, enabled] of Object.entries(polyfills)) {
-        if (!enabled) {
+        if (enabled) {
+            plugins.push(
+                stripCode({
+                    start_comment: `NOT.POLYFILL.${fill.toUpperCase()}.START`,
+                    end_comment: `NOT.POLYFILL.${fill.toUpperCase()}.END`,
+                })
+            )
+        } else {
             plugins.push(
                 stripCode({
                     start_comment: `POLYFILL.${fill.toUpperCase()}.START`,
@@ -79,6 +86,7 @@ export default (args) => {
             )
         }
     }
+
 
     const dlbanner = `// dreamland.js, MIT license\nconst DLFEATURES = [${Object.entries(
         features
