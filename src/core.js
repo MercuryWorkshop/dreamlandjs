@@ -575,6 +575,7 @@ function JSXAddChild(child, cb) {
 
 // Where properties are assigned to elements, and where the *non-reactive* syntax sugar goes
 function JSXAddAttributes(elm, name, prop) {
+    if (!prop && elm.hasAttribute(name)) elm.removeAttribute(name)
     if (!prop) return
 
     if (name.startsWith('on:')) {

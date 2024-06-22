@@ -96,7 +96,7 @@ export function genCss(uid, str, scoped) {
 
         let extstr = ''
         for (const rule of styleElement.sheet.cssRules) {
-            if (!rule.selectorText) {
+            if (!rule.selectorText && !rule.media) {
                 extstr += rule.cssText
             } else if (rule.selectorText?.startsWith(':')) {
                 rule.selectorText = `.${uid}${rule.selectorText}`
@@ -109,7 +109,18 @@ export function genCss(uid, str, scoped) {
         styleElement.textContent = `.${uid} {${selfstr}} @scope (.${uid}) to (:not(.${uid}).${cssBoundary} *) { ${newstr} } ${extstr}`
     } else {
         for (const rule of styleElement.sheet.cssRules) {
-            rule.selectorText = `.${uid} ${rule.selectorText}`
+            if (rule.selectorText)
+                rule.selectorText = rule.selectorText
+                    .split(',')
+                    .map((x) => {
+                        x = x.trim()
+                        if (x[0] === ':') {
+                            return `.${uid}${x}`
+                        } else {
+                            return `.${uid} ${x}`
+                        }
+                    })
+                    .join(', ')
             newstr += rule.cssText
         }
 

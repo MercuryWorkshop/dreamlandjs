@@ -45,8 +45,8 @@ declare function $store<T>(
     options: {
         ident: string
         backing:
-        | 'localstorage'
-        | { read: () => string; write: (value: string) => void }
+            | 'localstorage'
+            | { read: () => string; write: (value: string) => void }
         autosave: 'auto' | 'manual' | 'beforeunload'
     }
 ): Stateful<T>
@@ -77,7 +77,7 @@ interface DLElement<T> extends HTMLElement {
 }
 
 type ComponentElement<T extends (...args: any) => any> = ReturnType<T>
-type ComponentType<T extends (...args: any) => any> = ReturnType<T>["$"]
+type ComponentType<T extends (...args: any) => any> = ReturnType<T>['$']
 
 type OuterComponentTypes = {
     root: Element
@@ -98,6 +98,6 @@ type Component<Props = {}, Private = {}, Public = {}> = (
             Private extends { children: any } ? Private['children'] : never
         >
     } & {
-            [K in keyof Props as `bind:${Extract<K, string>}`]?: DLPointer<Props[K]>
-        }
+        [K in keyof Props as `bind:${Extract<K, string>}`]?: DLPointer<Props[K]>
+    }
 ) => DLElement<Props & Public>
