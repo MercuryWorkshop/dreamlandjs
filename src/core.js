@@ -442,10 +442,12 @@ export function h(type, props, ...children) {
                 for (let name of oldvalue.split(' ')) {
                     if (name) elm.classList.remove(name)
                 }
-                for (let name of classname.split(' ')) {
-                    if (name) elm.classList.add(name)
+                if (typeof classname === 'string') {
+                    for (let name of classname.split(' ')) {
+                        if (name) elm.classList.add(name)
+                    }
+                    oldvalue = classname
                 }
-                oldvalue = classname
             })
             return
         }
