@@ -45,8 +45,8 @@ declare function $store<T>(
     options: {
         ident: string
         backing:
-            | 'localstorage'
-            | { read: () => string; write: (value: string) => void }
+        | 'localstorage'
+        | { read: () => string; write: (value: string) => void }
         autosave: 'auto' | 'manual' | 'beforeunload'
     }
 ): Stateful<T>
@@ -95,9 +95,12 @@ type Component<Props = {}, Private = {}, Public = {}> = (
     this: Props & Private & Public & ComponentTypes,
     props: Props & {
         children?: ArrayOrSingular<
-            Private extends { children: any } ? Private['children'] : never
+            Private extends { children: any } ? Private['children'] : (
+                Public extends { children: any } ? Public['children'] :
+                never
+            )
         >
     } & {
-        [K in keyof Props as `bind:${Extract<K, string>}`]?: DLPointer<Props[K]>
-    }
+            [K in keyof Props as `bind:${Extract<K, string>}`]?: DLPointer<Props[K]>
+        }
 ) => DLElement<Props & Public>
