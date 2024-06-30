@@ -114,7 +114,9 @@ export function genCss(uid, str, scoped) {
                     .split(',')
                     .map((x) => {
                         x = x.trim()
-                        if (x[0] === ':') {
+                        if (x[0] === '&') {
+                            return `.${uid}${x.slice(1)}`
+                        } else if (x[0] === ':') {
                             return `.${uid}${x}`
                         } else {
                             return `.${uid} ${x}`
