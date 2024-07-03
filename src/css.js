@@ -78,22 +78,11 @@ export function genCss(uid, str, scoped) {
     }
 
     styleElement.textContent = str
-    if (scoped) {
-        /* POLYFILL.SCOPE.START */
-        if (!checkScopeSupported()) {
-            let scoped = polyfill_scope(`.${uid}`, 50)
-            for (const rule of styleElement.sheet.cssRules) {
-                if (rule.selectorText?.startsWith(':'))
-                    rule.selectorText = `.${uid}${rule.selectorText}`
-                else rule.selectorText = `.${uid} ${rule.selectorText}${scoped}`
-                newstr += rule.cssText + '\n'
-            }
-
-            styleElement.textContent = `.${uid} {${selfstr}}` + '\n' + newstr
-            return uid
-        }
-        /* POLYFILL.SCOPE.END */
-
+    let scopeSupported = true
+    /* POLYFILL.SCOPE.START */
+    scopeSupported = checkScopeSupported()
+    /* POLYFILL.SCOPE.END */
+    if (scoped && scopeSupported) {
         let extstr = ''
         for (const rule of styleElement.sheet.cssRules) {
             if (!rule.selectorText && !rule.media) {
@@ -108,6 +97,11 @@ export function genCss(uid, str, scoped) {
 
         styleElement.textContent = `.${uid} {${selfstr}} @scope (.${uid}) to (:not(.${uid}).${cssBoundary} *) { ${newstr} } ${extstr}`
     } else {
+        let scopedSelector = ''
+        /* POLYFILL.SCOPE.START */
+        if (scoped && !scopeSupported)
+            scopedSelector = polyfill_scope(`.${uid}`, 50)
+        /* POLYFILL.SCOPE.END */
         const processRule = (rule) => {
             if (rule.selectorText)
                 rule.selectorText = rule.selectorText
@@ -115,11 +109,11 @@ export function genCss(uid, str, scoped) {
                     .map((x) => {
                         x = x.trim()
                         if (x[0] === '&') {
-                            return `.${uid}${x.slice(1)}`
+                            return `.${uid}${x.slice(1)}${scopedSelector}`
                         } else if (x[0] === ':') {
-                            return `.${uid}${x}`
+                            return `.${uid}${x}${scopedSelector}`
                         } else {
-                            return `.${uid} ${x}`
+                            return `.${uid} ${x}${scopedSelector}`
                         }
                     })
                     .join(', ')
