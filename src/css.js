@@ -3,24 +3,6 @@ import { cssBoundary } from './consts'
 export const cssmap = {}
 
 /* POLYFILL.SCOPE.START */
-let scopeSupported
-function checkScopeSupported() {
-    if (scopeSupported) return true
-    const style = document.createElement('style')
-    style.textContent = '@scope (.test) { :scope { color: red } }'
-    document.head.appendChild(style)
-
-    const testElement = document.createElement('div')
-    testElement.className = 'test'
-    document.body.appendChild(testElement)
-
-    const computedColor = getComputedStyle(testElement).color
-    document.head.removeChild(style)
-    document.body.removeChild(testElement)
-
-    scopeSupported = computedColor == 'rgb(255, 0, 0)'
-    return scopeSupported
-}
 const depth = 50
 // polyfills @scope for firefox and older browsers, using a :not selector recursively increasing in depth
 // depth 50 means that after 50 layers of nesting, switching between an unrelated component and the target component, it will eventually stop applying styles (or let them leak into children)
@@ -80,7 +62,7 @@ export function genCss(uid, str, scoped) {
     styleElement.textContent = str
     let scopeSupported = true
     /* POLYFILL.SCOPE.START */
-    scopeSupported = checkScopeSupported()
+    scopeSupported = !!window.CSSScopeRule
     /* POLYFILL.SCOPE.END */
     if (scoped && scopeSupported) {
         let extstr = ''

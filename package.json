@@ -35,7 +35,6 @@
             "default": "./dist/all.js",
             "types": "./dreamland.d.ts"
         },
-
         "./ssr": {
             "default": "./dist/ssr.js",
             "types": "./ssr.d.ts"
