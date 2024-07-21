@@ -391,7 +391,7 @@ export function h(type, props, ...children) {
         /* FEATURE.CSS.START */
         let cl = elm.classList
         let css = newthis.css
-        let sanitizedName = type.name.replaceAll('$', '-')
+        let sanitizedName = type.name.replace(/\$/g, '-')
         if (css) {
             cl.add(genCss(`${sanitizedName}-${genuid()}`, css, true))
         }
