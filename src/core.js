@@ -518,7 +518,7 @@ export function h(type, props, ...children) {
 
         if (name == 'style' && isobj(ptr) && !isDLPtr(ptr)) {
             for (let key in ptr) {
-                let prop = ptr[key]
+                let prop = use(ptr[key])
                 if (isDLPtr(prop)) {
                     handle(prop, (value) => (elm.style[key] = value))
                 } else {
