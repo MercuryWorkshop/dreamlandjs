@@ -426,8 +426,8 @@ export function h(type, props, ...children) {
     useProp('class', (classlist) => {
         assert(
             typeof classlist === 'string' ||
-                classlist instanceof Array ||
-                isDLPtr(classlist),
+            classlist instanceof Array ||
+            isDLPtr(classlist),
             'class must be a string or ar ray (r pointer)'
         )
         if (typeof classlist === 'string') {
@@ -518,7 +518,7 @@ export function h(type, props, ...children) {
 
         if (name == 'style' && isobj(ptr) && !isDLPtr(ptr)) {
             for (let key in ptr) {
-                let prop = use(ptr[key])
+                let prop = isStateful(ptr) ? use(ptr[key]) : ptr[key]
                 if (isDLPtr(prop)) {
                     handle(prop, (value) => (elm.style[key] = value))
                 } else {
