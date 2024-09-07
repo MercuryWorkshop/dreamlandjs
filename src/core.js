@@ -426,8 +426,8 @@ export function h(type, props, ...children) {
     useProp('class', (classlist) => {
         assert(
             typeof classlist === 'string' ||
-            classlist instanceof Array ||
-            isDLPtr(classlist),
+                classlist instanceof Array ||
+                isDLPtr(classlist),
             'class must be a string or ar ray (r pointer)'
         )
         if (typeof classlist === 'string') {
