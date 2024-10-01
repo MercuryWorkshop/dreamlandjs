@@ -206,9 +206,31 @@ export function isDLPtr(arr) {
     return isobj(arr) && USE_COMPUTED in arr
 }
 
+/* DEV.START */
+function isDLIfNested(obj) {
+    if (!isobj(obj)) return false
+
+    if (IF in obj) return true
+
+    return (
+        obj instanceof Array &&
+        obj.reduce((partial, child) => {
+            //fragment checking
+            if (partial) return true
+            return isDLIfNested(child) // check if $if or if fragment -> recurse
+        }, false)
+    )
+}
+/* DEV.END */
+
 export function $if(condition, then, otherwise) {
     otherwise ??= doc.createTextNode('')
     if (!isDLPtr(condition)) return condition ? then : otherwise
+
+    assert(
+        !isDLIfNested(then) && !isDLIfNested(otherwise),
+        'Elements in $if cannot also be an $if macro'
+    )
 
     return { [IF]: condition, then, otherwise }
 }
