@@ -435,7 +435,6 @@ export function h(type, props, ...children) {
             return
         }
 
-        /// this will be cleaned up once class arrays are removed
         if (isDLPtr(classlist)) {
             let oldvalue = ''
             handle(classlist, (classname) => {
@@ -451,15 +450,6 @@ export function h(type, props, ...children) {
             })
             return
         }
-
-        /* DEV.START */
-        if (!window.dlwarnedclassarrays) {
-            console.error(
-                "WARN: class arrays (eg, <div class={['container', 'flex']} />) are deprecated and will be REMOVED in the next release"
-            )
-            window.dlwarnedclassarrays = true
-        }
-        /* DEV.END */
 
         for (let name of classlist) {
             if (isDLPtr(name)) {
