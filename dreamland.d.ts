@@ -91,9 +91,47 @@ type ComponentTypes = OuterComponentTypes & InnerComponentTypes
 
 type ArrayOrSingular<T extends []> = T | T[keyof T]
 
+/* start https://stackoverflow.com/questions/50374908/transform-union-type-to-intersection-type */
+
+type Intersect<T> = (T extends any ? ((x: T) => 0) : never) extends ((x: infer R) => 0) ? R : never
+
+type TupleKeys<T extends any[]> = Exclude<keyof T, keyof []>
+
+type Foo<T extends any[]> = {
+    [K in TupleKeys<T>]: {foo: T[K]}
+}
+
+type Values<T> = T[keyof T]
+
+type Unfoo<T> = T extends { foo: any } ? T["foo"] : never
+
+type IntersectItems<T extends any[]> = Unfoo<Intersect<Values<Foo<T>>>>
+
+/* end https://stackoverflow.com/questions/50374908/transform-union-type-to-intersection-type */
+
+/* start https://stackoverflow.com/questions/52855145/typescript-object-type-to-array-type-tuple */
+type LastOf<T> =
+  Intersect<T extends any ? () => T : never> extends () => (infer R) ? R : never
+
+type Push<T extends any[], V> = [...T, V];
+
+type TuplifyUnion<T, L = LastOf<T>, N = [T] extends [never] ? true : false> =
+  true extends N ? [] : Push<TuplifyUnion<Exclude<T, L>>, L>;
+
+type ObjValueTuple<T, KS extends any[] = TuplifyUnion<keyof T>, R extends any[] = []> =
+  KS extends [infer K, ...infer KT]
+  ? ObjValueTuple<T, KT, [...R, T[K & keyof T]]>
+  : R
+
+/* end https://stackoverflow.com/questions/52855145/typescript-object-type-to-array-type-tuple */
+
+type ObjectAutogenProps<Props> = { [K in keyof Props]: ({ [X in K]: Props[K] | DLPointer<Props[K]> } & { [X in K as `bind:${Extract<K, string>}`]?: never }) | ({ [X in K]?: never } & { [X in K as `bind:${Extract<K, string>}`]: DLPointer<Props[K]> }) };
+
+type AutogenProps<Props> = IntersectItems<ObjValueTuple<ObjectAutogenProps<Props>>>;
+
 type Component<Props = {}, Private = {}, Public = {}> = (
     this: Props & Private & Public & ComponentTypes,
-    props: Props & {
+    props: AutogenProps<Props> & {
         children?: ArrayOrSingular<
             Private extends { children: any }
                 ? Private['children']
@@ -101,7 +139,5 @@ type Component<Props = {}, Private = {}, Public = {}> = (
                   ? Public['children']
                   : never
         >
-    } & {
-        [K in keyof Props as `bind:${Extract<K, string>}`]?: DLPointer<Props[K]>
     }
 ) => DLElement<Props & Public>
