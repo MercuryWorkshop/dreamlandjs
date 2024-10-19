@@ -367,6 +367,9 @@ export function h(type, props, ...children) {
                     })
                 }
                 delete props[name]
+            } else if (isDLPtr(ptr)) {
+                handle(ptr, (value) => (newthis[name] = value))
+                delete props[name]
             }
         }
         Object.assign(newthis, props)
