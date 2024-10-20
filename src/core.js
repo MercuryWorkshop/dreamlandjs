@@ -205,6 +205,9 @@ export function isDLPtrInternal(arr) {
 export function isDLPtr(arr) {
     return isobj(arr) && USE_COMPUTED in arr
 }
+function ptrHasMappings(arr) {
+    return arr[USE_COMPUTED].length != 0
+}
 
 export function $if(condition, then, otherwise) {
     otherwise ??= doc.createTextNode('')
@@ -340,6 +343,10 @@ export function h(type, props, ...children) {
                     isDLPtr(ptr),
                     'bind: requires a reference pointer from use'
                 )
+                assert(
+                    !ptrHasMappings(ptr),
+                    'bind: requires a reference pointer without mappings'
+                )
 
                 let set = curryset(ptr[PROXY])
                 let propname = name.substring(5)
@@ -474,6 +481,10 @@ export function h(type, props, ...children) {
         let ptr = props[name]
         if (name.startsWith('bind:')) {
             assert(isDLPtr(ptr), 'bind: requires a reference pointer from use')
+            assert(
+                !ptrHasMappings(ptr),
+                'bind: requires a reference pointer without mappings'
+            )
             let propname = name.substring(5)
 
             // create the function to set the value of the pointer
