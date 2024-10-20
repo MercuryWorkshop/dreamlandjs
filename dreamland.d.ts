@@ -30,7 +30,8 @@ type DLPointer<T> = {
     readonly value: T
 }
 
-declare function use<T>(sink: T, mapping?: (arg: T) => any): DLPointer<T>
+declare function use<T>(sink: T): DLPointer<T>
+declare function use<R, T>(sink: T, mapping: (arg: T) => R): DLPointer<R>
 declare function use(
     template: TemplateStringsArray,
     ...params: any[]
