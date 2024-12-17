@@ -1,6 +1,6 @@
 {
     "name": "dreamland",
-    "version": "0.0.24",
+    "version": "0.0.25",
     "description": "A utilitarian HTML rendering library",
     "scripts": {
         "build": "rollup -c --file dist/minimal.js --disable-css --disable-jsxLiterals --disable-usestring --disable-stores && rollup -c --file dist/dev.js --dev --enable-css --enable-jsxLiterals --enable-usestring --enable-stores && rollup -c --file dist/all.js --enable-css --enable-jsxLiterals --enable-usestring --enable-stores && prettier -w .",
