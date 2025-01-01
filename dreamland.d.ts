@@ -165,5 +165,8 @@ type Component<Props = {}, Private = {}, Public = {}> = (
                   ? Public['children']
                   : never
         >
+        'bind:this'?: DLPointer<
+            ComponentType<Component<Props, Private, Public>>
+        >
     }
 ) => DLElement<Props & Public>
