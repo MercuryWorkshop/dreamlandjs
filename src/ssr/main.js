@@ -13,7 +13,8 @@ function genuid() {
 }
 
 export function renderToString(component, props, children) {
-    const { document } = new JSDOM().window
+    const dom = new JSDOM()
+    const { document } = dom.window
 
     let styles = ''
 
@@ -46,7 +47,7 @@ export function renderToString(component, props, children) {
     }
 
     globalThis.useChange = () => {}
-    globalThis.window = new JSDOM().window
+    globalThis.window = dom.window
     props['isRoot'] = true
     props['$ssr'] = (t) => {
         if (typeof t == 'function') return t()
