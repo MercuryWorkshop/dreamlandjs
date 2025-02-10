@@ -3,19 +3,76 @@ import { JSDOM } from 'jsdom'
 // simple ssr, no hydration
 // no reactivity, but we still have to respect dreamland ideas
 
-export function renderToString(component, props, children) {
-    globalThis.h = hSSR
-    globalThis.use = (p) => p
+function genuid() {
+    return `${Array(4)
+        .fill(0)
+        .map(() => {
+            return Math.floor(Math.random() * 36).toString(36)
+        })
+        .join('')}`
+}
 
-    return hSSR(component, props, children).outerHTML
+export function renderToString(component, props, children) {
+    const { document } = new JSDOM().window
+
+    let styles = ''
+
+    globalThis.h = hSSR
+    globalThis.usestr = (strings, ...values) => {
+        let out = ''
+        for (let i in strings) {
+            out += strings[i]
+            if (values[i]) {
+                out += values[i]
+            }
+        }
+        return out
+    }
+    globalThis.use = (ptr, transform, ...rest) => {
+        if (ptr instanceof Array) return usestr(ptr, transform, ...rest)
+        return ptr
+    }
+    globalThis.css = (strings, ...values) => {
+        let str = ''
+        for (let f of strings) {
+            str += f + (values.shift() || '')
+        }
+        const id = 'dl' + genuid()
+        styles += `.${id}{
+      ${str}
+    }`
+
+        return id
+    }
+
+    globalThis.useChange = () => {}
+    globalThis.window = new JSDOM().window
+    props['isRoot'] = true
+    props['$ssr'] = (t) => {
+        if (typeof t == 'function') return t()
+        return t
+    }
+
+    let body = hSSR(component, props, children)
+
+    const styleEl = document.createElement('style')
+    styleEl.innerHTML = styles
+    body.appendChild(styleEl)
+
+    return body.outerHTML
 }
 
 export function hSSR(type, props, ...children) {
     const { document, HTMLElement } = new JSDOM().window
 
-    // if (type == Fragment) return children
     if (typeof type == 'function') {
-        const newthis = {}
+        let innerHTML = ''
+        children.map((child) => {
+            innerHTML += child.outerHTML ? child.outerHTML : ''
+        })
+        const newthis = {
+            children: [children],
+        }
 
         for (let key in props) {
             if (key.startsWith('bind:')) {
@@ -27,9 +84,19 @@ export function hSSR(type, props, ...children) {
             newthis[key] = props[key]
         }
 
-        const elm = type.apply(newthis)
+        let elm
+        try {
+            elm = type.apply(newthis)
+            if (children != 0) {
+                elm.innerHTML = innerHTML
+            }
+        } catch (error) {
+            elm = document.createElement('div')
+            elm.innerHTML = innerHTML
+        }
 
         elm.setAttribute('data-component', type.name)
+        if (props && props.isRoot) elm.setAttribute('id', 'ssr-root')
         elm.setAttribute('ssr-data-component', type.name)
 
         return elm
@@ -48,7 +115,12 @@ export function hSSR(type, props, ...children) {
     for (let key in props) {
         let val = props[key]
         if (key == 'class') {
-            el.className = val
+            if (!(val instanceof Array)) {
+                el.className = val
+                continue
+            }
+            el.className = ''
+            val.map((cl) => (el.className += cl))
             continue
         }
 
