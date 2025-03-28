@@ -43,13 +43,13 @@ Object.defineProperty(window, 'use', {
     get: () => {
         __use_trap = true
         return (ptr, transform, ...rest) => {
-            /* FEATURE.USESTRING.START */
-            if (ptr instanceof Array) return usestr(ptr, transform, ...rest)
-            /* FEATURE.USESTRING.END */
             assert(
-                isDLPtrInternal(ptr) || isDLPtr(ptr),
+                isDLPtrInternal(ptr) || isDLPtr(ptr) || (ptr instanceof Array && "raw" in ptr),
                 'a value was passed into use() that was not part of a stateful context'
             )
+            /* FEATURE.USESTRING.START */
+            if (ptr instanceof Array && "raw" in ptr) return usestr(ptr, transform, ...rest)
+            /* FEATURE.USESTRING.END */
             __use_trap = false
 
             let newp = {
@@ -436,8 +436,8 @@ export function h(type, props, ...children) {
     useProp('class', (classlist) => {
         assert(
             typeof classlist === 'string' ||
-                classlist instanceof Array ||
-                isDLPtr(classlist),
+            classlist instanceof Array ||
+            isDLPtr(classlist),
             'class must be a string or ar ray (r pointer)'
         )
         if (typeof classlist === 'string') {
