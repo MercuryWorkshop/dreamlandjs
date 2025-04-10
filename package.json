@@ -1,0 +1,23 @@
+{
+	"name": "dreamland",
+	"version": "0.1.0",
+	"description": "A utilitarian HTML rendering library",
+	"license": "MIT",
+	"type": "module",
+	"files": [
+		"dist",
+		"dreamland.core.d.ts"
+	],
+	"scripts": {
+		"build": "rollup -c",
+		"watch": "rollup -cw"
+	},
+	"devDependencies": {
+		"@rollup/plugin-terser": "^0.4.4",
+		"@rollup/plugin-typescript": "^12.1.2",
+		"rollup": "^4.39.0",
+		"rollup-plugin-dts": "^6.2.1",
+		"tslib": "^2.8.1",
+		"typescript": "^5.8.3"
+	}
+}

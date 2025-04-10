@@ -1,0 +1,9 @@
+{
+	"compilerOptions": {
+		"lib": ["ES2022", "dom"],
+		"target": "ES2022",
+		"declaration": true,
+		"declarationDir": "dist/types",
+		"rootDir": "src"
+	}
+}
