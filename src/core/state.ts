@@ -5,7 +5,7 @@
 // while the trap is active, stateful objects return a proxy that collects all accesses and coerces to a Symbol
 // that Symbol is in an "internal pointers" list allowing `state[state.x]` to add a pointer to the path instead of a static value
 
-const TOPRIMITIVE = Symbol.toPrimitive;
+let TOPRIMITIVE = Symbol.toPrimitive;
 
 type ObjectProp = string | symbol;
 type StateData = {
@@ -28,25 +28,25 @@ let internalPointers: Map<symbol, PointerData> = new Map();
 // once the path has been collected listeners are added to all state objects and pointers touched
 // any changes to props that the pointer touches trigger a recalculate and notify all of the pointers' listeners
 function initPtr(id: symbol) {
-	const ptr = internalPointers.get(id);
+	let ptr = internalPointers.get(id);
 
-	const recalculate = (idx: number, val: any) => {
+	let recalculate = (idx: number, val: any) => {
 		let obj = ptr._state._target;
-		for (const [i, step] of ptr._path.map((x, i) => [i, x])) {
+		for (let [i, step] of ptr._path.map((x, i) => [i, x] as const)) {
 			if (i === idx) {
 				obj = obj[val];
 			} else {
-				const resolved = step instanceof DLPointer ? step.value : step;
+				let resolved = step instanceof DLPointer ? step.value : step;
 				obj = obj[resolved];
 			}
 		}
 
-		for (const listener of ptr._listeners) {
+		for (let listener of ptr._listeners) {
 			listener(obj);
 		}
 	};
 
-	for (const [i, step] of ptr._path.map((x, i) => [i, x] as const)) {
+	for (let [i, step] of ptr._path.map((x, i) => [i, x] as const)) {
 		if (step instanceof DLPointer) {
 			step.listen((val) => recalculate(i, val));
 		} else {
@@ -65,7 +65,7 @@ Object.defineProperty(globalThis, "use", {
 		return (magicPtr: { [Symbol.toPrimitive]: () => symbol }) => {
 			useTrap = false;
 
-			const id = magicPtr[TOPRIMITIVE]();
+			let id = magicPtr[TOPRIMITIVE]();
 			if (!internalPointers.has(id)) {
 				throw "use() requires a value from a stateful context";
 			}
@@ -82,7 +82,7 @@ export function $state(obj: Object) {
 		throw "$state requires object";
 	}
 
-	const state: StateData = {
+	let state: StateData = {
 		_listeners: [],
 		_target: obj,
 		_proxy: null!,
@@ -97,7 +97,7 @@ export function $state(obj: Object) {
 					step = new DLPointer(prop);
 				}
 
-				const ptr: PointerData = {
+				let ptr: PointerData = {
 					_state: state,
 					_id: Symbol(),
 					_path: [step],
@@ -124,7 +124,7 @@ export function $state(obj: Object) {
 			return Reflect.get(target, prop, proxy);
 		},
 		set(target, prop, newValue, proxy) {
-			for (const listener of state._listeners) {
+			for (let listener of state._listeners) {
 				listener(prop, newValue);
 			}
 			return Reflect.set(target, prop, newValue, proxy);
@@ -142,15 +142,15 @@ abstract class DLBasePointer<T> {
 
 	constructor(sym: symbol) {
 		if (!internalPointers.has(sym)) {
-			throw new TypeError("Illegal invocation");
+			throw "Illegal invocation";
 		}
 		this.#ptr = internalPointers.get(sym);
 	}
 
 	get value(): T {
 		let obj = this.#ptr._state._target;
-		for (const step of this.#ptr._path) {
-			const resolved = step instanceof DLPointer ? step.value : step;
+		for (let step of this.#ptr._path) {
+			let resolved = step instanceof DLPointer ? step.value : step;
 			obj = obj[resolved];
 		}
 		return obj;
@@ -158,12 +158,12 @@ abstract class DLBasePointer<T> {
 	set value(val: T) {
 		if (this.bound) {
 			let obj = this.#ptr._state._proxy;
-			for (const step of this.#ptr._path.slice(0, -1)) {
-				const resolved = step instanceof DLPointer ? step.value : step;
+			for (let step of this.#ptr._path.slice(0, -1)) {
+				let resolved = step instanceof DLPointer ? step.value : step;
 				obj = obj[resolved];
 			}
-			const step = this.#ptr._path.at(-1);
-			const resolved = step instanceof DLPointer ? step.value : step;
+			let step = this.#ptr._path.at(-1);
+			let resolved = step instanceof DLPointer ? step.value : step;
 			obj[resolved] = val;
 		}
 	}
