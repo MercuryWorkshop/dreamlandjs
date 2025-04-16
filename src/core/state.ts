@@ -5,6 +5,8 @@
 // while the trap is active, stateful objects return a proxy that collects all accesses and coerces to a Symbol
 // that Symbol is in an "internal pointers" list allowing `state[state.x]` to add a pointer to the path instead of a static value
 
+import { DREAMLAND_INTERNAL } from "./consts";
+
 let TOPRIMITIVE = Symbol.toPrimitive;
 
 type ObjectProp = string | symbol;
@@ -15,12 +17,23 @@ type StateData = {
 };
 
 type PointerStep = ObjectProp | DLPointer<ObjectProp>;
+
+enum PointerType {
+	Regular,
+	Dependent,
+}
+
 type PointerData = {
-	_state: StateData,
-	_path: PointerStep[],
 	_id: symbol,
 	_listeners: ((val: any) => void)[],
-};
+} & ({
+	_type: PointerType.Regular,
+	_state: StateData,
+	_path: PointerStep[],
+} | {
+	_type: PointerType.Dependent,
+	_ptrs: DLPointer<any>[],
+});
 
 let useTrap = false;
 let internalPointers: Map<symbol, PointerData> = new Map();
@@ -29,6 +42,8 @@ let internalPointers: Map<symbol, PointerData> = new Map();
 // any changes to props that the pointer touches trigger a recalculate and notify all of the pointers' listeners
 function initPtr(id: symbol) {
 	let ptr = internalPointers.get(id);
+
+	if (ptr._type !== PointerType.Regular) throw "";
 
 	let recalculate = (idx: number, val: any) => {
 		let obj = ptr._state._target;
@@ -98,6 +113,7 @@ export function $state(obj: Object) {
 				}
 
 				let ptr: PointerData = {
+					_type: PointerType.Regular,
 					_state: state,
 					_id: Symbol(),
 					_path: [step],
@@ -121,6 +137,7 @@ export function $state(obj: Object) {
 					},
 				});
 			}
+			if (prop == DREAMLAND_INTERNAL) return state;
 			return Reflect.get(target, prop, proxy);
 		},
 		set(target, prop, newValue, proxy) {
@@ -136,54 +153,118 @@ export function $state(obj: Object) {
 	return proxy;
 }
 
-abstract class DLBasePointer<T> {
-	#ptr: PointerData;
-	abstract bound: boolean;
+export abstract class DLBasePointer<T> {
+	_ptr: PointerData;
+	_mapping?: (val: any) => any;
+	_reverse?: (val: any) => any;
+	abstract readonly bound: boolean;
 
-	constructor(sym: symbol) {
+	constructor(sym: symbol, mapping?: (val: any) => any, reverse?: (val: any) => any) {
 		if (!internalPointers.has(sym)) {
 			throw "Illegal invocation";
 		}
-		this.#ptr = internalPointers.get(sym);
+		this._ptr = internalPointers.get(sym);
+		this._mapping = mapping;
+		this._reverse = reverse;
 	}
 
 	get value(): T {
-		let obj = this.#ptr._state._target;
-		for (let step of this.#ptr._path) {
-			let resolved = step instanceof DLPointer ? step.value : step;
-			obj = obj[resolved];
-		}
-		return obj;
-	}
-	set value(val: T) {
-		if (this.bound) {
-			let obj = this.#ptr._state._proxy;
-			for (let step of this.#ptr._path.slice(0, -1)) {
+		const ptr = this._ptr;
+		if (ptr._type === PointerType.Regular) {
+			let obj = ptr._state._target;
+			for (let step of ptr._path) {
 				let resolved = step instanceof DLPointer ? step.value : step;
 				obj = obj[resolved];
 			}
-			let step = this.#ptr._path.at(-1);
+			return this._mapping ? this._mapping(obj) : obj;
+		} else {
+			return ptr._ptrs.map(x => x.value) as T;
+		}
+	}
+	set value(val: T) {
+		if (this.bound && this._ptr._type === PointerType.Regular) {
+			val = this._reverse ? this._reverse(val) : val;
+
+			let obj = this._ptr._state._proxy;
+			for (let step of this._ptr._path.slice(0, -1)) {
+				let resolved = step instanceof DLPointer ? step.value : step;
+				obj = obj[resolved];
+			}
+			let step = this._ptr._path.at(-1);
 			let resolved = step instanceof DLPointer ? step.value : step;
 			obj[resolved] = val;
 		}
 	}
 
 	[TOPRIMITIVE]() {
-		return this.#ptr._id;
+		return this._ptr._id;
 	}
 
 	listen(func: (val: T) => void) {
-		this.#ptr._listeners.push(func);
+		this._ptr._listeners.push(func);
+	}
+
+	$then(func: () => void) {
+		this.listen(val => { if (!!val) func() });
+	}
+	$else(func: () => void) {
+		this.listen(val => { if (!val) func() });
+	}
+
+	zip(...other: DLPointer<any>[]): DLPointer<any[]> {
+		let ptr: PointerData = {
+			_type: PointerType.Dependent,
+			_id: Symbol(),
+			_listeners: [],
+			_ptrs: [new DLPointer(this._ptr._id), ...other],
+		};
+
+		for (const [i, other] of ptr._ptrs.map((x, i) => [i, x] as const)) {
+			other.listen((val) => {
+				const zipped = ptr._ptrs.map((x, j) => i === j ? val : x.value);
+				for (const listener of ptr._listeners) {
+					listener(zipped);
+				}
+			});
+		}
+
+		internalPointers.set(ptr._id, ptr);
+
+		return new DLPointer(ptr._id);
 	}
 }
 
 export class DLPointer<T> extends DLBasePointer<T> {
-	readonly bound: boolean = false;
+	readonly bound: false = false;
 
 	bind() {
-		return new DLBoundPointer(this[TOPRIMITIVE]());
+		if (this._ptr._type === PointerType.Regular) {
+			return new DLBoundPointer(this._ptr._id);
+		} else {
+			throw "zipped pointers cannot be bound";
+		}
+	}
+
+	clone(): DLPointer<T> {
+		return new DLPointer(this._ptr._id);
+	}
+
+	map<U>(func: (val: T) => U): DLPointer<U> {
+		return new DLPointer(this._ptr._id, func);
 	}
 }
 export class DLBoundPointer<T> extends DLBasePointer<T> {
-	readonly bound: boolean = true;
+	readonly bound: true = true;
+
+	clone(): DLBoundPointer<T> {
+		return new DLBoundPointer(this._ptr._id);
+	}
+
+	map<U>(func: (val: T) => U, reverse?: (val: U) => T) {
+		if (reverse) {
+			return new DLBoundPointer(this._ptr._id, func, reverse);
+		} else {
+			return new DLPointer(this._ptr._id, func);
+		}
+	}
 }

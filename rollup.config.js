@@ -9,9 +9,7 @@ export default defineConfig([
 		output: [
 			{
 				file: "dist/core.js",
-				name: "window",
-				format: "iife",
-				extend: true,
+				format: "es",
 			}
 		],
 		plugins: [
