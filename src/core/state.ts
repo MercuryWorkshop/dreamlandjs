@@ -49,9 +49,9 @@ function initPtr(id: symbol) {
 		let obj = ptr._state._target;
 		for (let [i, step] of ptr._path.map((x, i) => [i, x] as const)) {
 			if (i === idx) {
-				obj = obj[val];
+				obj = val;
 			} else {
-				let resolved = step instanceof DLPointer ? step.value : step;
+				let resolved = step instanceof DLBasePointer ? step.value : step;
 				obj = obj[resolved];
 			}
 		}
@@ -62,7 +62,7 @@ function initPtr(id: symbol) {
 	};
 
 	for (let [i, step] of ptr._path.map((x, i) => [i, x] as const)) {
-		if (step instanceof DLPointer) {
+		if (step instanceof DLBasePointer) {
 			step.listen((val) => recalculate(i, val));
 		} else {
 			ptr._state._listeners.push((prop, val) => {
@@ -80,6 +80,7 @@ Object.defineProperty(globalThis, "use", {
 		return (magicPtr: { [Symbol.toPrimitive]: () => symbol }) => {
 			useTrap = false;
 
+			if (magicPtr instanceof DLBasePointer) throw "Illegal invocation";
 			let id = magicPtr[TOPRIMITIVE]();
 			if (!internalPointers.has(id)) {
 				throw "use() requires a value from a stateful context";

@@ -12,6 +12,16 @@
 		"build": "rollup -c",
 		"watch": "rollup -cw"
 	},
+	"exports": {
+		"./core": {
+			"default": "./dist/core.js",
+			"types": "./dreamland.core.d.ts"
+		},
+		"./jsx-runtime": {
+			"default": "./dist/core.js",
+			"types": "./dreamland.core.d.ts"
+		}
+	},
 	"devDependencies": {
 		"@rollup/plugin-terser": "^0.4.4",
 		"@rollup/plugin-typescript": "^12.1.2",
