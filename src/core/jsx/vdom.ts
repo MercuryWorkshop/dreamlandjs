@@ -1,5 +1,5 @@
 import { DREAMLAND_INTERNAL } from "../consts";
-import { DLBasePointer } from "../state";
+import { $state, DLBasePointer } from "../state";
 
 export type VdomNode = {
 	[DREAMLAND_INTERNAL]: true,
@@ -37,7 +37,13 @@ export function render(node: VdomNode): HTMLElement {
 	};
 
 	if (typeof node.init === "function") {
-		throw "todo";
+		let state = $state({
+			...node.props,
+			children: node.children,
+		});
+		let tree = node.init.call(state);
+
+		return render(tree);
 	} else {
 		const el = document.createElement(node.init);
 
