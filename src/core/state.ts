@@ -250,7 +250,8 @@ export class DLPointer<T> extends DLBasePointer<T> {
 	}
 
 	map<U>(func: (val: T) => U): DLPointer<U> {
-		return new DLPointer(this._ptr._id, func);
+		const mapper = this._mapping ? (val: any) => func(this._mapping(val)) : func;
+		return new DLPointer(this._ptr._id, mapper);
 	}
 }
 export class DLBoundPointer<T> extends DLBasePointer<T> {
@@ -261,10 +262,12 @@ export class DLBoundPointer<T> extends DLBasePointer<T> {
 	}
 
 	map<U>(func: (val: T) => U, reverse?: (val: U) => T) {
+		const forwards = this._mapping ? (val: any) => func(this._mapping(val)) : func;
 		if (reverse) {
-			return new DLBoundPointer(this._ptr._id, func, reverse);
+			const mapper = this._reverse ? (val: any) => this._reverse(reverse(val)) : func;
+			return new DLBoundPointer(this._ptr._id, forwards, mapper);
 		} else {
-			return new DLPointer(this._ptr._id, func);
+			return new DLPointer(this._ptr._id, forwards);
 		}
 	}
 }
