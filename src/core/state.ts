@@ -187,7 +187,7 @@ export abstract class DLBasePointer<T> {
 	}
 
 	listen(func: (val: T) => void) {
-		this._ptr._listeners.push(func);
+		this._ptr._listeners.push(this._mapping ? x => func(this._mapping(x)) : func);
 	}
 
 	$then(func: () => void) {
