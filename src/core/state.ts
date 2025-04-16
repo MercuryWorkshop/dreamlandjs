@@ -181,20 +181,6 @@ export abstract class DLBasePointer<T> {
 			return ptr._ptrs.map(x => x.value) as T;
 		}
 	}
-	set value(val: T) {
-		if (this.bound && this._ptr._type === PointerType.Regular) {
-			val = this._reverse ? this._reverse(val) : val;
-
-			let obj = this._ptr._state._proxy;
-			for (let step of this._ptr._path.slice(0, -1)) {
-				let resolved = step instanceof DLPointer ? step.value : step;
-				obj = obj[resolved];
-			}
-			let step = this._ptr._path.at(-1);
-			let resolved = step instanceof DLPointer ? step.value : step;
-			obj[resolved] = val;
-		}
-	}
 
 	[TOPRIMITIVE]() {
 		return this._ptr._id;
@@ -256,6 +242,21 @@ export class DLPointer<T> extends DLBasePointer<T> {
 }
 export class DLBoundPointer<T> extends DLBasePointer<T> {
 	readonly bound: true = true;
+
+	set value(val: T) {
+		if (this._ptr._type === PointerType.Regular) {
+			val = this._reverse ? this._reverse(val) : val;
+
+			let obj = this._ptr._state._proxy;
+			for (let step of this._ptr._path.slice(0, -1)) {
+				let resolved = step instanceof DLPointer ? step.value : step;
+				obj = obj[resolved];
+			}
+			let step = this._ptr._path.at(-1);
+			let resolved = step instanceof DLPointer ? step.value : step;
+			obj[resolved] = val;
+		}
+	}
 
 	clone(): DLBoundPointer<T> {
 		return new DLBoundPointer(this._ptr._id);

@@ -4,7 +4,6 @@ export abstract class DLBasePointer<T> {
 	abstract readonly bound: boolean;
 
 	get value(): T;
-	set value(value: T);
 
 	listen(func: (val: T) => void): void;
 	$then(func: () => void): void;
@@ -24,6 +23,8 @@ export class DLPointer<T> extends DLBasePointer<T> {
 export class DLBoundPointer<T> extends DLBasePointer<T> {
 	readonly bound: true;
 
+	set value(value: T);
+
 	map<U>(func: (val: T) => U): DLPointer<U>;
 	map<U>(func: (val: T) => U, reverse: (val: U) => T): DLBoundPointer<U>;
 }
@@ -31,4 +32,5 @@ export class DLBoundPointer<T> extends DLBasePointer<T> {
 export type Stateful<T> = T & { [DREAMLAND_INTERNAL]: unknown };
 export function $state<T extends Object>(object: T): Stateful<T>;
 
+// must be a getter on globalThis
 declare function use<T>(val: T): DLPointer<T>;
