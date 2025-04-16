@@ -15,8 +15,10 @@ export abstract class DLBasePointer<T> {
 	get value(): T;
 
 	listen(func: (val: T) => void): void;
-	$then(func: () => void): void;
-	$else(func: () => void): void;
+
+	andThen<U, F = null>(then: U | (() => U), otherwise?: F | (() => F)): DLPointer<U | F>;
+
+	map<U>(func: (val: T) => U): DLPointer<U>;
 
 	zip<Ptrs extends ReadonlyArray<DLBasePointer<any>>>(...pointers: Ptrs): DLPointer<[T, ...{
 		[Idx in keyof Ptrs]: Ptrs[Idx] extends DLBasePointer<infer Val> ? Val : never
@@ -25,8 +27,6 @@ export abstract class DLBasePointer<T> {
 
 export class DLPointer<T> extends DLBasePointer<T> {
 	readonly bound: false;
-
-	map<U>(func: (val: T) => U): DLPointer<U>;
 
 	bind(): DLBoundPointer<T>;
 	clone(): DLPointer<T>;
@@ -49,6 +49,6 @@ declare function use<T>(val: T): DLPointer<T>;
 export function render(node: any): HTMLElement;
 export function h(
 	type: any,
-    props?: { [index: string]: any } | null,
+	props?: { [index: string]: any } | null,
 	...children: any[]
 ): any;

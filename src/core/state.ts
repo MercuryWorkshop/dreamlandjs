@@ -190,11 +190,15 @@ export abstract class DLBasePointer<T> {
 		this._ptr._listeners.push(this._mapping ? x => func(this._mapping(x)) : func);
 	}
 
-	$then(func: () => void) {
-		this.listen(val => { if (!!val) func() });
+	andThen(then: any, otherwise?: any): DLPointer<any> {
+		const thenFunc = typeof then === "function" ? then : () => then;
+		const otherFunc = typeof otherwise === "function" ? then : () => then;
+		return this.map((val) => !!val ? thenFunc() : otherFunc());
 	}
-	$else(func: () => void) {
-		this.listen(val => { if (!val) func() });
+
+	map<U>(func: (val: T) => U): DLPointer<U> {
+		const mapper = this._mapping ? (val: any) => func(this._mapping(val)) : func;
+		return new DLPointer(this._ptr._id, mapper);
 	}
 
 	zip(...other: DLPointer<any>[]): DLPointer<any[]> {
@@ -234,11 +238,6 @@ export class DLPointer<T> extends DLBasePointer<T> {
 	clone(): DLPointer<T> {
 		return new DLPointer(this._ptr._id);
 	}
-
-	map<U>(func: (val: T) => U): DLPointer<U> {
-		const mapper = this._mapping ? (val: any) => func(this._mapping(val)) : func;
-		return new DLPointer(this._ptr._id, mapper);
-	}
 }
 export class DLBoundPointer<T> extends DLBasePointer<T> {
 	readonly bound: true = true;
@@ -262,6 +261,7 @@ export class DLBoundPointer<T> extends DLBasePointer<T> {
 		return new DLBoundPointer(this._ptr._id);
 	}
 
+	// @ts-expect-error
 	map<U>(func: (val: T) => U, reverse?: (val: U) => T) {
 		const forwards = this._mapping ? (val: any) => func(this._mapping(val)) : func;
 		if (reverse) {
