@@ -18,7 +18,7 @@ type StateData = {
 
 type PointerStep = ObjectProp | DLPointer<ObjectProp>;
 
-enum PointerType {
+const enum PointerType {
 	Regular,
 	Dependent,
 }
@@ -43,7 +43,7 @@ let internalPointers: Map<symbol, PointerData> = new Map();
 function initPtr(id: symbol) {
 	let ptr = internalPointers.get(id);
 
-	if (ptr._type !== PointerType.Regular) throw "";
+	if (ptr._type !== PointerType.Regular) throw "unreachable";
 
 	let recalculate = (idx: number, val: any) => {
 		let obj = ptr._state._target;
@@ -97,11 +97,10 @@ export function $state(obj: Object) {
 		throw "$state requires object";
 	}
 
-	let state: StateData = {
+	let state = {
 		_listeners: [],
 		_target: obj,
-		_proxy: null!,
-	};
+	} as StateData;
 
 	let proxy = new Proxy(obj, {
 		get(target, prop, proxy) {

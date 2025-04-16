@@ -16,7 +16,9 @@ export default defineConfig([
 			typescript(),
 			terser({
 				parse: {},
-				compress: {},
+				compress: {
+					passes: 4,
+				},
 				mangle: {
 					keep_classnames: false,
 					keep_fnames: false,
@@ -24,10 +26,13 @@ export default defineConfig([
 						regex: /^_.*/,
 					}
 				},
-				format: {},
-				toplevel: true,
+				format: {
+					wrap_func_args: false,
+				},
+				module: true,
 				ie8: false,
 				safari10: false,
+				ecma: 2020,
 			})
 		],
 	},
