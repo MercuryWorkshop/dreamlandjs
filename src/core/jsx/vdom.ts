@@ -3,18 +3,18 @@ import { $state, DLBasePointer } from "../state";
 
 export type VNode = {
 	[DREAMLAND_INTERNAL]: true,
-	init: string | Function,
-	children: (VNode | string | DLBasePointer<any>)[],
-	props: Record<string, any>,
+	_init: string | Function,
+	_children: (VNode | string | DLBasePointer<any>)[],
+	_props: Record<string, any>,
 
-	rendered?: HTMLElement,
+	_rendered?: HTMLElement,
 };
 
 export function render(node: VNode): HTMLElement {
-	if (node.rendered) return node.rendered;
+	if (node._rendered) return node._rendered;
 
 	const processChildren = (el: HTMLElement) => {
-		for (let child of node.children) {
+		for (let child of node._children) {
 			if (child instanceof DLBasePointer) {
 				let childEl: Node = document.createTextNode("");
 				el.appendChild(childEl);
@@ -42,20 +42,20 @@ export function render(node: VNode): HTMLElement {
 		}
 	};
 
-	if (typeof node.init === "function") {
+	if (typeof node._init === "function") {
 		let state = $state({
-			...node.props,
-			children: node.children,
+			...node._props,
+			children: node._children,
 		});
-		let tree = node.init.call(state);
+		let tree = node._init.call(state);
 
 		return render(tree);
 	} else {
-		const el = document.createElement(node.init);
-		node.rendered = el;
+		const el = document.createElement(node._init);
+		node._rendered = el;
 
-		for (let attr in node.props) {
-			const val = node.props[attr];
+		for (let attr in node._props) {
+			const val = node._props[attr];
 			if (attr.startsWith("on:")) {
 				el.addEventListener(attr.substring(3), val);
 			} else {

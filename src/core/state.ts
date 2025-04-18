@@ -43,7 +43,9 @@ let internalPointers: Map<symbol, PointerData> = new Map();
 function initPtr(id: symbol) {
 	let ptr = internalPointers.get(id);
 
-	if (ptr._type !== PointerType.Regular) throw "unreachable";
+	dev: {
+		if (ptr._type !== PointerType.Regular) throw "Illegal invocation";
+	}
 
 	let recalculate = (idx: number, val: any) => {
 		let obj = ptr._state._target;
@@ -80,10 +82,10 @@ Object.defineProperty(globalThis, "use", {
 		return (magicPtr: { [Symbol.toPrimitive]: () => symbol }) => {
 			useTrap = false;
 
-			if (magicPtr instanceof DLBasePointer) throw "Illegal invocation";
 			let id = magicPtr[TOPRIMITIVE]();
-			if (!internalPointers.has(id)) {
-				throw "use() requires a value from a stateful context";
+			dev: {
+				if (magicPtr instanceof DLBasePointer || !internalPointers.has(id))
+					throw "Illegal invocation"
 			}
 
 			initPtr(id);
@@ -94,8 +96,10 @@ Object.defineProperty(globalThis, "use", {
 });
 
 export function $state(obj: Object) {
-	if (!(obj instanceof Object)) {
-		throw "$state requires object";
+	dev: {
+		if (!(obj instanceof Object)) {
+			throw "$state requires an object";
+		}
 	}
 
 	let state = {
@@ -160,8 +164,10 @@ export abstract class DLBasePointer<T> {
 	abstract readonly bound: boolean;
 
 	constructor(sym: symbol, mapping?: (val: any) => any, reverse?: (val: any) => any) {
-		if (!internalPointers.has(sym)) {
-			throw "Illegal invocation";
+		dev: {
+			if (!internalPointers.has(sym)) {
+				throw "Illegal invocation";
+			}
 		}
 		this._ptr = internalPointers.get(sym);
 		this._mapping = mapping;
@@ -231,7 +237,9 @@ export class DLPointer<T> extends DLBasePointer<T> {
 		if (this._ptr._type === PointerType.Regular) {
 			return new DLBoundPointer(this._ptr._id);
 		} else {
-			throw "zipped pointers cannot be bound";
+			dev: {
+				throw "Illegal invocation";
+			}
 		}
 	}
 

@@ -10,7 +10,7 @@
 	],
 	"scripts": {
 		"build": "rollup -c",
-		"watch": "rollup -cw"
+		"watch": "rollup -cw --dev"
 	},
 	"exports": {
 		"./core": {
@@ -23,6 +23,7 @@
 		}
 	},
 	"devDependencies": {
+		"@rollup/plugin-strip": "^3.0.4",
 		"@rollup/plugin-terser": "^0.4.4",
 		"@rollup/plugin-typescript": "^12.1.2",
 		"rollup": "^4.39.0",

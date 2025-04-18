@@ -1,7 +1,10 @@
+import strip from "@rollup/plugin-strip";
 import terser from "@rollup/plugin-terser";
 import typescript from "@rollup/plugin-typescript";
 import { defineConfig } from "rollup";
 import { dts } from "rollup-plugin-dts";
+
+let DEV = false;
 
 const common = () => [
 	typescript(),
@@ -28,6 +31,20 @@ const common = () => [
 ]
 
 const cfg = (input, output, defs, plugins) => {
+	if (DEV) {
+		plugins.push(strip({
+			include: ["**/*.ts"],
+			functions: [],
+			labels: ["prod"]
+		}));
+	} else {
+		plugins.push(strip({
+			include: ["**/*.ts"],
+			functions: [],
+			labels: ["dev"]
+		}));
+	}
+
 	const out = [
 		defineConfig({
 			input,
@@ -45,6 +62,9 @@ const cfg = (input, output, defs, plugins) => {
 	return out;
 }
 
-export default defineConfig([
-	...cfg("src/core/index.ts", "dist/core.js", false, []),
-]);
+export default (args) => {
+	if (args.dev) DEV = true;
+	return defineConfig([
+		...cfg("src/core/index.ts", "dist/core.js", false, []),
+	]);
+}
