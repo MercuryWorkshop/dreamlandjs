@@ -1,14 +1,18 @@
 import { DREAMLAND_INTERNAL } from "../consts";
 import { $state, DLBasePointer } from "../state";
 
-export type VdomNode = {
-	[DREAMLAND_INTERNAL]: true,
+export type VNode = {
+	[DREAMLAND_INTERNAL]: symbol,
 	init: string | Function,
-	children: (VdomNode | string | DLBasePointer<any>)[],
+	children: (VNode | string | DLBasePointer<any>)[],
 	props: Record<string, any>,
+
+	rendered?: HTMLElement,
 };
 
-export function render(node: VdomNode): HTMLElement {
+export function render(node: VNode): HTMLElement {
+	if (node.rendered) return node.rendered;
+
 	const processChildren = (el: HTMLElement) => {
 		for (let child of node.children) {
 			if (child instanceof DLBasePointer) {
@@ -17,7 +21,9 @@ export function render(node: VdomNode): HTMLElement {
 
 				function setNode(val: any) {
 					let newEl: Node;
-					if (child[DREAMLAND_INTERNAL]) {
+					if (val instanceof Node) {
+						newEl = val;
+					} else if (val[DREAMLAND_INTERNAL]) {
 						newEl = render(val);
 					} else {
 						newEl = document.createTextNode(val);
@@ -30,7 +36,7 @@ export function render(node: VdomNode): HTMLElement {
 				child.listen((x: any) => setNode(x));
 			} else if (typeof child === "string") {
 				el.appendChild(document.createTextNode(child));
-			} else {
+			} else if (child != null) {
 				el.appendChild(render(child));
 			}
 		}
@@ -46,6 +52,7 @@ export function render(node: VdomNode): HTMLElement {
 		return render(tree);
 	} else {
 		const el = document.createElement(node.init);
+		node.rendered = el;
 
 		for (let attr in node.props) {
 			const val = node.props[attr];

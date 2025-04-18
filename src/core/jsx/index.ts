@@ -1,13 +1,13 @@
 import { DREAMLAND_INTERNAL } from "../consts";
-import { VdomNode } from "./vdom";
+import { VNode } from "./vdom";
 
 export * from "./vdom";
 
-function jsxFactory(type: any, props: { [index: string]: any } | null, ...children: (VdomNode | string)[]): VdomNode {
+function jsxFactory(type: any, props: { [index: string]: any } | null, ...children: (VNode | string)[]): VNode {
 	if (!["string", "function"].includes(typeof type)) throw "invalid component";
 
 	return {
-		[DREAMLAND_INTERNAL]: true,
+		[DREAMLAND_INTERNAL]: Symbol(),
 		init: type,
 		children,
 		props,

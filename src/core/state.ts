@@ -192,7 +192,7 @@ export abstract class DLBasePointer<T> {
 
 	andThen(then: any, otherwise?: any): DLPointer<any> {
 		const thenFunc = typeof then === "function" ? then : () => then;
-		const otherFunc = typeof otherwise === "function" ? then : () => then;
+		const otherFunc = typeof otherwise === "function" ? otherwise : () => otherwise;
 		return this.map((val) => !!val ? thenFunc() : otherFunc());
 	}
 
