@@ -1,1 +1,1 @@
-export const DREAMLAND_INTERNAL = Symbol.for("dl");
+export let [DREAMLAND_INTERNAL, VNODE] = Array.from(Array(2), Symbol);

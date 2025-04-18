@@ -26,7 +26,7 @@ const common = () => [
 		module: true,
 		ie8: false,
 		safari10: false,
-		ecma: 2020,
+		ecma: 5,
 	})
 ]
 

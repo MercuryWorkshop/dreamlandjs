@@ -53,7 +53,7 @@ function initPtr(id: symbol) {
 			if (i === idx) {
 				obj = val;
 			} else {
-				let resolved = step instanceof DLBasePointer ? step.value : step;
+				let resolved = isBasePtr(step) ? step.value : step;
 				obj = obj[resolved];
 			}
 		}
@@ -64,7 +64,7 @@ function initPtr(id: symbol) {
 	};
 
 	for (let [i, step] of ptr._path.map((x, i) => [i, x] as const)) {
-		if (step instanceof DLBasePointer) {
+		if (isBasePtr(step)) {
 			step.listen((val) => recalculate(i, val));
 		} else {
 			ptr._state._listeners.push((prop, val) => {
@@ -84,7 +84,7 @@ Object.defineProperty(globalThis, "use", {
 
 			let id = magicPtr[TOPRIMITIVE]();
 			dev: {
-				if (magicPtr instanceof DLBasePointer || !internalPointers.has(id))
+				if (isBasePtr(magicPtr) || !internalPointers.has(id))
 					throw "Illegal invocation"
 			}
 
@@ -157,6 +157,10 @@ export function $state(obj: Object) {
 	return proxy;
 }
 
+export function isBasePtr(val: any): val is DLBasePointer<any> {
+	return val instanceof DLBasePointer;
+}
+
 export abstract class DLBasePointer<T> {
 	_ptr: PointerData;
 	_mapping?: (val: any) => any;
@@ -179,7 +183,7 @@ export abstract class DLBasePointer<T> {
 		if (ptr._type === PointerType.Regular) {
 			let obj = ptr._state._target;
 			for (let step of ptr._path) {
-				let resolved = step instanceof DLPointer ? step.value : step;
+				let resolved = isBasePtr(step) ? step.value : step;
 				obj = obj[resolved];
 			}
 			return this._mapping ? this._mapping(obj) : obj;
@@ -256,11 +260,11 @@ export class DLBoundPointer<T> extends DLBasePointer<T> {
 
 			let obj = this._ptr._state._proxy;
 			for (let step of this._ptr._path.slice(0, -1)) {
-				let resolved = step instanceof DLPointer ? step.value : step;
+				let resolved = isBasePtr(step) ? step.value : step;
 				obj = obj[resolved];
 			}
 			let step = this._ptr._path.at(-1);
-			let resolved = step instanceof DLPointer ? step.value : step;
+			let resolved = isBasePtr(step) ? step.value : step;
 			obj[resolved] = val;
 		}
 	}

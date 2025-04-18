@@ -1,8 +1,8 @@
-import { DREAMLAND_INTERNAL } from "../consts";
-import { $state, DLBasePointer } from "../state";
+import { DREAMLAND_INTERNAL, VNODE } from "../consts";
+import { $state, DLBasePointer, isBasePtr } from "../state";
 
 export type VNode = {
-	[DREAMLAND_INTERNAL]: true,
+	[DREAMLAND_INTERNAL]: symbol,
 	_init: string | Function,
 	_children: (VNode | string | DLBasePointer<any>)[],
 	_props: Record<string, any>,
@@ -10,37 +10,36 @@ export type VNode = {
 	_rendered?: HTMLElement,
 };
 
+function isVNode(val: any): val is VNode {
+	return val[DREAMLAND_INTERNAL] === VNODE;
+}
+
+type ComponentChild = VNode | string | number | boolean | null | undefined | DLBasePointer<ComponentChild>;
+
+function mapChild(child: ComponentChild): Node {
+	if (child == null) {
+		return document.createComment("empty");
+	} else if (isBasePtr(child)) {
+		let childEl: Node = null!;
+
+		function setNode(val: ComponentChild) {
+			let newEl: Node = mapChild(val);
+			childEl?.parentNode.replaceChild(newEl, childEl);
+			childEl = newEl;
+		}
+
+		setNode(child.value);
+		child.listen(setNode);
+		return childEl;
+	} else if (isVNode(child)) {
+		return render(child);
+	} else {
+		return document.createTextNode(""+child);
+	}
+}
+
 export function render(node: VNode): HTMLElement {
 	if (node._rendered) return node._rendered;
-
-	const processChildren = (el: HTMLElement) => {
-		for (let child of node._children) {
-			if (child instanceof DLBasePointer) {
-				let childEl: Node = document.createTextNode("");
-				el.appendChild(childEl);
-
-				function setNode(val: any) {
-					let newEl: Node;
-					if (val instanceof Node) {
-						newEl = val;
-					} else if (val[DREAMLAND_INTERNAL]) {
-						newEl = render(val);
-					} else {
-						newEl = document.createTextNode(val);
-					}
-					el.replaceChild(newEl, childEl);
-					childEl = newEl;
-				}
-
-				setNode(child.value);
-				child.listen((x: any) => setNode(x));
-			} else if (typeof child === "string") {
-				el.appendChild(document.createTextNode(child));
-			} else if (child != null) {
-				el.appendChild(render(child));
-			}
-		}
-	};
 
 	if (typeof node._init === "function") {
 		let state = $state({
@@ -63,7 +62,9 @@ export function render(node: VNode): HTMLElement {
 			}
 		}
 
-		processChildren(el);
+		for (let child of node._children) {
+			el.appendChild(mapChild(child));
+		}
 
 		return el;
 	}
