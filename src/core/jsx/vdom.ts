@@ -2,7 +2,7 @@ import { DREAMLAND_INTERNAL } from "../consts";
 import { $state, DLBasePointer } from "../state";
 
 export type VNode = {
-	[DREAMLAND_INTERNAL]: symbol,
+	[DREAMLAND_INTERNAL]: true,
 	init: string | Function,
 	children: (VNode | string | DLBasePointer<any>)[],
 	props: Record<string, any>,

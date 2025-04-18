@@ -7,7 +7,7 @@ function jsxFactory(type: any, props: { [index: string]: any } | null, ...childr
 	if (!["string", "function"].includes(typeof type)) throw "invalid component";
 
 	return {
-		[DREAMLAND_INTERNAL]: Symbol(),
+		[DREAMLAND_INTERNAL]: true,
 		init: type,
 		children,
 		props,
