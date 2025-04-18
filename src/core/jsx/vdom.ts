@@ -1,17 +1,21 @@
-import { DREAMLAND_INTERNAL, VNODE } from "../consts";
+import { DREAMLAND, VNODE } from "../consts";
 import { $state, DLBasePointer, isBasePtr } from "../state";
 
 export type VNode = {
-	[DREAMLAND_INTERNAL]: symbol,
+	[DREAMLAND]: typeof VNODE,
+	// @internal
 	_init: string | Function,
+	// @internal
 	_children: (VNode | string | DLBasePointer<any>)[],
+	// @internal
 	_props: Record<string, any>,
 
+	// @internal
 	_rendered?: HTMLElement,
 };
 
 function isVNode(val: any): val is VNode {
-	return val[DREAMLAND_INTERNAL] === VNODE;
+	return val[DREAMLAND] === VNODE;
 }
 
 type ComponentChild = VNode | string | number | boolean | null | undefined | DLBasePointer<ComponentChild>;
@@ -34,11 +38,17 @@ function mapChild(child: ComponentChild): Node {
 	} else if (isVNode(child)) {
 		return render(child);
 	} else {
-		return document.createTextNode(""+child);
+		return document.createTextNode("" + child);
 	}
 }
 
 export function render(node: VNode): HTMLElement {
+	dev: {
+		if (!isVNode(node)) {
+			throw "render requires a vnode";
+		}
+	}
+
 	if (node._rendered) return node._rendered;
 
 	if (typeof node._init === "function") {

@@ -5,8 +5,7 @@
 	"license": "MIT",
 	"type": "module",
 	"files": [
-		"dist",
-		"dreamland.core.d.ts"
+		"dist"
 	],
 	"scripts": {
 		"build": "rollup -c",
@@ -15,11 +14,11 @@
 	"exports": {
 		"./core": {
 			"default": "./dist/core.js",
-			"types": "./dreamland.core.d.ts"
+			"types": "./dist/core.d.ts"
 		},
 		"./jsx-runtime": {
 			"default": "./dist/core.js",
-			"types": "./dreamland.core.d.ts"
+			"types": "./dist/core.d.ts"
 		}
 	},
 	"devDependencies": {

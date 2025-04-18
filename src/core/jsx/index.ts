@@ -1,4 +1,4 @@
-import { DREAMLAND_INTERNAL, VNODE } from "../consts";
+import { DREAMLAND, VNODE } from "../consts";
 import { VNode } from "./vdom";
 
 export * from "./vdom";
@@ -9,7 +9,7 @@ function jsxFactory(type: any, props: { [index: string]: any } | null, ...childr
 	}
 
 	return {
-		[DREAMLAND_INTERNAL]: VNODE,
+		[DREAMLAND]: VNODE,
 		_init: type,
 		_children: children,
 		_props: props,

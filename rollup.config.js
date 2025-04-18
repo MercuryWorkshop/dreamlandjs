@@ -3,6 +3,7 @@ import terser from "@rollup/plugin-terser";
 import typescript from "@rollup/plugin-typescript";
 import { defineConfig } from "rollup";
 import { dts } from "rollup-plugin-dts";
+import fs from "node:fs";
 
 let DEV = false;
 
@@ -65,6 +66,11 @@ const cfg = (input, output, defs, plugins) => {
 export default (args) => {
 	if (args.dev) DEV = true;
 	return defineConfig([
-		...cfg("src/core/index.ts", "dist/core.js", false, []),
+		...cfg("src/core/index.ts", "dist/core.js", true, [{
+			name: "copy",
+			buildEnd: async () => {
+				await new Promise(r => fs.copyFile("src/core/consts.d.ts", "dist/types/core/consts.d.ts", r));
+			}
+		}]),
 	]);
 }

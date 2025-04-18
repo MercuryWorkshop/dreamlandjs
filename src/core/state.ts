@@ -5,7 +5,7 @@
 // while the trap is active, stateful objects return a proxy that collects all accesses and coerces to a Symbol
 // that Symbol is in an "internal pointers" list allowing `state[state.x]` to add a pointer to the path instead of a static value
 
-import { DREAMLAND_INTERNAL } from "./consts";
+import { DREAMLAND, STATEFUL } from "./consts";
 
 let TOPRIMITIVE = Symbol.toPrimitive;
 
@@ -32,7 +32,7 @@ type PointerData = {
 	_path: PointerStep[],
 } | {
 	_type: PointerType.Dependent,
-	_ptrs: DLPointer<any>[],
+	_ptrs: DLBasePointer<any>[],
 });
 
 let useTrap = false;
@@ -95,7 +95,12 @@ Object.defineProperty(globalThis, "use", {
 	}
 });
 
-export function $state(obj: Object) {
+declare global {
+	function use<T>(stateful: T): DLPointer<T>;
+}
+
+export type Stateful<T> = T & { [DREAMLAND]: typeof STATEFUL };
+export function $state<T extends Object>(obj: T): Stateful<T> {
 	dev: {
 		if (!(obj instanceof Object)) {
 			throw "$state requires an object";
@@ -141,7 +146,7 @@ export function $state(obj: Object) {
 					},
 				});
 			}
-			if (prop == DREAMLAND_INTERNAL) return state;
+			if (prop == DREAMLAND) return STATEFUL;
 			return Reflect.get(target, prop, proxy);
 		},
 		set(target, prop, newValue, proxy) {
@@ -154,7 +159,7 @@ export function $state(obj: Object) {
 
 	state._proxy = proxy;
 
-	return proxy;
+	return proxy as Stateful<T>;
 }
 
 export function isBasePtr(val: any): val is DLBasePointer<any> {
@@ -162,11 +167,16 @@ export function isBasePtr(val: any): val is DLBasePointer<any> {
 }
 
 export abstract class DLBasePointer<T> {
+	// @internal
 	_ptr: PointerData;
+	// @internal
 	_mapping?: (val: any) => any;
+	// @internal
 	_reverse?: (val: any) => any;
+
 	abstract readonly bound: boolean;
 
+	// @internal
 	constructor(sym: symbol, mapping?: (val: any) => any, reverse?: (val: any) => any) {
 		dev: {
 			if (!internalPointers.has(sym)) {
@@ -192,7 +202,7 @@ export abstract class DLBasePointer<T> {
 		}
 	}
 
-	[TOPRIMITIVE]() {
+	[TOPRIMITIVE as typeof Symbol.toPrimitive]() {
 		return this._ptr._id;
 	}
 
@@ -200,10 +210,12 @@ export abstract class DLBasePointer<T> {
 		this._ptr._listeners.push(this._mapping ? x => func(this._mapping(x)) : func);
 	}
 
-	andThen(then: any, otherwise?: any): DLPointer<any> {
-		const thenFunc = typeof then === "function" ? then : () => then;
-		const otherFunc = typeof otherwise === "function" ? otherwise : () => otherwise;
-		return this.map((val) => !!val ? thenFunc() : otherFunc());
+	andThen<True, False>(then: True, otherwise: False): DLPointer<(True extends () => infer TR ? TR : True) | (False extends () => infer FR ? FR : False)> {
+		return this.map((val) => {
+			let real = !!val ? then : otherwise;
+			// typescript is an idiot
+			return typeof real === "function" ? (real as Function)() : real;
+		});
 	}
 
 	map<U>(func: (val: T) => U): DLPointer<U> {
@@ -211,12 +223,14 @@ export abstract class DLBasePointer<T> {
 		return new DLPointer(this._ptr._id, mapper);
 	}
 
-	zip(...other: DLPointer<any>[]): DLPointer<any[]> {
+	zip<Ptrs extends ReadonlyArray<DLBasePointer<any>>>(...pointers: Ptrs): DLPointer<[T, ...{
+		[Idx in keyof Ptrs]: Ptrs[Idx] extends DLBasePointer<infer Val> ? Val : never
+	}]> {
 		let ptr: PointerData = {
 			_type: PointerType.Dependent,
 			_id: Symbol(),
 			_listeners: [],
-			_ptrs: [new DLPointer(this._ptr._id), ...other],
+			_ptrs: [new DLPointer(this._ptr._id), ...pointers],
 		};
 
 		for (const [i, other] of ptr._ptrs.map((x, i) => [i, x] as const)) {
@@ -273,7 +287,8 @@ export class DLBoundPointer<T> extends DLBasePointer<T> {
 		return new DLBoundPointer(this._ptr._id);
 	}
 
-	// @ts-expect-error
+	map<U>(func: (val: T) => U): DLPointer<U>;
+	map<U>(func: (val: T) => U, reverse: (val: U) => T): DLBoundPointer<U>;
 	map<U>(func: (val: T) => U, reverse?: (val: U) => T) {
 		const forwards = this._mapping ? (val: any) => func(this._mapping(val)) : func;
 		if (reverse) {
