@@ -22,7 +22,7 @@ type ComponentChild = VNode | string | number | boolean | null | undefined | DLB
 
 function mapChild(child: ComponentChild): Node {
 	if (child == null) {
-		return document.createComment("empty");
+		return document.createComment("");
 	} else if (isBasePtr(child)) {
 		let childEl: Node = null!;
 

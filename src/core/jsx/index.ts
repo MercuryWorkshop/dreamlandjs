@@ -1,7 +1,10 @@
 import { DREAMLAND, VNODE } from "../consts";
 import { VNode } from "./vdom";
 
-export * from "./vdom";
+// jsx definitions
+import "./jsx";
+
+export { render, VNode } from "./vdom";
 
 function jsxFactory(type: any, props: { [index: string]: any } | null, ...children: (VNode | string)[]): VNode {
 	dev: {

@@ -1,9 +1,10 @@
+import fs from "node:fs";
+import { defineConfig } from "rollup";
+
 import strip from "@rollup/plugin-strip";
 import terser from "@rollup/plugin-terser";
 import typescript from "@rollup/plugin-typescript";
-import { defineConfig } from "rollup";
-import { dts } from "rollup-plugin-dts";
-import fs from "node:fs";
+import dts from "rollup-plugin-dts";
 
 let DEV = false;
 
