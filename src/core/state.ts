@@ -178,6 +178,9 @@ export function stateListen<T>(state: Stateful<T>, func: (prop: string | symbol,
 export function isBasePtr(val: any): val is DLBasePointer<any> {
 	return val instanceof DLBasePointer;
 }
+export function isStateful(val: any): val is Stateful<any> {
+	return val[DREAMLAND] === STATEFUL;
+}
 
 export abstract class DLBasePointer<T> {
 	// @internal
