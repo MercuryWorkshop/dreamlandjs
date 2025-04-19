@@ -297,7 +297,7 @@ export abstract class DLBasePointer<T> {
 		| (False extends () => infer FR ? FR : False)
 	> {
 		return this.map((val) => {
-			let real = !!val ? then : otherwise;
+			let real = val ? then : otherwise;
 			// typescript is an idiot
 			return typeof real === "function" ? (real as Function)() : real;
 		});
