@@ -78,11 +78,49 @@ function initPtr(id: symbol) {
 	}
 }
 
+function usestr(template: TemplateStringsArray, ...params: any[]) {
+	let state = createState({}) as Stateful<{ _string: string }>;
+	let flattened = [];
+	for (let i in template) {
+		flattened.push(template[i]);
+		if (params[i]) {
+			let val = params[i];
+			let id = val[TOPRIMITIVE]();
+			let prop: any;
+
+			if (internalPointers.has(id)) {
+				initPtr(id);
+				prop = new DLPointer(id);
+			} else {
+				prop = val;
+			}
+
+			if (isBasePtr(prop)) {
+				let i = flattened.length;
+				prop.listen((val) => {
+					flattened[i] = val;
+					state._string = flattened.join('');
+				});
+			} else {
+				flattened.push("" + prop);
+			}
+		}
+	}
+
+	state._string = flattened.join('');
+
+	return use(state._string);
+}
+
 Object.defineProperty(globalThis, "use", {
 	get: () => {
 		useTrap = true;
-		return (magicPtr: { [Symbol.toPrimitive]: () => symbol }) => {
+		return (magicPtr: { [Symbol.toPrimitive]: () => symbol } | TemplateStringsArray, ...params: any[]) => {
 			useTrap = false;
+
+			usestr: {
+				if (magicPtr instanceof Array && "raw" in magicPtr) return usestr(magicPtr, params);
+			}
 
 			let id = magicPtr[TOPRIMITIVE]();
 			dev: {
@@ -99,6 +137,9 @@ Object.defineProperty(globalThis, "use", {
 
 declare global {
 	function use<T>(stateful: T): DLPointer<T>;
+	/* USESTR.START */
+	function use(template: TemplateStringsArray, ...params: any[]): DLPointer<string>;
+	/* USESTR.END */
 }
 
 export type Stateful<T> = T & { [DREAMLAND]: typeof STATEFUL };

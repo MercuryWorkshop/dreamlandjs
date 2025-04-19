@@ -5,8 +5,10 @@ import strip from "@rollup/plugin-strip";
 import terser from "@rollup/plugin-terser";
 import typescript from "@rollup/plugin-typescript";
 import dts from "rollup-plugin-dts";
+import MagicString from "magic-string";
 
 let DEV = false;
+let USESTR = true;
 
 const common = () => [
 	typescript(),
@@ -33,25 +35,48 @@ const common = () => [
 ]
 
 const cfg = (input, output, defs, plugins) => {
+	const stripCommon = {
+		include: ["**/*.ts"],
+		functions: [],
+	};
 	if (DEV) {
 		plugins.push(strip({
-			include: ["**/*.ts"],
-			functions: [],
+			...stripCommon,
 			labels: ["prod"]
 		}));
 	} else {
 		plugins.push(strip({
-			include: ["**/*.ts"],
-			functions: [],
-			labels: ["dev"]
+			...stripCommon,
+			labels: ["prod"]
 		}));
+	}
+
+	if (!USESTR) {
+		plugins.push(strip({
+			...stripCommon,
+			labels: ["usestr"]
+		}));
+		// only needed because of declare global
+		plugins.push({
+			name: "stripBetweenComment",
+			transform(source) {
+				const startComment = "USESTR.START";
+				const endComment = "USESTR.END";
+				const pattern = new RegExp(`([\\t ]*\\/\\* ?${startComment} ?\\*\\/)[\\s\\S]*?(\\/\\* ?${endComment} ?\\*\\/[\\t ]*\\n?)`, 'g');
+				const code = source.replace(pattern, '');
+				return {
+					code,
+					map: new MagicString(code).generateMap({ hires: true }),
+				}
+			}
+		});
 	}
 
 	const out = [
 		defineConfig({
 			input,
 			output: [{ file: output, sourcemap: true, format: "es" }],
-			plugins: [common(), ...plugins],
+			plugins: [...plugins, common()],
 		})
 	];
 	if (defs) {
@@ -65,7 +90,8 @@ const cfg = (input, output, defs, plugins) => {
 }
 
 export default (args) => {
-	if (args.dev) DEV = true;
+	if (args["config-dev"]) DEV = true;
+	if (args["config-nousestr"]) USESTR = false;
 	return defineConfig([
 		...cfg("src/core/index.ts", "dist/core.js", true, [{
 			name: "copy",
