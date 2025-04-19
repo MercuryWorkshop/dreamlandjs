@@ -52,6 +52,8 @@ function mapChild(child: ComponentChild): Node {
 export class Component {
   css?: string;
   html: VNode;
+  root: HTMLElement;
+  mount() {}
   constructor() {
     return createState(this);
   }
@@ -68,8 +70,10 @@ export function render(node: VNode): HTMLElement {
 
   if (typeof node._init === "function") {
     let ins = new node._init();
-
-    return render(ins.html);
+    let html = render(ins.html);
+    ins.root = html;
+    ins.mount();
+    return html;
   } else {
     let el = document.createElement(node._init);
     node._rendered = el;
