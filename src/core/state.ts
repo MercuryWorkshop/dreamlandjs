@@ -11,6 +11,7 @@ let TOPRIMITIVE = Symbol.toPrimitive;
 
 type ObjectProp = string | symbol;
 type StateData = {
+	_id: symbol,
 	_listeners: ((prop: ObjectProp, val: any) => void)[],
 	_target: any,
 	_proxy: any,
@@ -37,6 +38,7 @@ type PointerData = {
 
 let useTrap = false;
 let internalPointers: Map<symbol, PointerData> = new Map();
+let internalStateful: Map<symbol, StateData> = new Map();
 
 // once the path has been collected listeners are added to all state objects and pointers touched
 // any changes to props that the pointer touches trigger a recalculate and notify all of the pointers' listeners
@@ -100,21 +102,26 @@ declare global {
 }
 
 export type Stateful<T> = T & { [DREAMLAND]: typeof STATEFUL };
-export function $state<T extends Object>(obj: T): Stateful<T> {
+export function createState<T extends Object>(obj: T): Stateful<T> {
 	dev: {
 		if (!(obj instanceof Object)) {
 			throw "$state requires an object";
 		}
 	}
 
-	let state = {
+	let data: Omit<StateData, "_proxy"> = {
 		_listeners: [],
 		_target: obj,
-	} as StateData;
+		_id: Symbol()
+	};
+	let state = data as StateData;
+	internalStateful.set(state._id, state);
 
 	let proxy = new Proxy(obj, {
 		get(target, prop, proxy) {
 			if (useTrap) {
+				if (prop === DREAMLAND) return state._id;
+
 				let step: PointerStep = prop;
 				if (typeof prop === "symbol" && internalPointers.has(prop)) {
 					initPtr(prop);
@@ -146,7 +153,7 @@ export function $state<T extends Object>(obj: T): Stateful<T> {
 					},
 				});
 			}
-			if (prop == DREAMLAND) return STATEFUL;
+			if (prop === DREAMLAND) return STATEFUL;
 			return Reflect.get(target, prop, proxy);
 		},
 		set(target, prop, newValue, proxy) {
@@ -160,6 +167,12 @@ export function $state<T extends Object>(obj: T): Stateful<T> {
 	state._proxy = proxy;
 
 	return proxy as Stateful<T>;
+}
+export function stateListen<T>(state: Stateful<T>, func: (prop: string | symbol, newValue: any) => void) {
+	useTrap = true;
+	let id = state[DREAMLAND];
+	useTrap = false;
+	internalStateful.get(id)._listeners.push(func);
 }
 
 export function isBasePtr(val: any): val is DLBasePointer<any> {
@@ -189,7 +202,7 @@ export abstract class DLBasePointer<T> {
 	}
 
 	get value(): T {
-		const ptr = this._ptr;
+		let ptr = this._ptr;
 		if (ptr._type === PointerType.Regular) {
 			let obj = ptr._state._target;
 			for (let step of ptr._path) {
@@ -219,7 +232,7 @@ export abstract class DLBasePointer<T> {
 	}
 
 	map<U>(func: (val: T) => U): DLPointer<U> {
-		const mapper = this._mapping ? (val: any) => func(this._mapping(val)) : func;
+		let mapper = this._mapping ? (val: any) => func(this._mapping(val)) : func;
 		return new DLPointer(this._ptr._id, mapper);
 	}
 
@@ -233,10 +246,10 @@ export abstract class DLBasePointer<T> {
 			_ptrs: [new DLPointer(this._ptr._id), ...pointers],
 		};
 
-		for (const [i, other] of ptr._ptrs.map((x, i) => [i, x] as const)) {
+		for (let [i, other] of ptr._ptrs.map((x, i) => [i, x] as const)) {
 			other.listen((val) => {
-				const zipped = ptr._ptrs.map((x, j) => i === j ? val : x.value);
-				for (const listener of ptr._listeners) {
+				let zipped = ptr._ptrs.map((x, j) => i === j ? val : x.value);
+				for (let listener of ptr._listeners) {
 					listener(zipped);
 				}
 			});
@@ -290,9 +303,9 @@ export class DLBoundPointer<T> extends DLBasePointer<T> {
 	map<U>(func: (val: T) => U): DLPointer<U>;
 	map<U>(func: (val: T) => U, reverse: (val: U) => T): DLBoundPointer<U>;
 	map<U>(func: (val: T) => U, reverse?: (val: U) => T) {
-		const forwards = this._mapping ? (val: any) => func(this._mapping(val)) : func;
+		let forwards = this._mapping ? (val: any) => func(this._mapping(val)) : func;
 		if (reverse) {
-			const mapper = this._reverse ? (val: any) => this._reverse(reverse(val)) : func;
+			let mapper = this._reverse ? (val: any) => this._reverse(reverse(val)) : func;
 			return new DLBoundPointer(this._ptr._id, forwards, mapper);
 		} else {
 			return new DLPointer(this._ptr._id, forwards);

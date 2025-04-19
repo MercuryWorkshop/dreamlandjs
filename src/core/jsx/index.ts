@@ -19,4 +19,4 @@ function jsxFactory(type: any, props: { [index: string]: any } | null, ...childr
 	}
 }
 
-export const h = jsxFactory;
+export let h = jsxFactory;

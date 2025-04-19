@@ -1,5 +1,5 @@
 import { DREAMLAND, VNODE } from "../consts";
-import { $state, DLBasePointer, isBasePtr } from "../state";
+import { createState, DLBasePointer, isBasePtr } from "../state";
 
 export type VNode = {
 	[DREAMLAND]: typeof VNODE,
@@ -52,7 +52,7 @@ export function render(node: VNode): HTMLElement {
 	if (node._rendered) return node._rendered;
 
 	if (typeof node._init === "function") {
-		let state = $state({
+		let state = createState({
 			...node._props,
 			children: node._children,
 		});
@@ -60,11 +60,11 @@ export function render(node: VNode): HTMLElement {
 
 		return render(tree);
 	} else {
-		const el = document.createElement(node._init);
+		let el = document.createElement(node._init);
 		node._rendered = el;
 
 		for (let attr in node._props) {
-			const val = node._props[attr];
+			let val = node._props[attr];
 			if (attr.startsWith("on:")) {
 				el.addEventListener(attr.substring(3), val);
 			} else {
