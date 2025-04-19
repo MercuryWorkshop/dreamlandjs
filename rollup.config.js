@@ -22,7 +22,7 @@ const common = () => [
 			keep_fnames: false,
 			properties: {
 				regex: /^_.*/,
-			}
+			},
 		},
 		format: {
 			wrap_func_args: false,
@@ -31,8 +31,8 @@ const common = () => [
 		ie8: false,
 		safari10: false,
 		ecma: 5,
-	})
-]
+	}),
+];
 
 const cfg = (input, output, defs, plugins) => {
 	const stripCommon = {
@@ -40,35 +40,44 @@ const cfg = (input, output, defs, plugins) => {
 		functions: [],
 	};
 	if (DEV) {
-		plugins.push(strip({
-			...stripCommon,
-			labels: ["prod"]
-		}));
+		plugins.push(
+			strip({
+				...stripCommon,
+				labels: ["prod"],
+			})
+		);
 	} else {
-		plugins.push(strip({
-			...stripCommon,
-			labels: ["prod"]
-		}));
+		plugins.push(
+			strip({
+				...stripCommon,
+				labels: ["prod"],
+			})
+		);
 	}
 
 	if (!USESTR) {
-		plugins.push(strip({
-			...stripCommon,
-			labels: ["usestr"]
-		}));
+		plugins.push(
+			strip({
+				...stripCommon,
+				labels: ["usestr"],
+			})
+		);
 		// only needed because of declare global
 		plugins.push({
 			name: "stripBetweenComment",
 			transform(source) {
 				const startComment = "USESTR.START";
 				const endComment = "USESTR.END";
-				const pattern = new RegExp(`([\\t ]*\\/\\* ?${startComment} ?\\*\\/)[\\s\\S]*?(\\/\\* ?${endComment} ?\\*\\/[\\t ]*\\n?)`, 'g');
-				const code = source.replace(pattern, '');
+				const pattern = new RegExp(
+					`([\\t ]*\\/\\* ?${startComment} ?\\*\\/)[\\s\\S]*?(\\/\\* ?${endComment} ?\\*\\/[\\t ]*\\n?)`,
+					"g"
+				);
+				const code = source.replace(pattern, "");
 				return {
 					code,
 					map: new MagicString(code).generateMap({ hires: true }),
-				}
-			}
+				};
+			},
 		});
 	}
 
@@ -77,27 +86,39 @@ const cfg = (input, output, defs, plugins) => {
 			input,
 			output: [{ file: output, sourcemap: true, format: "es" }],
 			plugins: [...plugins, common()],
-		})
+		}),
 	];
 	if (defs) {
-		out.push(defineConfig({
-			input: "dist/types/" + input.substring("src/".length).replace(".ts", ".d.ts"),
-			output: [{ file: output.replace(".js", ".d.ts"), format: "es" }],
-			plugins: [dts()]
-		}));
+		out.push(
+			defineConfig({
+				input:
+					"dist/types/" +
+					input.substring("src/".length).replace(".ts", ".d.ts"),
+				output: [{ file: output.replace(".js", ".d.ts"), format: "es" }],
+				plugins: [dts()],
+			})
+		);
 	}
 	return out;
-}
+};
 
 export default (args) => {
 	if (args["config-dev"]) DEV = true;
 	if (args["config-nousestr"]) USESTR = false;
 	return defineConfig([
-		...cfg("src/core/index.ts", "dist/core.js", true, [{
-			name: "copy",
-			buildEnd: async () => {
-				await new Promise(r => fs.copyFile("src/core/consts.d.ts", "dist/types/core/consts.d.ts", r));
-			}
-		}]),
+		...cfg("src/core/index.ts", "dist/core.js", true, [
+			{
+				name: "copy",
+				buildEnd: async () => {
+					await new Promise((r) =>
+						fs.copyFile(
+							"src/core/consts.d.ts",
+							"dist/types/core/consts.d.ts",
+							r
+						)
+					);
+				},
+			},
+		]),
 	]);
-}
+};

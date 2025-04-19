@@ -11,10 +11,10 @@ let TOPRIMITIVE = Symbol.toPrimitive;
 
 type ObjectProp = string | symbol;
 type StateData = {
-	_id: symbol,
-	_listeners: ((prop: ObjectProp, val: any) => void)[],
-	_target: any,
-	_proxy: any,
+	_id: symbol;
+	_listeners: ((prop: ObjectProp, val: any) => void)[];
+	_target: any;
+	_proxy: any;
 };
 
 type PointerStep = ObjectProp | DLPointer<ObjectProp>;
@@ -25,16 +25,19 @@ const enum PointerType {
 }
 
 type PointerData = {
-	_id: symbol,
-	_listeners: ((val: any) => void)[],
-} & ({
-	_type: PointerType.Regular,
-	_state: StateData,
-	_path: PointerStep[],
-} | {
-	_type: PointerType.Dependent,
-	_ptrs: DLBasePointer<any>[],
-});
+	_id: symbol;
+	_listeners: ((val: any) => void)[];
+} & (
+	| {
+			_type: PointerType.Regular;
+			_state: StateData;
+			_path: PointerStep[];
+	  }
+	| {
+			_type: PointerType.Dependent;
+			_ptrs: DLBasePointer<any>[];
+	  }
+);
 
 let useTrap = false;
 let internalPointers: Map<symbol, PointerData> = new Map();
@@ -99,7 +102,7 @@ function usestr(template: TemplateStringsArray, ...params: any[]) {
 				let i = flattened.length;
 				prop.listen((val) => {
 					flattened[i] = val;
-					state._string = flattened.join('');
+					state._string = flattened.join("");
 				});
 			} else {
 				flattened.push("" + prop);
@@ -107,7 +110,7 @@ function usestr(template: TemplateStringsArray, ...params: any[]) {
 		}
 	}
 
-	state._string = flattened.join('');
+	state._string = flattened.join("");
 
 	return use(state._string);
 }
@@ -115,30 +118,37 @@ function usestr(template: TemplateStringsArray, ...params: any[]) {
 Object.defineProperty(globalThis, "use", {
 	get: () => {
 		useTrap = true;
-		return (magicPtr: { [Symbol.toPrimitive]: () => symbol } | TemplateStringsArray, ...params: any[]) => {
+		return (
+			magicPtr: { [Symbol.toPrimitive]: () => symbol } | TemplateStringsArray,
+			...params: any[]
+		) => {
 			useTrap = false;
 
 			usestr: {
-				if (magicPtr instanceof Array && "raw" in magicPtr) return usestr(magicPtr, params);
+				if (magicPtr instanceof Array && "raw" in magicPtr)
+					return usestr(magicPtr, params);
 			}
 
 			let id = magicPtr[TOPRIMITIVE]();
 			dev: {
 				if (isBasePtr(magicPtr) || !internalPointers.has(id))
-					throw "Illegal invocation"
+					throw "Illegal invocation";
 			}
 
 			initPtr(id);
 
 			return new DLPointer(id);
 		};
-	}
+	},
 });
 
 declare global {
 	function use<T>(stateful: T): DLPointer<T>;
 	/* USESTR.START */
-	function use(template: TemplateStringsArray, ...params: any[]): DLPointer<string>;
+	function use(
+		template: TemplateStringsArray,
+		...params: any[]
+	): DLPointer<string>;
 	/* USESTR.END */
 }
 
@@ -153,7 +163,7 @@ export function createState<T extends Object>(obj: T): Stateful<T> {
 	let data: Omit<StateData, "_proxy"> = {
 		_listeners: [],
 		_target: obj,
-		_id: Symbol()
+		_id: Symbol(),
 	};
 	let state = data as StateData;
 	internalStateful.set(state._id, state);
@@ -179,20 +189,23 @@ export function createState<T extends Object>(obj: T): Stateful<T> {
 				internalPointers.set(ptr._id, ptr);
 
 				// this proxy collects all the accesses in this pointer instance and adds them to the path
-				return new Proxy({}, {
-					get(_target, prop, proxy) {
-						if (prop === TOPRIMITIVE) return () => ptr._id;
+				return new Proxy(
+					{},
+					{
+						get(_target, prop, proxy) {
+							if (prop === TOPRIMITIVE) return () => ptr._id;
 
-						let step: PointerStep = prop;
-						if (typeof prop === "symbol" && internalPointers.has(prop)) {
-							initPtr(prop);
-							step = new DLPointer(prop);
-						}
-						ptr._path.push(step);
+							let step: PointerStep = prop;
+							if (typeof prop === "symbol" && internalPointers.has(prop)) {
+								initPtr(prop);
+								step = new DLPointer(prop);
+							}
+							ptr._path.push(step);
 
-						return proxy;
-					},
-				});
+							return proxy;
+						},
+					}
+				);
 			}
 			if (prop === DREAMLAND) return STATEFUL;
 			return Reflect.get(target, prop, proxy);
@@ -209,7 +222,10 @@ export function createState<T extends Object>(obj: T): Stateful<T> {
 
 	return proxy as Stateful<T>;
 }
-export function stateListen<T>(state: Stateful<T>, func: (prop: string | symbol, newValue: any) => void) {
+export function stateListen<T>(
+	state: Stateful<T>,
+	func: (prop: string | symbol, newValue: any) => void
+) {
 	useTrap = true;
 	let id = state[DREAMLAND];
 	useTrap = false;
@@ -234,7 +250,11 @@ export abstract class DLBasePointer<T> {
 	abstract readonly bound: boolean;
 
 	// @internal
-	constructor(sym: symbol, mapping?: (val: any) => any, reverse?: (val: any) => any) {
+	constructor(
+		sym: symbol,
+		mapping?: (val: any) => any,
+		reverse?: (val: any) => any
+	) {
 		dev: {
 			if (!internalPointers.has(sym)) {
 				throw "Illegal invocation";
@@ -255,7 +275,7 @@ export abstract class DLBasePointer<T> {
 			}
 			return this._mapping ? this._mapping(obj) : obj;
 		} else {
-			return ptr._ptrs.map(x => x.value) as T;
+			return ptr._ptrs.map((x) => x.value) as T;
 		}
 	}
 
@@ -264,10 +284,18 @@ export abstract class DLBasePointer<T> {
 	}
 
 	listen(func: (val: T) => void) {
-		this._ptr._listeners.push(this._mapping ? x => func(this._mapping(x)) : func);
+		this._ptr._listeners.push(
+			this._mapping ? (x) => func(this._mapping(x)) : func
+		);
 	}
 
-	andThen<True, False>(then: True, otherwise: False): DLPointer<(True extends () => infer TR ? TR : True) | (False extends () => infer FR ? FR : False)> {
+	andThen<True, False>(
+		then: True,
+		otherwise: False
+	): DLPointer<
+		| (True extends () => infer TR ? TR : True)
+		| (False extends () => infer FR ? FR : False)
+	> {
 		return this.map((val) => {
 			let real = !!val ? then : otherwise;
 			// typescript is an idiot
@@ -278,9 +306,18 @@ export abstract class DLBasePointer<T> {
 		let mapper = this._mapping ? (val: any) => func(this._mapping(val)) : func;
 		return new DLPointer(this._ptr._id, mapper);
 	}
-	zip<Ptrs extends ReadonlyArray<DLBasePointer<any>>>(...pointers: Ptrs): DLPointer<[T, ...{
-		[Idx in keyof Ptrs]: Ptrs[Idx] extends DLBasePointer<infer Val> ? Val : never
-	}]> {
+	zip<Ptrs extends ReadonlyArray<DLBasePointer<any>>>(
+		...pointers: Ptrs
+	): DLPointer<
+		[
+			T,
+			...{
+				[Idx in keyof Ptrs]: Ptrs[Idx] extends DLBasePointer<infer Val>
+					? Val
+					: never;
+			},
+		]
+	> {
 		let ptr: PointerData = {
 			_type: PointerType.Dependent,
 			_id: Symbol(),
@@ -290,7 +327,7 @@ export abstract class DLBasePointer<T> {
 
 		for (let [i, other] of ptr._ptrs.map((x, i) => [i, x] as const)) {
 			other.listen((val) => {
-				let zipped = ptr._ptrs.map((x, j) => i === j ? val : x.value);
+				let zipped = ptr._ptrs.map((x, j) => (i === j ? val : x.value));
 				for (let listener of ptr._listeners) {
 					listener(zipped);
 				}
@@ -302,8 +339,11 @@ export abstract class DLBasePointer<T> {
 		return new DLPointer(ptr._id);
 	}
 
-	mapEach<U, R>(this: DLBasePointer<ArrayLike<U>>, func: (val: U) => R): DLPointer<R[]> {
-		return this.map(x => Array.from(x).map(func));
+	mapEach<U, R>(
+		this: DLBasePointer<ArrayLike<U>>,
+		func: (val: U) => R
+	): DLPointer<R[]> {
+		return this.map((x) => Array.from(x).map(func));
 	}
 }
 
@@ -349,9 +389,13 @@ export class DLBoundPointer<T> extends DLBasePointer<T> {
 	map<U>(func: (val: T) => U): DLPointer<U>;
 	map<U>(func: (val: T) => U, reverse: (val: U) => T): DLBoundPointer<U>;
 	map<U>(func: (val: T) => U, reverse?: (val: U) => T) {
-		let forwards = this._mapping ? (val: any) => func(this._mapping(val)) : func;
+		let forwards = this._mapping
+			? (val: any) => func(this._mapping(val))
+			: func;
 		if (reverse) {
-			let mapper = this._reverse ? (val: any) => this._reverse(reverse(val)) : func;
+			let mapper = this._reverse
+				? (val: any) => this._reverse(reverse(val))
+				: func;
 			return new DLBoundPointer(this._ptr._id, forwards, mapper);
 		} else {
 			return new DLPointer(this._ptr._id, forwards);

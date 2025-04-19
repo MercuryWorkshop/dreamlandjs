@@ -8,8 +8,9 @@
 		"dist"
 	],
 	"scripts": {
-		"build": "rollup -c",
-		"watch": "rollup -cw --config-dev"
+		"build": "prettier -w . && rollup -c",
+		"watch": "rollup -cw --config-dev",
+		"format": "prettier -w ."
 	},
 	"exports": {
 		"./core": {
@@ -26,6 +27,7 @@
 		"@rollup/plugin-terser": "^0.4.4",
 		"@rollup/plugin-typescript": "^12.1.2",
 		"magic-string": "^0.30.17",
+		"prettier": "^3.5.3",
 		"rollup": "^4.39.0",
 		"rollup-plugin-dts": "^6.2.1",
 		"tslib": "^2.8.1",

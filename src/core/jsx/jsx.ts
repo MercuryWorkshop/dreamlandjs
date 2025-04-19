@@ -1,10 +1,10 @@
 declare global {
 	namespace JSX {
 		export type IntrinsicElements = {
-			[index: string]: any,
+			[index: string]: any;
 		};
 		export type ElementType = string;
 	}
 }
 
-export {}
+export {};
