@@ -274,12 +274,10 @@ export abstract class DLBasePointer<T> {
 			return typeof real === "function" ? (real as Function)() : real;
 		});
 	}
-
 	map<U>(func: (val: T) => U): DLPointer<U> {
 		let mapper = this._mapping ? (val: any) => func(this._mapping(val)) : func;
 		return new DLPointer(this._ptr._id, mapper);
 	}
-
 	zip<Ptrs extends ReadonlyArray<DLBasePointer<any>>>(...pointers: Ptrs): DLPointer<[T, ...{
 		[Idx in keyof Ptrs]: Ptrs[Idx] extends DLBasePointer<infer Val> ? Val : never
 	}]> {
@@ -302,6 +300,10 @@ export abstract class DLBasePointer<T> {
 		internalPointers.set(ptr._id, ptr);
 
 		return new DLPointer(ptr._id);
+	}
+
+	mapEach<U, R>(this: DLBasePointer<ArrayLike<U>>, func: (val: U) => R): DLPointer<R[]> {
+		return this.map(x => Array.from(x).map(func));
 	}
 }
 
