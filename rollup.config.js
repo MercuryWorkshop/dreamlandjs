@@ -50,7 +50,7 @@ const cfg = (input, output, defs, plugins) => {
 		plugins.push(
 			strip({
 				...stripCommon,
-				labels: ["prod"],
+				labels: ["dev"],
 			})
 		);
 	}
