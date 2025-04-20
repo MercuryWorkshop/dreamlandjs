@@ -5,6 +5,7 @@
 		"declaration": true,
 		"declarationDir": "dist/types",
 		"rootDir": "src",
-		"stripInternal": true
+		"stripInternal": true,
+		"moduleResolution": "bundler"
 	}
 }

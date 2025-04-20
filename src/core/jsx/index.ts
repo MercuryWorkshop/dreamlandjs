@@ -1,8 +1,9 @@
 import { DREAMLAND, VNODE } from "../consts";
 import { VNode } from "./vdom";
-
 // jsx definitions
 import "./jsx";
+
+import htm from "htm/mini";
 
 export { render, VNode, Component, ComponentChild } from "./vdom";
 export { scope, cascade, DLCSS } from "./css";
@@ -26,3 +27,5 @@ function jsxFactory(
 }
 
 export let h = jsxFactory;
+
+export let html = htm.bind(h);

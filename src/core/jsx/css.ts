@@ -88,7 +88,7 @@ export function cascade(
 
 export function scope(template: TemplateStringsArray, ...params: any[]): DLCSS {
 	if (!window.CSSScopeRule) {
-		// firefox
+		// firefox moment
 		dev: {
 			console.warn(
 				"[dreamland.js] CSS scoping is not supported in your browser, unable to prevent styles from cascading"
