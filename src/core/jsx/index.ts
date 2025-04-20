@@ -5,6 +5,7 @@ import { VNode } from "./vdom";
 import "./jsx";
 
 export { render, VNode, Component } from "./vdom";
+export { scope, cascade, DLCSS } from "./css";
 
 function jsxFactory(
 	type: any,

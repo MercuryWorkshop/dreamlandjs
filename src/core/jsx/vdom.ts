@@ -1,6 +1,6 @@
 import { DREAMLAND, VNODE } from "../consts";
 import { createState, DLBasePointer, isBasePtr } from "../state";
-import { rewriteScoped } from "./css";
+import { DLCSS, rewriteCSS } from "./css";
 
 export type VNode = {
 	[DREAMLAND]: typeof VNODE;
@@ -63,7 +63,7 @@ export class Component {
 	html: VNode;
 	root: HTMLElement;
 
-	css?: string;
+	css?: DLCSS;
 
 	// @internal
 	_ident: string;
@@ -106,7 +106,7 @@ function renderInternal(node: VNode, tag?: string): HTMLElement {
 
 		if (component.css) {
 			let el = document.createElement("style");
-			el.innerText = rewriteScoped(component.css, component._ident);
+			el.innerText = rewriteCSS(component.css, component._ident);
 			document.head.append(el);
 		}
 	} else {
