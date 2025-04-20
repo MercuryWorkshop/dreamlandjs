@@ -7,16 +7,20 @@ export type DLCSS = {
 	css: string;
 };
 
-export let cssBoundary = "dlcomponent";
+// added to every component's root, determines start of scoped css scope
+export let cssComponent = "dlcomponent";
+// added to a component's root if it's scoped, determines end of scoped css scope
+// this lets scoped styles leak into cascading styles, replacing dl 0.0.x leak
+export let cssBoundary = "dlboundary";
 
-function rewriteCascading(css: CSSRuleList, root: string, tag: string): string {
+function rewriteCascading(css: CSSRuleList, tag: string): string {
 	function rewriteRules(list: CSSRuleList): CSSRule[] {
 		let rules = Array.from(list);
 
 		for (let rule of rules) {
 			if (rule instanceof CSSStyleRule) {
 				// :scope targets the root in @scope {} so just use that
-				rule.selectorText.replace(":scope", root);
+				rule.selectorText.replace(":scope", `.${tag}.${cssComponent}`);
 				rule.selectorText = rule.selectorText
 					.split(",")
 					.map((x) =>
@@ -41,22 +45,22 @@ function rewriteCascading(css: CSSRuleList, root: string, tag: string): string {
 		.join("");
 }
 
-function rewriteScoped(css: CSSRuleList, root: string): string {
+function rewriteScoped(css: CSSRuleList, tag: string): string {
 	let cssText = Array.from(css)
 		.map((x) => x.cssText)
 		.join("");
-	return `@scope (.${root}) to (:not(.${root}).${cssBoundary}) { ${cssText} }`;
+	return `@scope (.${tag}.${cssComponent}) to (:not(.${tag}).${cssBoundary}) { ${cssText} }`;
 }
 
-export function rewriteCSS(css: DLCSS, root: string, tag: string): string {
+export function rewriteCSS(css: DLCSS, tag: string): string {
 	let sheet = new CSSStyleSheet();
 	sheet.replaceSync(css.css);
 	let rules = sheet.cssRules;
 
 	if (css._cascade) {
-		return rewriteCascading(rules, root, tag);
+		return rewriteCascading(rules, tag);
 	} else {
-		return rewriteScoped(rules, root);
+		return rewriteScoped(rules, tag);
 	}
 }
 
@@ -84,7 +88,7 @@ export function cascade(
 
 export function scope(template: TemplateStringsArray, ...params: any[]): DLCSS {
 	if (!window.CSSScopeRule) {
-		// firefox moment
+		// firefox
 		dev: {
 			console.warn(
 				"[dreamland.js] CSS scoping is not supported in your browser, unable to prevent styles from cascading"
