@@ -7,15 +7,16 @@ export type DLCSS = {
 	css: string;
 };
 
-function rewriteCascading(css: string, tag: string): string {
-	let sheet = new CSSStyleSheet();
-	sheet.replaceSync(css);
+export let cssBoundary = "dlcomponent";
 
-	function rewriteRules(list: CSSRuleList, tag: string): CSSRule[] {
+function rewriteCascading(css: CSSRuleList, root: string, tag: string): string {
+	function rewriteRules(list: CSSRuleList): CSSRule[] {
 		let rules = Array.from(list);
 
 		for (let rule of rules) {
 			if (rule instanceof CSSStyleRule) {
+				// :scope targets the root in @scope {} so just use that
+				rule.selectorText.replace(":scope", root);
 				rule.selectorText = rule.selectorText
 					.split(",")
 					.map((x) =>
@@ -28,23 +29,34 @@ function rewriteCascading(css: string, tag: string): string {
 					.join(",");
 			}
 			if (rule instanceof CSSGroupingRule) {
-				rewriteRules(rule.cssRules, tag);
+				rewriteRules(rule.cssRules);
 			}
 		}
 
 		return rules;
 	}
 
-	return rewriteRules(sheet.cssRules, tag)
+	return rewriteRules(css)
 		.map((x) => x.cssText)
 		.join("");
 }
 
-export function rewriteCSS(css: DLCSS, tag: string): string {
+function rewriteScoped(css: CSSRuleList, root: string): string {
+	let cssText = Array.from(css)
+		.map((x) => x.cssText)
+		.join("");
+	return `@scope (.${root}) to (:not(.${root}).${cssBoundary}) { ${cssText} }`;
+}
+
+export function rewriteCSS(css: DLCSS, root: string, tag: string): string {
+	let sheet = new CSSStyleSheet();
+	sheet.replaceSync(css.css);
+	let rules = sheet.cssRules;
+
 	if (css._cascade) {
-		return rewriteCascading(css.css, tag);
+		return rewriteCascading(rules, root, tag);
 	} else {
-		throw "todo";
+		return rewriteScoped(rules, root);
 	}
 }
 
@@ -71,6 +83,15 @@ export function cascade(
 }
 
 export function scope(template: TemplateStringsArray, ...params: any[]): DLCSS {
+	if (!window.CSSScopeRule) {
+		// firefox moment
+		dev: {
+			console.warn(
+				"[dreamland.js] CSS scoping is not supported in your browser, unable to prevent styles from cascading"
+			);
+		}
+		return cascade(template, ...params);
+	}
 	return {
 		[DREAMLAND]: CSS,
 		_cascade: false,

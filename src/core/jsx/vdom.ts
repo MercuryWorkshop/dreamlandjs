@@ -1,6 +1,6 @@
 import { DREAMLAND, VNODE } from "../consts";
 import { createState, DLBasePointer, isBasePtr } from "../state";
-import { DLCSS, rewriteCSS } from "./css";
+import { cssBoundary, DLCSS, rewriteCSS } from "./css";
 
 export type VNode = {
 	[DREAMLAND]: typeof VNODE;
@@ -68,16 +68,14 @@ export class Component {
 	css?: DLCSS;
 
 	// @internal
-	_ident: string;
+	_cssIdent: string;
+	// @internal
+	_rootIdent: string;
 
 	mount() {}
 	constructor() {
-		dev: {
-			this._ident = "dl-" + this.constructor.name + "-" + genuid();
-		}
-		prod: {
-			this._ident = "dl-" + genuid();
-		}
+		this._rootIdent = "dl-" + this.constructor.name;
+		this._cssIdent = "dl-" + this._rootIdent + "-" + genuid();
 		return createState(this);
 	}
 }
@@ -100,15 +98,22 @@ function renderInternal(node: VNode, tag?: string): HTMLElement {
 			(component as any)[attr] = node._props[attr];
 		}
 
-		el = renderInternal(component.html, component._ident);
+		el = renderInternal(component.html, component._cssIdent);
 		node._rendered = el;
+
+		el.classList.add(component._rootIdent);
+		if (!component.css?._cascade) el.classList.add(cssBoundary);
 
 		component.root = el;
 		component.mount();
 
 		if (component.css) {
 			let el = document.createElement("style");
-			el.innerText = rewriteCSS(component.css, component._ident);
+			el.innerText = rewriteCSS(
+				component.css,
+				component._rootIdent,
+				component._cssIdent
+			);
 			document.head.append(el);
 		}
 	} else {
