@@ -28,7 +28,7 @@ function isVNode(val: any): val is VNode {
 	return val[DREAMLAND] === VNODE;
 }
 
-type ComponentChild =
+export type ComponentChild =
 	| VNode
 	| string
 	| number
@@ -61,7 +61,9 @@ function mapChild(child: ComponentChild, tag?: string): Node {
 
 export class Component {
 	html: VNode;
+
 	root: HTMLElement;
+	children: ComponentChild[];
 
 	css?: DLCSS;
 

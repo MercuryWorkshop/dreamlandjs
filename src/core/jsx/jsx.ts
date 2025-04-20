@@ -5,6 +5,6 @@ declare global {
 		export type IntrinsicElements = {
 			[index: string]: any;
 		};
-		export type ElementType = string | Component;
+		export type ElementClass = Component;
 	}
 }

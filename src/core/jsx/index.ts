@@ -4,7 +4,7 @@ import { VNode } from "./vdom";
 // jsx definitions
 import "./jsx";
 
-export { render, VNode, Component } from "./vdom";
+export { render, VNode, Component, ComponentChild } from "./vdom";
 export { scope, cascade, DLCSS } from "./css";
 
 function jsxFactory(
