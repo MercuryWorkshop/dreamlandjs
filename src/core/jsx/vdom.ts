@@ -131,6 +131,21 @@ function renderInternal(node: VNode, tag?: string): HTMLElement {
 			let val = node._props[attr];
 			if (attr.startsWith("on:")) {
 				el.addEventListener(attr.substring(3), val);
+			} else if (attr.startsWith("class:")) {
+				let name = attr.substring(6);
+				let handle = (val: boolean) => {
+					if (val) {
+						el.classList.add(name);
+					} else {
+						el.classList.remove(name);
+					}
+				};
+				if (isBasePtr(val)) {
+					val.listen(handle);
+					handle(val.value);
+				} else {
+					handle(val);
+				}
 			} else {
 				el.setAttribute(attr, val);
 			}
