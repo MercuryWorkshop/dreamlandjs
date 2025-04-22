@@ -87,7 +87,7 @@ const cfg = (input, output, defs, plugins) => {
 		defineConfig({
 			input,
 			output: [{ file: output, sourcemap: true, format: "es" }],
-			plugins: [...plugins, common()],
+			plugins: [common(), ...plugins],
 		}),
 	];
 	if (defs) {
@@ -111,7 +111,7 @@ export default (args) => {
 		...cfg("src/core/index.ts", "dist/core.js", true, [
 			{
 				name: "copy",
-				buildEnd: async () => {
+				writeBundle: async () => {
 					await new Promise((r) =>
 						fs.copyFile(
 							"src/core/consts.d.ts",

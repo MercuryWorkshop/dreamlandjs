@@ -5,7 +5,13 @@ import "./jsx";
 
 import htm from "htm/mini";
 
-export { render, VNode, Component, ComponentChild } from "./vdom";
+export {
+	render,
+	VNode,
+	Component,
+	ComponentChild,
+	ComponentContext,
+} from "./vdom";
 export { scope, cascade, DLCSS } from "./css";
 
 function jsxFactory(

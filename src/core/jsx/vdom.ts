@@ -1,11 +1,11 @@
 import { DREAMLAND, VNODE } from "../consts";
-import { createState, DLBasePointer, isBasePtr } from "../state";
+import { createState, DLBasePointer, isBasePtr, Stateful } from "../state";
 import { cssBoundary, cssComponent, DLCSS, rewriteCSS } from "./css";
 
 export type VNode = {
 	[DREAMLAND]: typeof VNODE;
 	// @internal
-	_init: string | (new () => Component);
+	_init: string | Component;
 	// @internal
 	_children: (VNode | string | DLBasePointer<any>)[];
 	// @internal
@@ -59,23 +59,18 @@ function mapChild(child: ComponentChild, tag?: string): Node {
 	}
 }
 
-export class Component {
-	html: VNode;
-
+export type ComponentContext = {
 	root: HTMLElement;
-	children: ComponentChild[];
 
 	css?: DLCSS;
 
-	// @internal
-	_cssIdent: string;
+	mount?: () => void;
+};
 
-	mount() {}
-	constructor() {
-		this._cssIdent = "dl-" + this.constructor.name + "-" + genuid();
-		return createState(this);
-	}
-}
+export type Component<Props = {}, Private = {}, Public = {}> = (
+	this: Stateful<Props & Private & Public>,
+	cx: ComponentContext
+) => VNode;
 
 function renderInternal(node: VNode, tag?: string): HTMLElement {
 	dev: {
@@ -89,26 +84,28 @@ function renderInternal(node: VNode, tag?: string): HTMLElement {
 	let el: HTMLElement;
 
 	if (typeof node._init === "function") {
-		let component = new node._init();
-
+		let state = createState({});
 		for (let attr in node._props) {
-			(component as any)[attr] = node._props[attr];
+			state[attr] = node._props[attr];
 		}
 
-		el = renderInternal(component.html, component._cssIdent);
+		let cx = {} as ComponentContext;
+		let html = node._init.call(state, cx);
+
+		let cssIdent = "dl-" + node._init.name + "-" + genuid();
+		el = renderInternal(html, cssIdent);
 		node._rendered = el;
 
 		el.classList.add(cssComponent);
-		if (!component.css?._cascade) el.classList.add(cssBoundary);
-
-		component.root = el;
-		component.mount();
-
-		if (component.css) {
+		if (!cx.css?._cascade) el.classList.add(cssBoundary);
+		if (cx.css) {
 			let el = document.createElement("style");
-			el.innerText = rewriteCSS(component.css, component._cssIdent);
+			el.innerText = rewriteCSS(cx.css, cssIdent);
 			document.head.append(el);
 		}
+
+		cx.root = el;
+		cx.mount?.();
 	} else {
 		el = document.createElement(node._init);
 		node._rendered = el;
@@ -134,3 +131,24 @@ function renderInternal(node: VNode, tag?: string): HTMLElement {
 
 // sadly they don't optimize this out
 export let render: (node: VNode) => HTMLElement = renderInternal;
+
+/* not finalized yet, maybe later though
+ * putting this code up next to the function component broke the build somehow
+export class Component {
+	html: VNode;
+
+	root: HTMLElement;
+	children: ComponentChild[];
+
+	css?: DLCSS;
+
+	// @internal
+	_cssIdent: string;
+
+	mount() {}
+	constructor() {
+		this._cssIdent = "dl-" + this.constructor.name + "-" + genuid();
+		return createState(this);
+	}
+}
+*/

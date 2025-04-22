@@ -350,7 +350,7 @@ export abstract class DLBasePointer<T> {
 export class DLPointer<T> extends DLBasePointer<T> {
 	readonly bound: false = false;
 
-	bind() {
+	bind(): DLBoundPointer<T> {
 		if (this._ptr._type === PointerType.Regular) {
 			return new DLBoundPointer(this._ptr._id);
 		} else {
@@ -367,6 +367,9 @@ export class DLPointer<T> extends DLBasePointer<T> {
 export class DLBoundPointer<T> extends DLBasePointer<T> {
 	readonly bound: true = true;
 
+	get value(): T {
+		return super.value;
+	}
 	set value(val: T) {
 		if (this._ptr._type === PointerType.Regular) {
 			val = this._reverse ? this._reverse(val) : val;
