@@ -232,7 +232,7 @@ function getStatefulInner(state: Stateful<any>): StateData {
 	useTrap = false;
 	return internalStateful.get(id);
 }
-export function stateListen<T>(
+export function stateListen<T extends StatefulObject>(
 	state: Stateful<T>,
 	func: (prop: string | symbol, newValue: any) => void
 ) {
