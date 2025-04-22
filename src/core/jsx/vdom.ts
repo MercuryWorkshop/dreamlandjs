@@ -1,5 +1,11 @@
 import { DREAMLAND, VNODE } from "../consts";
-import { createState, DLBasePointer, isBasePtr, Stateful } from "../state";
+import {
+	createState,
+	DLBasePointer,
+	isBasePtr,
+	Stateful,
+	stateProxy,
+} from "../state";
 import { cssBoundary, cssComponent, DLCSS, rewriteCSS } from "./css";
 
 export type VNode = {
@@ -67,8 +73,13 @@ export type ComponentContext = {
 	mount?: () => void;
 };
 
+type ProxiedProps<Props> = {
+	[Key in keyof Props]: Props[Key] extends DLBasePointer<infer Pointed>
+		? Pointed
+		: Props[Key];
+};
 export type Component<Props = {}, Private = {}, Public = {}> = (
-	this: Stateful<Props & Private & Public>,
+	this: Stateful<ProxiedProps<Props> & Private & Public>,
 	cx: ComponentContext
 ) => VNode;
 
@@ -86,7 +97,13 @@ function renderInternal(node: VNode, tag?: string): HTMLElement {
 	if (typeof node._init === "function") {
 		let state = createState({});
 		for (let attr in node._props) {
-			state[attr] = node._props[attr];
+			let val = node._props[attr];
+
+			if (isBasePtr(val)) {
+				stateProxy(state, attr, val);
+			} else {
+				state[attr] = val;
+			}
 		}
 
 		let cx = {} as ComponentContext;

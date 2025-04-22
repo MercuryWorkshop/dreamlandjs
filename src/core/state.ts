@@ -152,8 +152,11 @@ declare global {
 	/* USESTR.END */
 }
 
-export type Stateful<T> = T & { [DREAMLAND]: typeof STATEFUL };
-export function createState<T extends Object>(obj: T): Stateful<T> {
+type StatefulObject = Record<string | symbol, any>;
+export type Stateful<T extends StatefulObject> = T & {
+	[DREAMLAND]: typeof STATEFUL;
+};
+export function createState<T extends StatefulObject>(obj: T): Stateful<T> {
 	dev: {
 		if (!(obj instanceof Object)) {
 			throw "$state requires an object";
@@ -222,14 +225,29 @@ export function createState<T extends Object>(obj: T): Stateful<T> {
 
 	return proxy as Stateful<T>;
 }
+
+function getStatefulInner(state: Stateful<any>): StateData {
+	useTrap = true;
+	let id = state[DREAMLAND];
+	useTrap = false;
+	return internalStateful.get(id);
+}
 export function stateListen<T>(
 	state: Stateful<T>,
 	func: (prop: string | symbol, newValue: any) => void
 ) {
-	useTrap = true;
-	let id = state[DREAMLAND];
-	useTrap = false;
-	internalStateful.get(id)._listeners.push(func);
+	getStatefulInner(state)._listeners.push(func);
+}
+export function stateProxy<
+	T extends StatefulObject,
+	Key extends string | symbol,
+>(state: Stateful<T>, key: Key, pointer: DLBasePointer<T[Key]>) {
+	let inner = getStatefulInner(state);
+	inner._target[key] = pointer.value;
+	pointer.listen((x) => (inner._target[key] = x));
+	inner._listeners.push((prop, val) => {
+		if (pointer instanceof DLBoundPointer && prop === key) pointer.value = val;
+	});
 }
 
 export function isBasePtr(val: any): val is DLBasePointer<any> {
