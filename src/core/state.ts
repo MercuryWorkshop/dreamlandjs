@@ -81,7 +81,7 @@ function initPtr(id: symbol) {
 	}
 }
 
-function usestr(template: TemplateStringsArray, ...params: any[]) {
+function usestr(template: TemplateStringsArray, params: any[]) {
 	let state = createState({}) as Stateful<{ _string: string }>;
 	let flattened = [];
 	for (let i in template) {
@@ -104,6 +104,7 @@ function usestr(template: TemplateStringsArray, ...params: any[]) {
 					flattened[i] = val;
 					state._string = flattened.join("");
 				});
+				flattened.push("" + prop.value);
 			} else {
 				flattened.push("" + prop);
 			}
