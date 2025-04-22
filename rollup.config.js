@@ -18,6 +18,7 @@ const common = () => [
 		parse: {},
 		compress: {
 			passes: 4,
+			hoist_funs: true,
 		},
 		mangle: {
 			keep_classnames: false,

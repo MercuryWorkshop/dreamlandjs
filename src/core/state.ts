@@ -394,11 +394,12 @@ export class DLBoundPointer<T> extends DLBasePointer<T> {
 			val = this._reverse ? this._reverse(val) : val;
 
 			let obj = this._ptr._state._proxy;
-			for (let step of this._ptr._path.slice(0, -1)) {
+			let path = this._ptr._path;
+			for (let step of path.slice(0, -1)) {
 				let resolved = isBasePtr(step) ? step.value : step;
 				obj = obj[resolved];
 			}
-			let step = this._ptr._path.at(-1);
+			let step = path.at(-1);
 			let resolved = isBasePtr(step) ? step.value : step;
 			obj[resolved] = val;
 		}

@@ -18,22 +18,15 @@ function rewriteCascading(css: CSSRuleList, tag: string): string {
 		let rules = Array.from(list);
 
 		for (let rule of rules) {
-			if (rule instanceof CSSStyleRule) {
-				// :scope targets the root in @scope {} so just use that
-				rule.selectorText.replace(":scope", `.${tag}.${cssComponent}`);
-				rule.selectorText = rule.selectorText
+			if ("selectorText" in rule) {
+				rule.selectorText = (rule.selectorText as string)
+					.replace(":scope", `.${tag}.${cssComponent}`)
 					.split(",")
-					.map((x) =>
-						x
-							.trim()
-							.split(" ")
-							.map((x) => x + ":where(." + tag + ")")
-							.join(" ")
-					)
+					.map((x) => x.trim().replace(" ", ":where(." + tag + ") "))
 					.join(",");
 			}
-			if (rule instanceof CSSGroupingRule) {
-				rewriteRules(rule.cssRules);
+			if ("cssRules" in rule) {
+				rewriteRules(rule.cssRules as CSSRuleList);
 			}
 		}
 
@@ -87,7 +80,7 @@ export function cascade(
 }
 
 export function scope(template: TemplateStringsArray, ...params: any[]): DLCSS {
-	if (!window.CSSScopeRule) {
+	if (!self.CSSScopeRule) {
 		// firefox moment
 		dev: {
 			console.warn(

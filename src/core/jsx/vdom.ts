@@ -1,4 +1,4 @@
-import { DREAMLAND, VNODE } from "../consts";
+import { DOCUMENT, DREAMLAND, VNODE } from "../consts";
 import {
 	createState,
 	DLBasePointer,
@@ -45,7 +45,7 @@ export type ComponentChild =
 
 function mapChild(child: ComponentChild, tag?: string): Node {
 	if (child == null) {
-		return document.createComment("");
+		return DOCUMENT.createComment("");
 	} else if (isBasePtr(child)) {
 		let childEl: Node = null!;
 
@@ -61,7 +61,7 @@ function mapChild(child: ComponentChild, tag?: string): Node {
 	} else if (isVNode(child)) {
 		return renderInternal(child, tag);
 	} else {
-		return document.createTextNode("" + child);
+		return DOCUMENT.createTextNode("" + child);
 	}
 }
 
@@ -116,15 +116,15 @@ function renderInternal(node: VNode, tag?: string): HTMLElement {
 		el.classList.add(cssComponent);
 		if (!cx.css?._cascade) el.classList.add(cssBoundary);
 		if (cx.css) {
-			let el = document.createElement("style");
+			let el = DOCUMENT.createElement("style");
 			el.innerText = rewriteCSS(cx.css, cssIdent);
-			document.head.append(el);
+			DOCUMENT.head.append(el);
 		}
 
 		cx.root = el;
 		cx.mount?.();
 	} else {
-		el = document.createElement(node._init);
+		el = DOCUMENT.createElement(node._init);
 		node._rendered = el;
 
 		for (let attr in node._props) {
