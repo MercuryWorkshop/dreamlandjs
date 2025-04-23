@@ -193,7 +193,10 @@ function renderInternal(
 		cx.root = el;
 		cx.mount?.();
 	} else {
-		el = DOCUMENT.createElement(node._init);
+		let xmlns = node._props?.xmlns;
+		el = xmlns
+			? DOCUMENT.createElementNS(xmlns, node._init)
+			: DOCUMENT.createElement(node._init);
 		node._rendered = el;
 
 		for (let attr in node._props) {
@@ -235,6 +238,8 @@ function renderInternal(
 		for (let child of node._children) {
 			el.appendChild(mapChild(child, el, null, tag));
 		}
+
+		if (xmlns) el.innerHTML = el.innerHTML;
 	}
 
 	return el;
