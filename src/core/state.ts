@@ -254,6 +254,9 @@ export function stateProxy<
 export function isBasePtr(val: any): val is DLBasePointer<any> {
 	return val instanceof DLBasePointer;
 }
+export function isBoundPtr(val: any): val is DLBoundPointer<any> {
+	return isBasePtr(val) && val.bound;
+}
 export function isStateful(val: any): val is Stateful<any> {
 	return val[DREAMLAND] === STATEFUL;
 }

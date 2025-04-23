@@ -3,6 +3,7 @@ import {
 	createState,
 	DLBasePointer,
 	isBasePtr,
+	isBoundPtr,
 	Stateful,
 	stateProxy,
 } from "../state";
@@ -25,7 +26,7 @@ function genuid() {
 	// prettier-ignore
 	// dl 0.0.x:
 	//     `${Array(4).fill(0).map(()=>Math.floor(Math.random()*36).toString(36)}).join('')}`
-	return [...Array(16)].reduce(a=>a+Math.random().toString(36)[2],'')
+	return [...Array(16)].reduce(a => a + Math.random().toString(36)[2], '')
 	// the above will occasionally misfire with `undefined` or 0 in the string whenever Math.random returns exactly 0 or really small numbers
 	// we don't care, it would be very uncommon for that to actually happen 16 times
 }
@@ -133,7 +134,14 @@ function renderInternal(node: VNode, tag?: string): DLElement {
 
 		for (let attr in node._props) {
 			let val = node._props[attr];
-			if (attr.startsWith("on:")) {
+			if (attr === "this") {
+				dev: {
+					if (!isBoundPtr(val)) {
+						throw "this prop value must be a bound pointer";
+					}
+				}
+				val.value = el;
+			} else if (attr.startsWith("on:")) {
 				el.addEventListener(attr.substring(3), val);
 			} else if (attr.startsWith("class:")) {
 				let name = attr.substring(6);
