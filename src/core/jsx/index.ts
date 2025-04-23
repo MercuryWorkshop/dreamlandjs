@@ -12,6 +12,7 @@ export {
 	Component,
 	ComponentChild,
 	ComponentContext,
+	ComponentInstance,
 } from "./vdom";
 export { scope, cascade, DLCSS } from "./css";
 

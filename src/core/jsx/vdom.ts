@@ -19,7 +19,7 @@ export type VNode = {
 	_props: Record<string, any>;
 
 	// @internal
-	_rendered?: DLElement;
+	_rendered?: HTMLElement;
 };
 
 function genuid() {
@@ -85,9 +85,16 @@ export type Component<Props = {}, Private = {}, Public = {}> = (
 	this: Stateful<ProxiedProps<Props> & Private & Public>,
 	cx: ComponentContext<ProxiedProps<Props> & Private & Public>
 ) => VNode;
-export type DLElement = HTMLElement & { $?: ComponentContext<any> };
+export type ComponentInstance<T extends Component> =
+	T extends Component<infer Props, infer Private, infer Public>
+		? DLElement<ProxiedProps<Props> & Private & Public>
+		: never;
+export type DLElement<T> = HTMLElement & { $: ComponentContext<T> };
 
-function renderInternal(node: VNode, tag?: string): DLElement {
+function renderInternal(
+	node: VNode,
+	tag?: string
+): DLElement<any> | HTMLElement {
 	dev: {
 		if (!isVNode(node)) {
 			throw "render requires a vnode";
@@ -96,7 +103,7 @@ function renderInternal(node: VNode, tag?: string): DLElement {
 
 	if (node._rendered) return node._rendered;
 
-	let el: DLElement;
+	let el: HTMLElement;
 
 	if (typeof node._init === "function") {
 		let state = createState({});
@@ -116,7 +123,7 @@ function renderInternal(node: VNode, tag?: string): DLElement {
 		let cssIdent = "dl-" + node._init.name + "-" + genuid();
 		el = renderInternal(html, cssIdent);
 		node._rendered = el;
-		el.$ = cx;
+		(el as DLElement<any>).$ = cx;
 
 		el.classList.add(cssComponent);
 		if (!cx.css?._cascade) el.classList.add(cssBoundary);
@@ -174,7 +181,8 @@ function renderInternal(node: VNode, tag?: string): DLElement {
 }
 
 // sadly they don't optimize this out
-export let render: (node: VNode) => DLElement = renderInternal;
+export let render: (node: VNode) => DLElement<any> | HTMLElement =
+	renderInternal;
 
 /* not finalized yet, maybe later though
  * putting this code up next to the function component broke the build somehow
