@@ -37,23 +37,33 @@ function isVNode(val: any): val is VNode {
 
 export type ComponentChild =
 	| VNode
-	| HTMLElement
+	| Node
 	| string
 	| number
 	| boolean
 	| null
 	| undefined
+	| ComponentChild[]
 	| DLBasePointer<ComponentChild>;
 
-function mapChild(child: ComponentChild, tag?: string): Node {
+function comment(text: string) {
+	return DOCUMENT.createComment(text);
+}
+
+function mapChild(
+	child: ComponentChild,
+	el: Node,
+	before: Node | null,
+	tag?: string
+): Node {
 	if (child == null) {
-		return DOCUMENT.createComment("");
+		return comment("");
 	} else if (isBasePtr(child)) {
 		let childEl: Node = null!;
 
 		function setNode(val: ComponentChild) {
-			let newEl: Node = mapChild(val);
-			childEl?.parentNode.replaceChild(newEl, childEl);
+			let newEl: Node = mapChild(val, el, childEl, tag);
+			if (childEl) el.replaceChild(newEl, childEl);
 			childEl = newEl;
 		}
 
@@ -64,6 +74,50 @@ function mapChild(child: ComponentChild, tag?: string): Node {
 		return renderInternal(child, tag);
 	} else if (child instanceof Node) {
 		return child;
+	} else if (child instanceof Array) {
+		// TODO make this smarter
+		let uid: string, start: Comment, end: Comment;
+		let children = Array.from(el.childNodes);
+		if (!before) {
+			uid = "dlarr-" + genuid();
+			start = comment(uid);
+			end = comment(uid);
+			el.appendChild(start);
+			el.appendChild(end);
+		} else {
+			uid = (before as Comment).data;
+			end = before as Comment;
+			for (let child of children) {
+				// comment node
+				if (child.nodeType === 8 && (child as Comment).data === uid) {
+					start = child as Comment;
+					break;
+				}
+			}
+		}
+		if (!end) throw "vdom error";
+
+		let started = false;
+		let current: Node[] = [];
+		for (let child of children) {
+			if (child === start) {
+				started = true;
+			} else if (child === end) {
+				break;
+			} else if (started) {
+				current.push(child);
+			}
+		}
+		for (let x of current) el.removeChild(x);
+
+		let anchor: Node = end;
+		for (let x of [...child].reverse()) {
+			let mapped = mapChild(x, el, null, tag);
+			el.insertBefore(mapped, anchor);
+			anchor = mapped;
+		}
+
+		return end;
 	} else {
 		return DOCUMENT.createTextNode("" + child);
 	}
@@ -179,7 +233,7 @@ function renderInternal(
 		if (tag) el.classList.add(tag);
 
 		for (let child of node._children) {
-			el.appendChild(mapChild(child, tag));
+			el.appendChild(mapChild(child, el, null, tag));
 		}
 	}
 

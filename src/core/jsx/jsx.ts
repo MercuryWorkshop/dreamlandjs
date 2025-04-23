@@ -39,7 +39,7 @@ declare global {
 			| keyof IntrinsicElements
 			| Component<any, any, any>;
 		// VNode for not rendered, HTMLElement for rendered
-		export type Element = VNode | HTMLElement;
+		export type Element = VNode;
 		export type LibraryManagedAttributes<C, _> =
 			C extends Component<infer Props, any, any> ? Props : never;
 	}
