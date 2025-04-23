@@ -25,7 +25,7 @@ function genuid() {
 	// prettier-ignore
 	// dl 0.0.x:
 	//     `${Array(4).fill(0).map(()=>Math.floor(Math.random()*36).toString(36)}).join('')}`
-	return [...Array(16)].reduce(a => a + Math.random().toString(36)[2], '')
+	return [...Array(16)].reduce(a=>a+Math.random().toString(36)[2],'')
 	// the above will occasionally misfire with `undefined` or 0 in the string whenever Math.random returns exactly 0 or really small numbers
 	// we don't care, it would be very uncommon for that to actually happen 16 times
 }
@@ -65,7 +65,9 @@ function mapChild(child: ComponentChild, tag?: string): Node {
 	}
 }
 
-export type ComponentContext = {
+export type ComponentContext<T> = {
+	state: Stateful<T>;
+
 	root: HTMLElement;
 
 	css?: DLCSS;
@@ -80,10 +82,11 @@ type ProxiedProps<Props> = {
 };
 export type Component<Props = {}, Private = {}, Public = {}> = (
 	this: Stateful<ProxiedProps<Props> & Private & Public>,
-	cx: ComponentContext
+	cx: ComponentContext<ProxiedProps<Props> & Private & Public>
 ) => VNode;
+export type DLElement = HTMLElement & { $?: ComponentContext<any> };
 
-function renderInternal(node: VNode, tag?: string): HTMLElement {
+function renderInternal(node: VNode, tag?: string): DLElement {
 	dev: {
 		if (!isVNode(node)) {
 			throw "render requires a vnode";
@@ -92,7 +95,7 @@ function renderInternal(node: VNode, tag?: string): HTMLElement {
 
 	if (node._rendered) return node._rendered;
 
-	let el: HTMLElement;
+	let el: DLElement;
 
 	if (typeof node._init === "function") {
 		let state = createState({});
@@ -106,12 +109,13 @@ function renderInternal(node: VNode, tag?: string): HTMLElement {
 			}
 		}
 
-		let cx = {} as ComponentContext;
+		let cx = { state } as ComponentContext<any>;
 		let html = node._init.call(state, cx);
 
 		let cssIdent = "dl-" + node._init.name + "-" + genuid();
 		el = renderInternal(html, cssIdent);
 		node._rendered = el;
+		el.$ = cx;
 
 		el.classList.add(cssComponent);
 		if (!cx.css?._cascade) el.classList.add(cssBoundary);

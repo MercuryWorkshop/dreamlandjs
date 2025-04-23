@@ -8,6 +8,7 @@ import htm from "htm/mini";
 export {
 	render,
 	VNode,
+	DLElement,
 	Component,
 	ComponentChild,
 	ComponentContext,

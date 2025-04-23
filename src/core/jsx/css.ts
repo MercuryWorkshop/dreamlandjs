@@ -13,11 +13,9 @@ export let cssComponent = "dlcomponent";
 // this lets scoped styles leak into cascading styles, replacing dl 0.0.x leak
 export let cssBoundary = "dlboundary";
 
-function rewriteCascading(css: CSSRuleList, tag: string): string {
-	function rewriteRules(list: CSSRuleList): CSSRule[] {
-		let rules = Array.from(list);
-
-		for (let rule of rules) {
+function rewriteCascading(css: CSSRule[], tag: string): string {
+	function rewriteRules(list: CSSRule[]): CSSRule[] {
+		for (let rule of list) {
 			if ("selectorText" in rule) {
 				rule.selectorText = (rule.selectorText as string)
 					.replace(":scope", `.${tag}.${cssComponent}`)
@@ -26,11 +24,11 @@ function rewriteCascading(css: CSSRuleList, tag: string): string {
 					.join(",");
 			}
 			if ("cssRules" in rule) {
-				rewriteRules(rule.cssRules as CSSRuleList);
+				rewriteRules(Array.from(rule.cssRules as CSSRuleList));
 			}
 		}
 
-		return rules;
+		return list;
 	}
 
 	return rewriteRules(css)
@@ -38,17 +36,15 @@ function rewriteCascading(css: CSSRuleList, tag: string): string {
 		.join("");
 }
 
-function rewriteScoped(css: CSSRuleList, tag: string): string {
-	let cssText = Array.from(css)
-		.map((x) => x.cssText)
-		.join("");
+function rewriteScoped(css: CSSRule[], tag: string): string {
+	let cssText = css.map((x) => x.cssText).join("");
 	return `@scope (.${tag}.${cssComponent}) to (:not(.${tag}).${cssBoundary}) { ${cssText} }`;
 }
 
 export function rewriteCSS(css: DLCSS, tag: string): string {
 	let sheet = new CSSStyleSheet();
 	sheet.replaceSync(css.css);
-	let rules = sheet.cssRules;
+	let rules = Array.from(sheet.cssRules);
 
 	if (css._cascade) {
 		return rewriteCascading(rules, tag);
