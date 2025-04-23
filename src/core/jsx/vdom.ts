@@ -165,6 +165,9 @@ function renderInternal(
 				} else {
 					handle(val);
 				}
+			} else if (isBasePtr(val)) {
+				val.listen((val) => el.setAttribute(attr, val));
+				el.setAttribute(attr, val.value);
 			} else {
 				el.setAttribute(attr, val);
 			}
