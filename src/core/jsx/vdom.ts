@@ -19,7 +19,7 @@ export type VNode = {
 	_props: Record<string, any>;
 
 	// @internal
-	_rendered?: HTMLElement;
+	_rendered?: DLElement;
 };
 
 function genuid() {
@@ -174,7 +174,7 @@ function renderInternal(node: VNode, tag?: string): DLElement {
 }
 
 // sadly they don't optimize this out
-export let render: (node: VNode) => HTMLElement = renderInternal;
+export let render: (node: VNode) => DLElement = renderInternal;
 
 /* not finalized yet, maybe later though
  * putting this code up next to the function component broke the build somehow
