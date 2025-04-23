@@ -37,6 +37,7 @@ function isVNode(val: any): val is VNode {
 
 export type ComponentChild =
 	| VNode
+	| HTMLElement
 	| string
 	| number
 	| boolean
@@ -61,6 +62,8 @@ function mapChild(child: ComponentChild, tag?: string): Node {
 		return childEl;
 	} else if (isVNode(child)) {
 		return renderInternal(child, tag);
+	} else if (child instanceof Node) {
+		return child;
 	} else {
 		return DOCUMENT.createTextNode("" + child);
 	}
