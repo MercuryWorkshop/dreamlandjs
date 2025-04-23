@@ -38,7 +38,8 @@ declare global {
 		export type ElementType =
 			| keyof IntrinsicElements
 			| Component<any, any, any>;
-		export type Element = VNode;
+		// VNode for not rendered, HTMLElement for rendered
+		export type Element = VNode | HTMLElement;
 		export type LibraryManagedAttributes<C, _> =
 			C extends Component<infer Props, any, any> ? Props : never;
 	}
