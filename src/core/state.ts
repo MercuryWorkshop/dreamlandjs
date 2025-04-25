@@ -245,8 +245,16 @@ export function stateProxy<
 >(state: Stateful<T>, key: Key, pointer: DLBasePointer<T[Key]>) {
 	let inner = getStatefulInner(state);
 	inner._target[key] = pointer.value;
-	pointer.listen((x) => (inner._target[key] = x));
+	let setting = false;
+	pointer.listen((x) => {
+		setting = true;
+		inner._proxy[key] = x;
+	});
 	inner._listeners.push((prop, val) => {
+		if (setting) {
+			setting = false;
+			return;
+		}
 		if (pointer instanceof DLBoundPointer && prop === key) pointer.value = val;
 	});
 }
