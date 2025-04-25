@@ -18,8 +18,12 @@
 			"types": "./dist/core.d.ts"
 		},
 		"./jsx-runtime": {
-			"default": "./dist/core.js",
-			"types": "./dist/core.d.ts"
+			"default": "./dist/jsx-runtime.js",
+			"types": "./dist/jsx-runtime.d.ts"
+		},
+		"./jsx-dev-runtime": {
+			"default": "./dist/jsx-runtime.js",
+			"types": "./dist/jsx-runtime.d.ts"
 		}
 	},
 	"devDependencies": {

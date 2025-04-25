@@ -18,7 +18,7 @@ export { scope, cascade, DLCSS } from "./css";
 
 function jsxFactory(
 	type: any,
-	props: { [index: string]: any } | null,
+	props: Record<string, any> | null,
 	...children: (VNode | string)[]
 ): VNode {
 	dev: {
@@ -34,6 +34,6 @@ function jsxFactory(
 	};
 }
 
-export let h = jsxFactory;
+export let html = htm.bind(jsxFactory);
 
-export let html = htm.bind(h);
+export { jsxFactory as h };

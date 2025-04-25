@@ -8,5 +8,6 @@
 		"moduleResolution": "bundler",
 		"stripInternal": true
 	},
-	"include": ["src"]
+	"include": ["src"],
+	"exclude": ["dist"]
 }

@@ -11,9 +11,12 @@ import MagicString from "magic-string";
 let DEV = false;
 let USESTR = true;
 
-const common = () => [
+const common = (include) => [
 	nodeResolve(),
-	typescript(),
+	typescript({
+		include: include + "/**/*",
+		filterRoot: process.cwd(),
+	}),
 	terser({
 		parse: {},
 		compress: {
@@ -37,7 +40,7 @@ const common = () => [
 	}),
 ];
 
-const cfg = (input, output, defs, plugins) => {
+const cfg = (inputDir, inputFile, output, defs, plugins) => {
 	const stripCommon = {
 		include: ["**/*.ts"],
 		functions: [],
@@ -84,11 +87,13 @@ const cfg = (input, output, defs, plugins) => {
 		});
 	}
 
+	const input = inputDir + "/" + inputFile;
 	const out = [
 		defineConfig({
 			input,
 			output: [{ file: output, sourcemap: true, format: "es" }],
-			plugins: [common(), ...plugins],
+			plugins: [common(inputDir), ...plugins],
+			external: ["dreamland/core"],
 		}),
 	];
 	if (defs) {
@@ -99,6 +104,7 @@ const cfg = (input, output, defs, plugins) => {
 					input.substring("src/".length).replace(".ts", ".d.ts"),
 				output: [{ file: output.replace(".js", ".d.ts"), format: "es" }],
 				plugins: [dts()],
+				external: ["dreamland/core"],
 			})
 		);
 	}
@@ -108,8 +114,9 @@ const cfg = (input, output, defs, plugins) => {
 export default (args) => {
 	if (args["config-dev"]) DEV = true;
 	if (args["config-nousestr"]) USESTR = false;
+
 	return defineConfig([
-		...cfg("src/core/index.ts", "dist/core.js", true, [
+		...cfg("src/core", "index.ts", "dist/core.js", true, [
 			{
 				name: "copy",
 				writeBundle: async () => {
@@ -123,5 +130,6 @@ export default (args) => {
 				},
 			},
 		]),
+		...cfg("src/jsx-runtime", "index.ts", "dist/jsx-runtime.js", true, []),
 	]);
 };
