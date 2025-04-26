@@ -8,9 +8,10 @@
 		"dist"
 	],
 	"scripts": {
-		"build": "prettier -w . && rollup -c",
+		"build": "rollup -c",
 		"watch": "rollup -cw --config-dev",
-		"format": "prettier -w ."
+		"format": "prettier -w .",
+		"prepack": "npm run build"
 	},
 	"exports": {
 		"./core": {

@@ -8,8 +8,13 @@ function jsx(
 	let mapped = Object.fromEntries(
 		Object.entries(props).filter((x) => x[0] !== "children")
 	);
-	mapped.key = key;
-	return h(type, mapped, props.children);
+	if (key) mapped.key = key;
+	let children = props.children;
+	return h(
+		type,
+		mapped,
+		...(children instanceof Array ? children : [children])
+	);
 }
 
 export { jsx as jsx, jsx as jsxs, jsx as jsxDEV };
