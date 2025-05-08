@@ -1,10 +1,10 @@
-import { VNode, h } from "dreamland/core";
+import { h } from "dreamland/core";
 
 function jsx(
 	type: any,
 	props: Record<string, any> | null,
 	key: string | undefined
-): VNode {
+): HTMLElement {
 	let mapped = Object.fromEntries(
 		Object.entries(props).filter((x) => x[0] !== "children")
 	);

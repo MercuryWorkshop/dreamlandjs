@@ -1,5 +1,5 @@
 import { DLBasePointer, DLBoundPointer } from "../state";
-import { Component, VNode } from "./vdom";
+import { Component } from "./dom";
 
 type OnEventMap<T> = {
 	[K in keyof T as K extends string ? `on:${K}` : never]?: (
@@ -38,8 +38,7 @@ declare global {
 		export type ElementType =
 			| keyof IntrinsicElements
 			| Component<any, any, any>;
-		// VNode for not rendered, HTMLElement for rendered
-		export type Element = VNode;
+		export type Element = HTMLElement;
 		export type LibraryManagedAttributes<C, _> =
 			C extends Component<infer Props, any, any> ? Props : never;
 	}

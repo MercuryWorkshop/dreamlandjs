@@ -1,2 +1,2 @@
-export let [DREAMLAND, VNODE, STATEFUL, CSS] = Array.from(Array(4), Symbol);
+export let [DREAMLAND, STATEFUL, CSS] = Array.from(Array(3), Symbol);
 export let DOCUMENT = document;
