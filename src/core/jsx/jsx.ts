@@ -13,7 +13,7 @@ type IntrinsicProps<ElementType extends Element> =
 				: never
 	  >
 	| {
-			this?: DLBoundPointer<ElementType>;
+			this?: DLBoundPointer<ElementType | Element | null | undefined>;
 			children?: any;
 			[key: `class:${string}`]: DLBasePointer<boolean>;
 			[key: `on:${string}`]: (event: Event) => void;

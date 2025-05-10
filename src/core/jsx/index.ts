@@ -123,7 +123,7 @@ function jsxFactory(
 	let el: HTMLElement;
 
 	if (typeof init === "function") {
-		let state = createState({});
+		let state = createState({ children });
 		for (let attr in props) {
 			let val = props[attr];
 
