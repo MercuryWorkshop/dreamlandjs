@@ -76,6 +76,6 @@ const App: Component<
 }
 
 window.addEventListener('load', () => {
-    document.body.appendChild(render(<App />))
+    document.body.appendChild(<App />)
 })
 ```
