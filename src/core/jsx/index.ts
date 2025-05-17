@@ -1,6 +1,6 @@
 import { DOCUMENT } from "../consts";
 import { createState, isBasePtr, isBoundPtr, stateProxy } from "../state";
-import { cssBoundary, cssComponent, rewriteCSS } from "./css";
+import { cssBoundary, cssComponent, genuid, rewriteCSS } from "./css";
 import { ComponentChild, ComponentContext, DLElement } from "./dom";
 // jsx definitions
 import "./jsx";
@@ -16,15 +16,6 @@ export {
 } from "./dom";
 export { scope, cascade, DLCSS } from "./css";
 
-function genuid() {
-	// prettier-ignore
-	// dl 0.0.x:
-	//     `${Array(4).fill(0).map(()=>Math.floor(Math.random()*36).toString(36)}).join('')}`
-	return [...Array(16)].reduce(a => a + Math.random().toString(36)[2], '')
-	// the above will occasionally misfire with `undefined` or 0 in the string whenever Math.random returns exactly 0 or really small numbers
-	// we don't care, it would be very uncommon for that to actually happen 16 times
-}
-
 let currentCssIdent: string | null = null;
 
 function withIdent<T>(ident: string, fn: () => T): T {
@@ -39,11 +30,7 @@ function comment(text: string) {
 	return DOCUMENT.createComment(text);
 }
 
-function mapChild(
-	child: ComponentChild,
-	el: Node,
-	before?: Node,
-): Node {
+function mapChild(child: ComponentChild, el: Node, before?: Node): Node {
 	if (child == null) {
 		return comment("");
 	} else if (isBasePtr(child)) {
@@ -109,7 +96,6 @@ function mapChild(
 	}
 }
 
-
 function jsxFactory(
 	init: any,
 	props: Record<string, any> | null,
@@ -168,7 +154,9 @@ function jsxFactory(
 				val.value = el;
 			} else if (attr.startsWith("on:")) {
 				let ident = currentCssIdent;
-				el.addEventListener(attr.substring(3), (e) => withIdent(ident, () => val(e)));
+				el.addEventListener(attr.substring(3), (e) =>
+					withIdent(ident, () => val(e))
+				);
 			} else if (attr.startsWith("class:")) {
 				let name = attr.substring(6);
 				let handle = (val: boolean) => {

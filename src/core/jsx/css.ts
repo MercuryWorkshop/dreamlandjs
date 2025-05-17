@@ -13,15 +13,44 @@ export let cssComponent = "dlcomponent";
 // this lets scoped styles leak into cascading styles, replacing dl 0.0.x leak
 export let cssBoundary = "dlboundary";
 
-function rewriteCascading(css: CSSRule[], tag: string): string {
+export function genuid() {
+	// prettier-ignore
+	// dl 0.0.x:
+	//     `${Array(4).fill(0).map(()=>Math.floor(Math.random()*36).toString(36)}).join('')}`
+	return [...Array(16)].reduce(a => a + Math.random().toString(36)[2], '')
+	// the above will occasionally misfire with `undefined` or 0 in the string whenever Math.random returns exactly 0 or really small numbers
+	// we don't care, it would be very uncommon for that to actually happen 16 times
+}
+
+let GLOBAL = ":global(";
+let COMPONENT = ":component";
+function rewriteCascading(css: string, tag: string): string {
+	let globalWhereTransformation = `:where(.global-${genuid()} `;
+	let componentWhereTransformation = `:where(.component-${genuid()})`;
 	function rewriteRules(list: CSSRule[]): CSSRule[] {
 		for (let rule of list) {
 			if ("selectorText" in rule) {
+				let where = ":where(." + tag + ") ";
+
 				rule.selectorText = (rule.selectorText as string)
-					.replace(":scope", `.${tag}.${cssComponent}`)
+					.replace(globalWhereTransformation, GLOBAL)
+					.replace(componentWhereTransformation, where)
 					.split(",")
-					.map((x) => x.trim().replace(" ", ":where(." + tag + ") "))
-					.join(",");
+					.map((x) => x.trim())
+					.map((x) => {
+						console.log(
+							x,
+							"to",
+							x.startsWith(GLOBAL)
+								? x.substring(8, x.length - 1)
+								: x.replace(" ", where) + where
+						);
+						return x.startsWith(GLOBAL)
+							? x.substring(8, x.length - 1)
+							: x.replace(" ", where) + where;
+					})
+					.join(",")
+					.replace(":scope", `.${tag}.${cssComponent}`);
 			}
 			if ("cssRules" in rule) {
 				rewriteRules(Array.from(rule.cssRules as CSSRuleList));
@@ -31,9 +60,15 @@ function rewriteCascading(css: CSSRule[], tag: string): string {
 		return list;
 	}
 
-	return rewriteRules(css)
+	return rewriteRules(
+		getRules(
+			css
+				.replace(GLOBAL, globalWhereTransformation)
+				.replace(COMPONENT, componentWhereTransformation)
+		)
+	)
 		.map((x) => x.cssText)
-		.join("");
+		.join("\n");
 }
 
 function rewriteScoped(css: CSSRule[], tag: string): string {
@@ -41,15 +76,17 @@ function rewriteScoped(css: CSSRule[], tag: string): string {
 	return `@scope (.${tag}.${cssComponent}) to (:not(.${tag}).${cssBoundary}) { ${cssText} }`;
 }
 
-export function rewriteCSS(css: DLCSS, tag: string): string {
+function getRules(css: string): CSSRule[] {
 	let sheet = new CSSStyleSheet();
-	sheet.replaceSync(css.css);
-	let rules = Array.from(sheet.cssRules);
+	sheet.replaceSync(css);
+	return Array.from(sheet.cssRules);
+}
 
+export function rewriteCSS(css: DLCSS, tag: string): string {
 	if (css._cascade) {
-		return rewriteCascading(rules, tag);
+		return rewriteCascading(css.css, tag);
 	} else {
-		return rewriteScoped(rules, tag);
+		return rewriteScoped(getRules(css.css), tag);
 	}
 }
 
