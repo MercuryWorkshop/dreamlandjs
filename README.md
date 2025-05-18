@@ -18,36 +18,17 @@ dreamland is a reactive JSX-inspired UI library with **no virtual dom** and **no
 # Getting Started
 
 ## Plain JS
-
-dreamland can be integrated into plain javascript applications gradually and seamlessly. See the [website](https://dreamland.js.org) to learn the concepts that dreamland uses.
-
-To get started, in your HTML file, add `<script src="https://unpkg.com/dreamland"></script>` somewhere. This contains the html builder allowing you to start writing dreamland code in plain JS, such as the example shown below
-
-```javascript
-function App() {
-	this.counter = 0;
-	return html`
-		<div>
-			<button on:click=${() => this.counter++}>Click me!</button>
-			<p>${use(this.counter)}</p>
-		</div>
-	`;
-}
-
-window.addEventListener("load", () => {
-	document.body.appendChild(h(App));
-});
-```
-
-Note that this is a development build. For production, you should pin the version and use either the "all" or "minimal" bundle depending on the features you want (ex. https://unpkg.com/dreamland@1.0.0/dist/all.js)
+Plain js (non-esm) builds aren't available yet
 
 ## Typescript + Bundler (vite, rollup, webpack, esbuild, etc)
 
-First install dreamland (`npm install dreamland`), then add this to the compileroptions of your `tsconfig.json` to setup JSX.
+First install dreamland (`npm install dreamland`), then add this to the `compilerOptions` of your `tsconfig.json` to setup JSX.
 
 ```json
-jsx: "react-jsx",
-jsxImportSource: "dreamland"
+{
+    jsx: "react-jsx",
+    jsxImportSource: "dreamland"
+}
 ```
 
 Now you can import anything needed from `dreamland/core`.

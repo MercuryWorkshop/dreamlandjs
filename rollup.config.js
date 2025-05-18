@@ -130,6 +130,7 @@ export default (args) => {
 				},
 			},
 		]),
+		...cfg("src/js-runtime", "index.ts", "dist/js-runtime.js", true, []),
 		...cfg("src/jsx-runtime", "index.ts", "dist/jsx-runtime.js", true, []),
 	]);
 };

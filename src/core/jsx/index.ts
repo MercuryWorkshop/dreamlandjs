@@ -5,8 +5,6 @@ import { ComponentChild, ComponentContext, DLElement } from "./dom";
 // jsx definitions
 import "./jsx";
 
-import htm from "htm/mini";
-
 export {
 	DLElement,
 	Component,
@@ -191,7 +189,5 @@ function jsxFactory(
 
 	return el;
 }
-
-export let html = htm.bind(jsxFactory);
 
 export { jsxFactory as h };
