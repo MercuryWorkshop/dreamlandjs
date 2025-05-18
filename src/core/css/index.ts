@@ -37,7 +37,7 @@ function rewriteCascading(css: string, tag: string): string {
 					.replace(componentWhereTransformation, where)
 					.split(",")
 					.map((x) => x.trim())
-					.map(x => {
+					.map((x) => {
 						return x.startsWith(GLOBAL)
 							? x.substring(8, x.length - 1)
 							: x.replace(" ", where) + where;

@@ -18,6 +18,7 @@ dreamland is a reactive JSX-inspired UI library with **no virtual dom** and **no
 # Getting Started
 
 ## Plain JS
+
 Plain js (non-esm) builds aren't available yet
 
 ## Typescript + Bundler (vite, rollup, webpack, esbuild, etc)
@@ -26,8 +27,8 @@ First install dreamland (`npm install dreamland`), then add this to the `compile
 
 ```json
 {
-    jsx: "react-jsx",
-    jsxImportSource: "dreamland"
+	"jsx": "react-jsx",
+	"jsxImportSource": "dreamland"
 }
 ```
 

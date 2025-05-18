@@ -8,5 +8,5 @@ export {
 	stateProxy,
 } from "./state";
 export { createStore, saveAllStores } from "./store";
-
-export * from "./jsx/index";
+export { DLCSS, cascade, scope } from "./css";
+export * from "./jsx";

@@ -1,5 +1,40 @@
-import { DLBasePointer, DLBoundPointer } from "../state";
-import { Component } from "./dom";
+import { DLBasePointer, DLBoundPointer, Stateful } from "../state";
+import { DLCSS } from "../css";
+
+export type ComponentChild =
+	| Node
+	| string
+	| number
+	| boolean
+	| null
+	| undefined
+	| ComponentChild[]
+	| DLBasePointer<ComponentChild>;
+
+export type ComponentContext<T> = {
+	state: Stateful<T>;
+
+	root: HTMLElement;
+
+	css?: DLCSS;
+
+	mount?: () => void;
+};
+
+type ProxiedProps<Props> = {
+	[Key in keyof Props]: Props[Key] extends DLBasePointer<infer Pointed>
+		? Pointed
+		: Props[Key];
+};
+export type Component<Props = {}, Private = {}, Public = {}> = (
+	this: Stateful<ProxiedProps<Props> & Private & Public>,
+	cx: ComponentContext<ProxiedProps<Props> & Private & Public>
+) => HTMLElement;
+export type ComponentInstance<T extends Component> =
+	T extends Component<infer Props, infer Private, infer Public>
+		? DLElement<ProxiedProps<Props> & Private & Public>
+		: never;
+export type DLElement<T> = HTMLElement & { $: ComponentContext<T> };
 
 type OnEventMap<T> = {
 	[K in keyof T as K extends string ? `on:${K}` : never]?: (

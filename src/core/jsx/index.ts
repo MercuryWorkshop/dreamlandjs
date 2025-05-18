@@ -1,9 +1,8 @@
 import { DOCUMENT } from "../consts";
 import { createState, isBasePtr, isBoundPtr, stateProxy } from "../state";
-import { cssBoundary, cssComponent, genuid, rewriteCSS } from "./css";
-import { ComponentChild, ComponentContext, DLElement } from "./dom";
-// jsx definitions
-import "./jsx";
+import { cssBoundary, cssComponent, genuid, rewriteCSS } from "../css";
+import "./definitions";
+import { ComponentChild, ComponentContext, DLElement } from "./definitions";
 
 export {
 	DLElement,
@@ -11,8 +10,7 @@ export {
 	ComponentChild,
 	ComponentContext,
 	ComponentInstance,
-} from "./dom";
-export { scope, cascade, DLCSS } from "./css";
+} from "./definitions";
 
 let currentCssIdent: string | null = null;
 
