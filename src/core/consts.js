@@ -1,2 +1,18 @@
-export let [DREAMLAND, STATEFUL, CSS] = Array.from(Array(3), Symbol);
+export let [
+	// dl
+	DREAMLAND,
+	STATEFUL,
+	CSS,
+	// selectorParser
+	COMMA_TOKEN,
+	COMBINATOR_TOKEN,
+	ID_TOKEN,
+	CLASS_TOKEN,
+	PSEUDO_ELEMENT_TOKEN,
+	PSEUDO_CLASS_TOKEN,
+	UNIVERSAL_TOKEN,
+	ATTRIBUTE_TOKEN,
+	TYPE_TOKEN,
+	SELECTOR_PARSER_ERROR,
+] = Array.from(Array(13), Symbol);
 export let DOCUMENT = document;
