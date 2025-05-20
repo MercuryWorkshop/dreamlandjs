@@ -32,7 +32,7 @@ export let genuid = () => {
 let GLOBAL = ":global(";
 let rewriteCascading = (css: string, tag: string): string => {
 	let where = tokenize(`:where(.${tag})`);
-	let globalWhereTransformation = `:where(.${genuid()} `;
+	let globalWhereTransformation = `:where(._${genuid()} `;
 
 	let rewriteRules = (list: CSSRule[]): CSSRule[] => {
 		for (let rule of list) {

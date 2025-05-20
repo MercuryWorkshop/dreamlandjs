@@ -136,9 +136,7 @@ let jsxFactory = (
 		cx.mount?.();
 	} else {
 		let xmlns = props?.xmlns;
-		el = xmlns
-			? DOCUMENT.createElementNS(xmlns, init)
-			: DOCUMENT.createElement(init);
+		el = DOCUMENT["createElement" + (xmlns ? "NS" : "")](xmlns || init, xmlns);
 
 		for (let attr in props) {
 			let val = props[attr];
