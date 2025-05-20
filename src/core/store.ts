@@ -8,7 +8,7 @@ import {
 
 let delegates = [];
 
-export function createStore<T extends Object>(
+export let createStore = <T extends Object>(
 	target: T,
 	options: {
 		ident: string;
@@ -20,7 +20,7 @@ export function createStore<T extends Object>(
 			  };
 		autosave: "auto" | "manual" | "beforeunload";
 	}
-): Stateful<T> {
+): Stateful<T> => {
 	let { ident, backing, autosave } = options;
 	let read: (ident: string) => string,
 		write: (ident: string, data: string) => void;
@@ -175,8 +175,8 @@ export function createStore<T extends Object>(
 	}
 
 	return createState(target);
-}
+};
 
-export function saveAllStores() {
+export let saveAllStores = () => {
 	delegates.forEach((cb) => cb());
-}
+};

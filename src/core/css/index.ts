@@ -20,21 +20,21 @@ export let cssComponent = "dlc";
 // this lets scoped styles leak into cascading styles, replacing dl 0.0.x leak
 export let cssBoundary = "dlb";
 
-export function genuid() {
+export let genuid = () => {
 	// prettier-ignore
 	// dl 0.0.x:
 	//     `${Array(4).fill(0).map(()=>Math.floor(Math.random()*36).toString(36)}).join('')}`
 	return [...Array(16)].reduce(a => a + Math.random().toString(36)[2], '')
 	// the above will occasionally misfire with `undefined` or 0 in the string whenever Math.random returns exactly 0 or really small numbers
 	// we don't care, it would be very uncommon for that to actually happen 16 times
-}
+};
 
 let GLOBAL = ":global(";
-function rewriteCascading(css: string, tag: string): string {
+let rewriteCascading = (css: string, tag: string): string => {
 	let where = tokenize(`:where(.${tag})`);
 	let globalWhereTransformation = `:where(.${genuid()} `;
 
-	function rewriteRules(list: CSSRule[]): CSSRule[] {
+	let rewriteRules = (list: CSSRule[]): CSSRule[] => {
 		for (let rule of list) {
 			if ("selectorText" in rule) {
 				let tokens = tokenize(
@@ -78,28 +78,28 @@ function rewriteCascading(css: string, tag: string): string {
 		}
 
 		return list;
-	}
+	};
 
 	let sheet = new CSSStyleSheet();
 	sheet.replaceSync(css.replace(GLOBAL, globalWhereTransformation));
 	return rewriteRules(Array.from(sheet.cssRules))
 		.map((x) => x.cssText)
 		.join("");
-}
+};
 
-function rewriteScoped(css: string, tag: string): string {
+let rewriteScoped = (css: string, tag: string): string => {
 	return `@scope(.${tag}.${cssComponent}) to (:not(.${tag}).${cssBoundary}){${css}}`;
-}
+};
 
-export function rewriteCSS(css: DLCSS, tag: string): string {
+export let rewriteCSS = (css: DLCSS, tag: string): string => {
 	if (css._cascade) {
 		return rewriteCascading(css.css, tag);
 	} else {
 		return rewriteScoped(css.css, tag);
 	}
-}
+};
 
-function flatten(template: TemplateStringsArray, params: any[]): string {
+let flatten = (template: TemplateStringsArray, params: any[]): string => {
 	let flattened = [];
 	for (let i in template) {
 		flattened.push(template[i]);
@@ -108,20 +108,23 @@ function flatten(template: TemplateStringsArray, params: any[]): string {
 		}
 	}
 	return flattened.join("");
-}
+};
 
-export function cascade(
+export let cascade = (
 	template: TemplateStringsArray,
 	...params: any[]
-): DLCSS {
+): DLCSS => {
 	return {
 		[DREAMLAND]: CSS,
 		_cascade: true,
 		css: flatten(template, params),
 	};
-}
+};
 
-export function scope(template: TemplateStringsArray, ...params: any[]): DLCSS {
+export let scope = (
+	template: TemplateStringsArray,
+	...params: any[]
+): DLCSS => {
 	if (!self.CSSScopeRule) {
 		// firefox moment
 		dev: {
@@ -136,4 +139,4 @@ export function scope(template: TemplateStringsArray, ...params: any[]): DLCSS {
 		_cascade: false,
 		css: flatten(template, params),
 	};
-}
+};

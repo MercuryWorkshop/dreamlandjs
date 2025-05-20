@@ -45,7 +45,7 @@ let internalStateful: Map<symbol, StateData> = new Map();
 
 // once the path has been collected listeners are added to all state objects and pointers touched
 // any changes to props that the pointer touches trigger a recalculate and notify all of the pointers' listeners
-function initPtr(id: symbol) {
+let initPtr = (id: symbol) => {
 	let ptr = internalPointers.get(id);
 
 	dev: {
@@ -79,9 +79,9 @@ function initPtr(id: symbol) {
 			});
 		}
 	}
-}
+};
 
-function usestr(template: TemplateStringsArray, params: any[]) {
+let usestr = (template: TemplateStringsArray, params: any[]) => {
 	let state = createState({}) as Stateful<{ _string: string }>;
 	let flattened = [];
 	for (let i in template) {
@@ -114,10 +114,10 @@ function usestr(template: TemplateStringsArray, params: any[]) {
 	state._string = flattened.join("");
 
 	return use(state._string);
-}
+};
 
 Object.defineProperty(globalThis, "use", {
-	get: () => {
+	get() {
 		useTrap = true;
 		return (
 			magicPtr: { [Symbol.toPrimitive]: () => symbol } | TemplateStringsArray,
@@ -157,7 +157,7 @@ type StatefulObject = Record<string | symbol, any>;
 export type Stateful<T extends StatefulObject> = T & {
 	[DREAMLAND]: typeof STATEFUL;
 };
-export function createState<T extends StatefulObject>(obj: T): Stateful<T> {
+export let createState = <T extends StatefulObject>(obj: T): Stateful<T> => {
 	dev: {
 		if (!(obj instanceof Object)) {
 			throw "$state requires an object";
@@ -225,24 +225,25 @@ export function createState<T extends StatefulObject>(obj: T): Stateful<T> {
 	state._proxy = proxy;
 
 	return proxy as Stateful<T>;
-}
+};
 
-function getStatefulInner(state: Stateful<any>): StateData {
+let getStatefulInner = (state: Stateful<any>): StateData => {
 	useTrap = true;
 	let id = state[DREAMLAND];
 	useTrap = false;
 	return internalStateful.get(id);
-}
-export function stateListen<T extends StatefulObject>(
+};
+export let stateListen = <T extends StatefulObject>(
 	state: Stateful<T>,
 	func: (prop: string | symbol, newValue: any) => void
-) {
+) => {
 	getStatefulInner(state)._listeners.push(func);
-}
-export function stateProxy<
-	T extends StatefulObject,
-	Key extends string | symbol,
->(state: Stateful<T>, key: Key, pointer: DLBasePointer<T[Key]>) {
+};
+export let stateProxy = <T extends StatefulObject, Key extends string | symbol>(
+	state: Stateful<T>,
+	key: Key,
+	pointer: DLBasePointer<T[Key]>
+) => {
 	let inner = getStatefulInner(state);
 	inner._target[key] = pointer.value;
 	let setting = false;
@@ -257,17 +258,17 @@ export function stateProxy<
 		}
 		if (pointer instanceof DLBoundPointer && prop === key) pointer.value = val;
 	});
-}
+};
 
-export function isBasePtr(val: any): val is DLBasePointer<any> {
+export let isBasePtr = (val: any): val is DLBasePointer<any> => {
 	return val instanceof DLBasePointer;
-}
-export function isBoundPtr(val: any): val is DLBoundPointer<any> {
+};
+export let isBoundPtr = (val: any): val is DLBoundPointer<any> => {
 	return isBasePtr(val) && val.bound;
-}
-export function isStateful(val: any): val is Stateful<any> {
+};
+export let isStateful = (val: any): val is Stateful<any> => {
 	return val[DREAMLAND] === STATEFUL;
-}
+};
 
 export abstract class DLBasePointer<T> {
 	// @internal

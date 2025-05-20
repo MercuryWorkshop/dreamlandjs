@@ -103,7 +103,7 @@ let TOKENS: Map<symbol, RegExp> = new Map([
 ]);
 let TRIM_TOKENS = new Set<symbol>([COMBINATOR_TOKEN, COMMA_TOKEN]);
 
-function getArgumentPatternByType(type: symbol) {
+let getArgumentPatternByType = (type: symbol) => {
 	if ([PSEUDO_CLASS_TOKEN, PSEUDO_ELEMENT_TOKEN].includes(type)) {
 		return new RegExp(
 			TOKENS.get(type)!.source.replace("(?<arg>¶*)", "(?<arg>.*)"),
@@ -112,9 +112,9 @@ function getArgumentPatternByType(type: symbol) {
 	} else {
 		return TOKENS.get(type);
 	}
-}
+};
 
-function gobbleParens(text: string, offset: number): string {
+let gobbleParens = (text: string, offset: number): string => {
 	let nesting = 0;
 	let result = "";
 	for (; offset < text.length; offset++) {
@@ -132,9 +132,9 @@ function gobbleParens(text: string, offset: number): string {
 		}
 	}
 	return result;
-}
+};
 
-function tokenizeBy(text: string): Token[] {
+let tokenizeBy = (text: string): Token[] => {
 	if (!text) {
 		return [];
 	}
@@ -198,11 +198,11 @@ function tokenizeBy(text: string): Token[] {
 	}
 
 	return tokens as Token[];
-}
+};
 
 let STRING_PATTERN = /(['"])([^\\\n]+?)\1/g;
 let ESCAPE_PATTERN = /\\./g;
-export function tokenize(selector: string): Token[] {
+export let tokenize = (selector: string): Token[] => {
 	// Prevent leading/trailing whitespaces from being interpreted as combinators
 	selector = selector.trim();
 	if (selector === "") {
@@ -297,8 +297,8 @@ export function tokenize(selector: string): Token[] {
 	}
 
 	return tokens;
-}
+};
 
-export function stringify(tokens: Token[]): string {
+export let stringify = (tokens: Token[]): string => {
 	return tokens.map((x) => x._content).join("");
-}
+};

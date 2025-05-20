@@ -15,29 +15,29 @@ export {
 
 let currentCssIdent: string | null = null;
 
-function withIdent<T>(ident: string, fn: () => T): T {
+let withIdent = <T>(ident: string, fn: () => T): T => {
 	let old = currentCssIdent;
 	currentCssIdent = ident;
 	let x = fn();
 	currentCssIdent = old;
 	return x;
-}
+};
 
-function comment(text: string) {
-	return DOCUMENT.createComment(text);
-}
+let comment = (text?: string) => {
+	return new Comment(text);
+};
 
-function mapChild(child: ComponentChild, el: Node, before?: Node): Node {
+let mapChild = (child: ComponentChild, el: Node, before?: Node): Node => {
 	if (child == null) {
-		return comment("");
+		return comment();
 	} else if (isBasePtr(child)) {
 		let childEl: Node = null!;
 
-		function setNode(val: ComponentChild) {
+		let setNode = (val: ComponentChild) => {
 			let newEl: Node = mapChild(val, el, childEl);
 			if (childEl) el.replaceChild(newEl, childEl);
 			childEl = newEl;
-		}
+		};
 
 		setNode(child.value);
 		child.listen(setNode);
@@ -89,15 +89,15 @@ function mapChild(child: ComponentChild, el: Node, before?: Node): Node {
 
 		return end;
 	} else {
-		return DOCUMENT.createTextNode("" + child);
+		return new Text(child as any);
 	}
-}
+};
 
-function jsxFactory(
+let jsxFactory = (
 	init: any,
 	props: Record<string, any> | null,
 	...children: ComponentChild[]
-): HTMLElement {
+): HTMLElement => {
 	dev: {
 		if (!["string", "function"].includes(typeof init))
 			throw new Error("invalid component");
@@ -160,7 +160,7 @@ function jsxFactory(
 			} else if (attr === "checked") {
 				dev: {
 					if (!isBoundPtr(val)) {
-						throw new Error("value prop value must be a bound pointer");
+						throw new Error("checked prop value must be a bound pointer");
 					}
 				}
 				val.listen((x) => ((el as any).checked = x));
@@ -205,6 +205,6 @@ function jsxFactory(
 	}
 
 	return el;
-}
+};
 
 export { jsxFactory as h };
