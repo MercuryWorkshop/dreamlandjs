@@ -10,8 +10,8 @@ import {
 	UNIVERSAL_TOKEN,
 	ATTRIBUTE_TOKEN,
 	TYPE_TOKEN,
-	SELECTOR_PARSER_ERROR,
 } from "../consts";
+import { fatal } from "../utils";
 
 export interface BaseToken {
 	readonly _type: symbol;
@@ -41,12 +41,12 @@ export interface ClassToken extends NamedToken {
 
 export interface PseudoElementToken extends NamedToken {
 	_type: typeof PSEUDO_ELEMENT_TOKEN;
-	argument?: string;
+	arg?: string;
 }
 
 export interface PseudoClassToken extends NamedToken {
 	_type: typeof PSEUDO_CLASS_TOKEN;
-	argument?: string;
+	arg?: string;
 }
 
 export interface NamespacedToken extends BaseToken {
@@ -59,9 +59,9 @@ export interface UniversalToken extends NamespacedToken {
 
 export interface AttributeToken extends NamespacedToken, NamedToken {
 	_type: typeof ATTRIBUTE_TOKEN;
-	operator?: string;
-	value?: string;
-	caseSensitive?: "i" | "I" | "s" | "S";
+	op?: string;
+	val?: string;
+	case?: "i" | "I" | "s" | "S";
 }
 
 export interface TypeToken extends NamespacedToken, NamedToken {
@@ -87,17 +87,14 @@ export type Token =
 let TOKENS: Map<symbol, RegExp> = new Map([
 	[
 		ATTRIBUTE_TOKEN,
-		/\[\s*(?:(?<namespace>\*|[-\w\P{ASCII}]*)\|)?(?<name>[-\w\P{ASCII}]+)\s*(?:(?<operator>\W?=)\s*(?<value>.+?)\s*(\s(?<caseSensitive>[iIsS]))?\s*)?\]/gu,
+		/\[\s*(?:(?<namespace>\*|[-\w\P{ASCII}]*)\|)?(?<name>[-\w\P{ASCII}]+)\s*(?:(?<op>\W?=)\s*(?<val>.+?)\s*(\s(?<case>[iIsS]))?\s*)?\]/gu,
 	],
 	[ID_TOKEN, /#(?<name>[-\w\P{ASCII}]+)/gu],
 	[CLASS_TOKEN, /\.(?<name>[-\w\P{ASCII}]+)/gu],
 	[COMMA_TOKEN, /\s*,\s*/g], // must be before combinator
 	[COMBINATOR_TOKEN, /\s*[\s>+~]\s*/g], // this must be after attribute
-	[
-		PSEUDO_ELEMENT_TOKEN,
-		/::(?<name>[-\w\P{ASCII}]+)(?:\((?<argument>¶*)\))?/gu,
-	], // this must be before pseudo-class
-	[PSEUDO_CLASS_TOKEN, /:(?<name>[-\w\P{ASCII}]+)(?:\((?<argument>¶*)\))?/gu],
+	[PSEUDO_ELEMENT_TOKEN, /::(?<name>[-\w\P{ASCII}]+)(?:\((?<arg>¶*)\))?/gu], // this must be before pseudo-class
+	[PSEUDO_CLASS_TOKEN, /:(?<name>[-\w\P{ASCII}]+)(?:\((?<arg>¶*)\))?/gu],
 	[UNIVERSAL_TOKEN, /(?:(?<namespace>\*|[-\w\P{ASCII}]*)\|)?\*/gu],
 	[
 		TYPE_TOKEN,
@@ -109,7 +106,7 @@ let TRIM_TOKENS = new Set<symbol>([COMBINATOR_TOKEN, COMMA_TOKEN]);
 function getArgumentPatternByType(type: symbol) {
 	if ([PSEUDO_CLASS_TOKEN, PSEUDO_ELEMENT_TOKEN].includes(type)) {
 		return new RegExp(
-			TOKENS.get(type)!.source.replace("(?<argument>¶*)", "(?<argument>.*)"),
+			TOKENS.get(type)!.source.replace("(?<arg>¶*)", "(?<arg>.*)"),
 			"gu"
 		);
 	} else {
@@ -189,7 +186,7 @@ function tokenizeBy(text: string): Token[] {
 				);
 			}
 			prod: {
-				throw SELECTOR_PARSER_ERROR;
+				fatal();
 			}
 		} else {
 			offset += token._content.length;
@@ -212,23 +209,23 @@ export function tokenize(selector: string): Token[] {
 		return [];
 	}
 
-	type Replacement = { value: string; offset: number };
+	type Replacement = { _value: string; _offset: number };
 	let replacements: Replacement[] = [];
 
 	// Replace escapes with placeholders.
 	selector = selector.replace(
 		ESCAPE_PATTERN,
-		(value: string, offset: number) => {
-			replacements.push({ value, offset });
-			return "\uE000".repeat(value.length);
+		(_value: string, _offset: number) => {
+			replacements.push({ _value, _offset });
+			return "\uE000".repeat(_value.length);
 		}
 	);
 
 	// Replace strings with placeholders.
 	selector = selector.replace(
 		STRING_PATTERN,
-		(value: string, quote: string, content: string, offset: number) => {
-			replacements.push({ value, offset });
+		(_value: string, quote: string, content: string, _offset: number) => {
+			replacements.push({ _value, _offset });
 			return `${quote}${"\uE001".repeat(content.length)}${quote}`;
 		}
 	);
@@ -239,7 +236,7 @@ export function tokenize(selector: string): Token[] {
 		let offset: number;
 		while ((offset = selector.indexOf("(", pos)) > -1) {
 			let value = gobbleParens(selector, offset);
-			replacements.push({ value, offset });
+			replacements.push({ _value: value, _offset: offset });
 			selector = `${selector.substring(0, offset)}(${"¶".repeat(
 				value.length - 2
 			)})${selector.substring(offset + value.length)}`;
@@ -254,19 +251,19 @@ export function tokenize(selector: string): Token[] {
 	let changedTokens = new Set<Token>();
 	for (let replacement of replacements.reverse()) {
 		for (let token of tokens) {
-			let { offset, value } = replacement;
+			let { _offset, _value } = replacement;
 			if (
-				!(token._pos[0] <= offset && offset + value.length <= token._pos[1])
+				!(token._pos[0] <= _offset && _offset + _value.length <= token._pos[1])
 			) {
 				continue;
 			}
 
 			let { _content } = token;
-			let tokenOffset = offset - token._pos[0];
+			let tokenOffset = _offset - token._pos[0];
 			token._content =
 				_content.slice(0, tokenOffset) +
-				value +
-				_content.slice(tokenOffset + value.length);
+				_value +
+				_content.slice(tokenOffset + _value.length);
 			if (token._content !== _content) {
 				changedTokens.add(token);
 			}
@@ -281,7 +278,7 @@ export function tokenize(selector: string): Token[] {
 				throw new Error(`Unknown token type: ${String(token._type)}`);
 			}
 			prod: {
-				throw SELECTOR_PARSER_ERROR;
+				fatal();
 			}
 		}
 		pattern.lastIndex = 0;
@@ -293,7 +290,7 @@ export function tokenize(selector: string): Token[] {
 				);
 			}
 			prod: {
-				throw SELECTOR_PARSER_ERROR;
+				fatal();
 			}
 		}
 		Object.assign(token, match.groups);

@@ -13,6 +13,5 @@ export let [
 	UNIVERSAL_TOKEN,
 	ATTRIBUTE_TOKEN,
 	TYPE_TOKEN,
-	SELECTOR_PARSER_ERROR,
-] = Array.from(Array(13), Symbol);
+] = Array.from(Array(12), Symbol);
 export let DOCUMENT = document;

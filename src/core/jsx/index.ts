@@ -3,6 +3,7 @@ import { createState, isBasePtr, isBoundPtr, stateProxy } from "../state";
 import { cssBoundary, cssComponent, genuid, rewriteCSS } from "../css";
 import "./definitions";
 import { ComponentChild, ComponentContext, DLElement } from "./definitions";
+import { fatal } from "../utils";
 
 export {
 	DLElement,
@@ -64,7 +65,7 @@ function mapChild(child: ComponentChild, el: Node, before?: Node): Node {
 				}
 			}
 		}
-		if (!end) throw "vdom error";
+		if (!end) fatal();
 
 		let started = false;
 		let current: Node[] = [];
@@ -99,7 +100,7 @@ function jsxFactory(
 ): HTMLElement {
 	dev: {
 		if (!["string", "function"].includes(typeof init))
-			throw "invalid component";
+			throw new Error("invalid component");
 	}
 
 	let el: HTMLElement;
@@ -117,7 +118,7 @@ function jsxFactory(
 		}
 
 		let cx = { state } as ComponentContext<any>;
-		let cssIdent = "dl-" + init.name + "-" + genuid();
+		let cssIdent = "dl-" + genuid();
 
 		el = withIdent(cssIdent, () => init.call(state, cx));
 
@@ -144,10 +145,26 @@ function jsxFactory(
 			if (attr === "this") {
 				dev: {
 					if (!isBoundPtr(val)) {
-						throw "this prop value must be a bound pointer";
+						throw new Error("this prop value must be a bound pointer");
 					}
 				}
 				val.value = el;
+			} else if (attr === "value") {
+				dev: {
+					if (!isBoundPtr(val)) {
+						throw new Error("value prop value must be a bound pointer");
+					}
+				}
+				val.listen((x) => ((el as any).value = x));
+				el.addEventListener("change", () => (val.value = (el as any).value));
+			} else if (attr === "checked") {
+				dev: {
+					if (!isBoundPtr(val)) {
+						throw new Error("value prop value must be a bound pointer");
+					}
+				}
+				val.listen((x) => ((el as any).checked = x));
+				el.addEventListener("click", () => (val.value = (el as any).checked));
 			} else if (attr.startsWith("on:")) {
 				let ident = currentCssIdent;
 				el.addEventListener(attr.substring(3), (e) =>
@@ -155,13 +172,15 @@ function jsxFactory(
 				);
 			} else if (attr.startsWith("class:")) {
 				let name = attr.substring(6);
+				let cls = el.classList;
 				let handle = (val: boolean) => {
 					if (val) {
-						el.classList.add(name);
+						cls.add(name);
 					} else {
-						el.classList.remove(name);
+						cls.remove(name);
 					}
 				};
+
 				if (isBasePtr(val)) {
 					val.listen(handle);
 					handle(val.value);

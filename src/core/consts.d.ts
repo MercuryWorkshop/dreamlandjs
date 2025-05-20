@@ -11,6 +11,5 @@ export const PSEUDO_CLASS_TOKEN: unique symbol;
 export const UNIVERSAL_TOKEN: unique symbol;
 export const ATTRIBUTE_TOKEN: unique symbol;
 export const TYPE_TOKEN: unique symbol;
-export const SELECTOR_PARSER_ERROR: unique symbol;
 
 export const DOCUMENT: typeof document;
