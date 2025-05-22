@@ -93,6 +93,7 @@ let mapChild = (child: ComponentChild, el: Node, before?: Node): Node => {
 	}
 };
 
+
 let jsxFactory = (
 	init: any,
 	props: Record<string, any> | null,
@@ -138,6 +139,11 @@ let jsxFactory = (
 		let xmlns = props?.xmlns;
 		el = DOCUMENT["createElement" + (xmlns ? "NS" : "")](xmlns || init, xmlns);
 
+		let currySetVal = (param: string) => (val: any) => {
+			el.setAttribute(param, val);
+			(el as any).value = val;
+		}
+
 		for (let attr in props) {
 			let val = props[attr];
 			if (attr === "this") {
@@ -148,21 +154,23 @@ let jsxFactory = (
 				}
 				val.value = el;
 			} else if (attr === "value") {
-				dev: {
-					if (!isBoundPtr(val)) {
-						throw new Error("value prop value must be a bound pointer");
-					}
+				let set = currySetVal("value");
+				if (isBasePtr(val)) {
+					val.listen(set);
+					if (isBoundPtr(val))
+						el.addEventListener("change", () => (val.value = (el as any).value));
+				} else {
+					set(val);
 				}
-				val.listen((x) => ((el as any).value = x));
-				el.addEventListener("change", () => (val.value = (el as any).value));
 			} else if (attr === "checked") {
-				dev: {
-					if (!isBoundPtr(val)) {
-						throw new Error("checked prop value must be a bound pointer");
-					}
+				let set = currySetVal("checked");
+				if (isBasePtr(val)) {
+					val.listen(set);
+					if (isBoundPtr(val))
+						el.addEventListener("change", () => (val.value = (el as any).value));
+				} else {
+					set(val);
 				}
-				val.listen((x) => ((el as any).checked = x));
-				el.addEventListener("click", () => (val.value = (el as any).checked));
 			} else if (attr.startsWith("on:")) {
 				let ident = currentCssIdent;
 				el.addEventListener(attr.substring(3), (e) =>
