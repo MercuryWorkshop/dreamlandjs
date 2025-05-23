@@ -9,11 +9,11 @@ import {
 let delegates = [];
 
 type StoreSyncBacking = {
-	read: (ident: string) => string;
+	read: (ident: string) => string | null;
 	write: (ident: string, data: string) => void;
 };
 type StoreAsyncBacking = {
-	read: (ident: string) => Promise<string>;
+	read: (ident: string) => Promise<string | null>;
 	write: (ident: string, data: string) => Promise<void>;
 };
 
@@ -45,11 +45,11 @@ export function createStore<T extends Object>(
 ): Stateful<T> | Promise<Stateful<T>> {
 	let { ident, backing, autosave } = options;
 
-	let read: (ident: string) => Promise<string> | string;
+	let read: (ident: string) => Promise<string | null> | string | null;
 	let write: (ident: string, data: string) => Promise<void>;
 
 	if (backing === "localstorage") {
-		read = (ident) => LOCALSTORAGE[ident];
+		read = (ident) => LOCALSTORAGE[ident] || null;
 		write = async (ident, data) => (LOCALSTORAGE[ident] = data) as any;
 	} else {
 		read = (ident) => backing.read(ident);
@@ -156,7 +156,7 @@ export function createStore<T extends Object>(
 				return state;
 			};
 
-			target = de(0);
+			target = Object.assign(target, de(0));
 		}
 
 		let state = createState(target);
