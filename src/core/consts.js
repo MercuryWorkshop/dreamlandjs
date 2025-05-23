@@ -2,7 +2,6 @@ export let [
 	// dl
 	DREAMLAND,
 	STATEFUL,
-	CSS,
 	// selectorParser
 	COMMA_TOKEN,
 	COMBINATOR_TOKEN,

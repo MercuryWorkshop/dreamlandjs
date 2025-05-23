@@ -1,24 +1,8 @@
-import {
-	COMBINATOR_TOKEN,
-	COMMA_TOKEN,
-	CSS,
-	DREAMLAND,
-	PSEUDO_CLASS_TOKEN,
-} from "../consts";
+import { COMBINATOR_TOKEN, COMMA_TOKEN, PSEUDO_CLASS_TOKEN } from "../consts";
 import { stringify, Token, tokenize } from "./selectorParser";
-
-export type DLCSS = {
-	[DREAMLAND]: typeof CSS;
-	// @internal
-	_cascade: boolean;
-	css: string;
-};
 
 // added to every component's root, determines start of scoped css scope
 export let cssComponent = "dlc";
-// added to a component's root if it's scoped, determines end of scoped css scope
-// this lets scoped styles leak into cascading styles, replacing dl 0.0.x leak
-export let cssBoundary = "dlb";
 
 export let genuid = () => {
 	// prettier-ignore
@@ -30,7 +14,7 @@ export let genuid = () => {
 };
 
 let GLOBAL = ":global(";
-let rewriteCascading = (css: string, tag: string): string => {
+export let rewriteCSS = (css: string, tag: string): string => {
 	let where = tokenize(`:where(.${tag})`);
 	let globalWhereTransformation = `:where(._${genuid()} `;
 
@@ -85,58 +69,4 @@ let rewriteCascading = (css: string, tag: string): string => {
 	return rewriteRules(Array.from(sheet.cssRules))
 		.map((x) => x.cssText)
 		.join("");
-};
-
-let rewriteScoped = (css: string, tag: string): string => {
-	return `@scope(.${tag}.${cssComponent}) to (:not(.${tag}).${cssBoundary}){${css}}`;
-};
-
-export let rewriteCSS = (css: DLCSS, tag: string): string => {
-	if (css._cascade) {
-		return rewriteCascading(css.css, tag);
-	} else {
-		return rewriteScoped(css.css, tag);
-	}
-};
-
-let flatten = (template: TemplateStringsArray, params: any[]): string => {
-	let flattened = [];
-	for (let i in template) {
-		flattened.push(template[i]);
-		if (params[i]) {
-			flattened.push(params[i]);
-		}
-	}
-	return flattened.join("");
-};
-
-export let cascade = (
-	template: TemplateStringsArray,
-	...params: any[]
-): DLCSS => {
-	return {
-		[DREAMLAND]: CSS,
-		_cascade: true,
-		css: flatten(template, params),
-	};
-};
-
-export let scope = (
-	template: TemplateStringsArray,
-	...params: any[]
-): DLCSS => {
-	if (!self.CSSScopeRule) {
-		// firefox moment
-		dev: {
-			console.warn(
-				"[dreamland.js] CSS scoping is not supported in your browser, unable to prevent styles from cascading"
-			);
-		}
-		return cascade(template, ...params);
-	}
-	return {
-		[DREAMLAND]: CSS,
-		_cascade: false,
-		css: flatten(template, params),
-	};
 };

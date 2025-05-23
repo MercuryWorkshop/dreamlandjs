@@ -1,6 +1,6 @@
 import { DOCUMENT } from "../consts";
 import { createState, isBasePtr, isBoundPtr, stateProxy } from "../state";
-import { cssBoundary, cssComponent, genuid, rewriteCSS } from "../css";
+import { cssComponent, genuid, rewriteCSS } from "../css";
 import {
 	Component,
 	ComponentChild,
@@ -145,7 +145,6 @@ function jsxFactory(
 		(el as DLElement<any>).$ = cx;
 
 		el.classList.add(cssComponent);
-		if (!cx.css?._cascade) el.classList.add(cssBoundary);
 		if (cx.css) {
 			let el = DOCUMENT.createElement("style");
 			el.innerText = rewriteCSS(cx.css, cssIdent);

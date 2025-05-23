@@ -1,5 +1,4 @@
 import { DLBasePointer, DLBoundPointer, Stateful } from "../state";
-import { DLCSS } from "../css";
 
 export type ComponentChild =
 	| Node
@@ -18,7 +17,7 @@ export type ComponentContext<T> = {
 
 	children: ComponentChild[] | undefined[];
 
-	css?: DLCSS;
+	css?: string;
 
 	mount?: () => void;
 };

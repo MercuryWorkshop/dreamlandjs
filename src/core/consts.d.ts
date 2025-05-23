@@ -1,6 +1,5 @@
 export const DREAMLAND: unique symbol;
 export const STATEFUL: unique symbol;
-export const CSS: unique symbol;
 
 export const COMMA_TOKEN: unique symbol;
 export const COMBINATOR_TOKEN: unique symbol;
