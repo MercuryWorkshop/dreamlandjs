@@ -20,16 +20,6 @@ export {
 	DLElementNameToElement,
 } from "./definitions";
 
-let currentCssIdent: string | null = null;
-
-let withIdent = <T>(ident: string, fn: () => T): T => {
-	let old = currentCssIdent;
-	currentCssIdent = ident;
-	let x = fn();
-	currentCssIdent = old;
-	return x;
-};
-
 let comment = (text?: string) => {
 	return new Comment(text);
 };
@@ -44,6 +34,20 @@ let mapChild = (child: ComponentChild, el: Node, before?: Node): Node => {
 			let newEl: Node = mapChild(val, el, childEl);
 			if (childEl) el.replaceChild(newEl, childEl);
 			childEl = newEl;
+
+			// propagate $nopaint to the actual element
+			if (child.$nopaint) {
+				newEl.$nopaint = true;
+			}
+			// propagate $ident to the actual element
+			if (child.$ident) {
+				newEl.$ident = child.$ident;
+				newEl.classList.add(child.$ident);
+			} else if (el.$ident) {
+				newEl.$ident = el.$ident;
+				newEl.classList.add(el.$ident);
+			}
+			newEl.$sourceptr = child;
 		};
 
 		setNode(child.value);
@@ -139,8 +143,52 @@ function jsxFactory(
 		cx.children = children;
 
 		let cssIdent = "dl-" + genuid();
+		dev: {
+			cssIdent += "-" + init.name;
+		}
 
-		el = withIdent(cssIdent, () => init.call(state, cx));
+		// start of the css painting process
+		// first mark the slot children as parent-managed components
+		for (let child of children) {
+			if (child instanceof HTMLElement || isBasePtr(child)) {
+				child.$nopaint = true;
+			}
+		}
+		el = init.call(state, cx);
+
+		const descend = (el: Node) => {
+			for (let child of el.childNodes) {
+				if (!(child instanceof HTMLElement)) continue;
+				if (child.$) continue;
+				if (child.$nopaint) continue;
+				child.$ident = cssIdent;
+				child.classList.add(cssIdent);
+				descend(child);
+			}
+		};
+		descend(el);
+		// second run, find the $nopaint elements and mark them with this tag
+		const descendNopaint = (el: Node) => {
+			for (let child of el.childNodes) {
+				if (child.$sourceptr && child.$sourceptr.$nopaint) {
+					child.$ident = cssIdent;
+					child.classList.add(cssIdent);
+					child.$sourceptr.$ident = cssIdent;
+					continue;
+				}
+				if (!(child instanceof HTMLElement)) continue;
+				if (child.$nopaint) {
+					child.$ident = cssIdent;
+					child.classList.add(cssIdent);
+					descend(child);
+				} else {
+					descendNopaint(child);
+				}
+			}
+		};
+		descendNopaint(el);
+		el.$ident = cssIdent;
+		el.classList.add(cssIdent);
 
 		(el as DLElement<any>).$ = cx;
 
@@ -198,10 +246,7 @@ function jsxFactory(
 					set(val);
 				}
 			} else if (attr.startsWith("on:")) {
-				let ident = currentCssIdent;
-				el.addEventListener(attr.substring(3), (e) =>
-					withIdent(ident, () => val(e))
-				);
+				el.addEventListener(attr.substring(3), (e) => val(e));
 			} else if (attr.startsWith("class:")) {
 				let name = attr.substring(6);
 				let cls = el.classList;
@@ -226,8 +271,6 @@ function jsxFactory(
 				el.setAttribute(attr, val);
 			}
 		}
-
-		if (currentCssIdent) el.classList.add(currentCssIdent);
 
 		for (let child of children) {
 			el.appendChild(mapChild(child, el));
