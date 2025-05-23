@@ -16,6 +16,8 @@ export type ComponentContext<T> = {
 
 	root: HTMLElement;
 
+	children: ComponentChild[] | undefined[];
+
 	css?: DLCSS;
 
 	mount?: () => void;

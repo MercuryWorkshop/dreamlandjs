@@ -107,7 +107,7 @@ let jsxFactory = (
 	let el: HTMLElement;
 
 	if (typeof init === "function") {
-		let state = createState({ children });
+		let state = createState({});
 		for (let attr in props) {
 			let val = props[attr];
 
@@ -118,7 +118,10 @@ let jsxFactory = (
 			}
 		}
 
-		let cx = { state } as ComponentContext<any>;
+		let cx = Object.create(init.prototype) as ComponentContext<any>;
+		cx.state = state;
+		cx.children = children;
+
 		let cssIdent = "dl-" + genuid();
 
 		el = withIdent(cssIdent, () => init.call(state, cx));
