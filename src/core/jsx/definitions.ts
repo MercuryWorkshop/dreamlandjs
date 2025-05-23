@@ -56,18 +56,19 @@ type IntrinsicProps<ElementType extends Element> =
 			[key: `on:${string}`]: (event: Event) => void;
 			[key: string]: any;
 	  };
-type ElementTagNames = HTMLElementTagNameMap &
+type DLElementTagNames = HTMLElementTagNameMap &
 	HTMLElementDeprecatedTagNameMap &
 	Pick<
 		SVGElementTagNameMap,
 		Exclude<keyof SVGElementTagNameMap, keyof HTMLElementTagNameMap>
 	>;
+export type DLElementNameToElement<T extends string> = T extends keyof DLElementTagNames ? DLElementTagNames[T] : HTMLElement;
 type GlobalElement = Element;
 
 declare global {
 	namespace JSX {
 		export type IntrinsicElements = {
-			[El in keyof ElementTagNames]: IntrinsicProps<ElementTagNames[El]>;
+			[El in keyof DLElementTagNames]: IntrinsicProps<DLElementTagNames[El]>;
 		} & {
 			[element: string]: IntrinsicProps<GlobalElement>;
 		};

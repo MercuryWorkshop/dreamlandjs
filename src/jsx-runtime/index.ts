@@ -1,5 +1,7 @@
-import { h } from "dreamland/core";
+import { Component, ComponentInstance, h, DLElementNameToElement } from "dreamland/core";
 
+function jsx<T extends Component<any, any, any>>(init: T, props: Record<string, any> | null, key: string | undefined): ComponentInstance<T>;
+function jsx<T extends string>(init: T, props: Record<string, any> | null, key: string | undefined): DLElementNameToElement<T>;
 function jsx(
 	type: any,
 	props: Record<string, any> | null,

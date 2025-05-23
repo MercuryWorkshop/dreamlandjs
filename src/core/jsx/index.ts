@@ -1,8 +1,7 @@
 import { DOCUMENT } from "../consts";
 import { createState, isBasePtr, isBoundPtr, stateProxy } from "../state";
 import { cssBoundary, cssComponent, genuid, rewriteCSS } from "../css";
-import "./definitions";
-import { ComponentChild, ComponentContext, DLElement } from "./definitions";
+import { Component, ComponentChild, ComponentContext, ComponentInstance, DLElement, DLElementNameToElement } from "./definitions";
 import { fatal } from "../utils";
 
 export {
@@ -11,6 +10,7 @@ export {
 	ComponentChild,
 	ComponentContext,
 	ComponentInstance,
+	DLElementNameToElement,
 } from "./definitions";
 
 let currentCssIdent: string | null = null;
@@ -94,11 +94,13 @@ let mapChild = (child: ComponentChild, el: Node, before?: Node): Node => {
 };
 
 
-let jsxFactory = (
-	init: any,
+function jsxFactory<T extends Component<any, any, any>>(init: T, props: Record<string, any> | null, ...children: ComponentChild[]): ComponentInstance<T>;
+function jsxFactory<T extends string>(init: T, props: Record<string, any> | null, ...children: ComponentChild[]): DLElementNameToElement<T>;
+function jsxFactory(
+	init: Component<any, any, any> | string,
 	props: Record<string, any> | null,
 	...children: ComponentChild[]
-): HTMLElement => {
+): HTMLElement {
 	dev: {
 		if (!["string", "function"].includes(typeof init))
 			throw new Error("invalid component");

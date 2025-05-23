@@ -13,11 +13,11 @@ export let createStore = <T extends Object>(
 	options: {
 		ident: string;
 		backing:
-			| "localstorage"
-			| {
-					read: (ident: string) => string;
-					write: (ident: string, data: string) => void;
-			  };
+		| "localstorage"
+		| {
+			read: (ident: string) => string;
+			write: (ident: string, data: string) => void;
+		};
 		autosave: "auto" | "manual" | "beforeunload";
 	}
 ): Stateful<T> => {
@@ -158,13 +158,14 @@ export let createStore = <T extends Object>(
 		target = de(0);
 	}
 
+	let state = createState(target);
 	delegates.push(save);
 	switch (autosave) {
 		case "beforeunload":
 			addEventListener(autosave, save);
 			break;
 		case "auto":
-			stateListen(target as any, (_prop, value) => autohook(target, value));
+			stateListen(state, (_prop, value) => autohook(target, value));
 			break;
 		case "manual":
 			break;
@@ -174,7 +175,7 @@ export let createStore = <T extends Object>(
 			}
 	}
 
-	return createState(target);
+	return state;
 };
 
 export let saveAllStores = () => {
