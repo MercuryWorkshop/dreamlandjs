@@ -8,175 +8,172 @@ import {
 
 let delegates = [];
 
-export let createStore = <T extends Object>(
+type StoreSyncBacking = {
+	read: (ident: string) => string;
+	write: (ident: string, data: string) => void;
+};
+type StoreAsyncBacking = {
+	read: (ident: string) => Promise<string>;
+	write: (ident: string, data: string) => Promise<void>;
+};
+
+let LOCALSTORAGE = localStorage;
+
+export function createStore<T extends Object>(
 	target: T,
 	options: {
 		ident: string;
-		backing:
-			| "localstorage"
-			| {
-					read: (ident: string) => string;
-					write: (ident: string, data: string) => void;
-			  };
+		backing: StoreAsyncBacking;
 		autosave: "auto" | "manual" | "beforeunload";
 	}
-): Stateful<T> => {
+): Promise<Stateful<T>>;
+export function createStore<T extends Object>(
+	target: T,
+	options: {
+		ident: string;
+		backing: "localstorage" | StoreSyncBacking;
+		autosave: "auto" | "manual" | "beforeunload";
+	}
+): Stateful<T>;
+export function createStore<T extends Object>(
+	target: T,
+	options: {
+		ident: string;
+		backing: "localstorage" | StoreSyncBacking | StoreAsyncBacking;
+		autosave: "auto" | "manual" | "beforeunload";
+	}
+): Stateful<T> | Promise<Stateful<T>> {
 	let { ident, backing, autosave } = options;
-	let read: (ident: string) => string,
-		write: (ident: string, data: string) => void;
-	if (typeof backing === "string") {
-		switch (backing) {
-			case "localstorage":
-				read = (ident) => localStorage.getItem(ident);
-				write = (ident, data) => {
-					localStorage.setItem(ident, data);
-				};
-				break;
-			default:
-				dev: {
-					throw "Unknown store type: " + backing;
-				}
-		}
+
+	let read: (ident: string) => Promise<string> | string;
+	let write: (ident: string, data: string) => Promise<void>;
+
+	if (backing === "localstorage") {
+		read = (ident) => LOCALSTORAGE[ident];
+		write = async (ident, data) => (LOCALSTORAGE[ident] = data) as any;
 	} else {
-		({ read, write } = backing);
+		read = (ident) => backing.read(ident);
+		write = async (ident, data) => await backing.write(ident, data);
 	}
 
-	let save = () => {
-		dev: {
-			console.info("[dreamland.js]: saving " + ident);
-		}
+	let last = "";
+	let saving = Promise.all([]) as unknown as Promise<void>;
+	let asyncSave = async () => {
+		await saving;
 
-		// stack gets filled with "pointers" representing unique objects
-		// this is to avoid circular references
+		let stack = [];
 
-		let serstack = {};
-		let vpointercount = 0;
-
-		let ser = (tgt: any) => {
-			let obj = {
-				stateful: isStateful(tgt),
-				values: {},
+		let ser = (target: object) => {
+			let serialized = {
+				s /*stateful*/: isStateful(target),
+				v /*values*/: {},
 			};
-			let i = vpointercount++;
-			serstack[i] = obj;
+			let i = stack.length;
+			stack[i] = serialized;
 
-			for (let key in tgt) {
-				let value = tgt[key];
-
-				if (isBasePtr(value)) continue; // i don"t think we should be serializing pointers?
-				switch (typeof value) {
-					case "string":
-					case "number":
-					case "boolean":
-					case "undefined":
-						// primitives, serialize as strings
-						obj.values[key] = JSON.stringify(value);
-						break;
-
-					case "object":
-						if (value instanceof Array) {
-							obj.values[key] = value.map((v) => {
-								if (typeof v === "object") {
-									return ser(v);
-								} else {
-									return JSON.stringify(v);
-								}
-							});
-							break;
-						} else if (value === null) {
-							obj.values[key] = "null";
-						} else {
-							dev: {
-								if (value.__proto__ === Object.prototype) {
-									throw "Only plain objects can be serialized in stores";
-								}
-							}
-
-							// if it's not a primitive, store it as a number acting as a pointer
-							obj.values[key] = ser(value);
-						}
-						break;
-
-					case "symbol":
-					case "function":
-					case "bigint":
+			let serOne = (target: any) => {
+				if (typeof target === "object") {
+					if (target instanceof Array) {
+						return target.map(serOne);
+					} else if (target === null) {
+						return "null";
+					} else {
 						dev: {
-							throw "Unsupported type: " + typeof value;
+							if (target.__proto__ === Object.prototype) {
+								throw "Only plain objects can be serialized in stores";
+							}
 						}
+
+						return ser(target);
+					}
+				} else {
+					return JSON.stringify(target);
 				}
+			};
+
+			for (let key in target) {
+				if (isBasePtr(key)) {
+					dev: {
+						console.warn(
+							`[dreamland.js]: skipping pointer ${key} while saving ${ident}`
+						);
+					}
+					continue;
+				}
+
+				serialized.v[key] = serOne(target[key]);
 			}
 
 			return i;
 		};
-		ser(target);
 
-		let string = JSON.stringify(serstack);
-		write(ident, string);
+		ser(target);
+		let serialized = JSON.stringify(stack);
+
+		if (serialized === last) return;
+		dev: {
+			console.info("[dreamland.js]: saving " + ident);
+		}
+		await write(ident, serialized);
+	};
+	let save = () => {
+		saving = asyncSave();
 	};
 
-	let autohook = (target: any, value: any) => {
-		if (isStateful(value)) {
-			stateListen(value, (_prop, value) => autohook(target, value));
-		}
+	let saveHook = (_key: any, value: any) => {
+		if (isStateful(value)) stateListen(value, saveHook);
 		save();
 	};
 
-	let destack = JSON.parse(read(ident));
-	if (destack) {
-		let objcache = {};
+	let finish = (data: string): Stateful<T> => {
+		let stack = JSON.parse(data);
+		if (stack) {
+			let cache = Array(stack.length);
 
-		let de = (i: any) => {
-			if (objcache[i]) return objcache[i];
-			let obj = destack[i];
-			let tgt = {};
-			for (let key in obj.values) {
-				let value = obj.values[key];
-				if (typeof value === "string") {
-					// it's a primitive, easy deser
-					tgt[key] = JSON.parse(value);
-				} else {
-					if (value instanceof Array) {
-						tgt[key] = value.map((v) => {
-							if (typeof v === "string") {
-								return JSON.parse(v);
-							} else {
-								return de(v);
-							}
-						});
+			let de = (i: number) => {
+				if (cache[i]) return cache[i];
+				let serialized = stack[i];
+				let target = {};
+
+				let deOne = (val: any) => {
+					if (typeof val === "string") {
+						return JSON.parse(val);
+					} else if (val instanceof Array) {
+						return val.map(deOne);
 					} else {
-						tgt[key] = de(value);
+						return de(val);
 					}
+				};
+
+				for (let key in serialized.v) {
+					target[key] = deOne(serialized.v[key]);
 				}
-			}
-			if (obj.stateful && autosave == "auto") stateListen(tgt as any, autohook);
-			let newobj = obj.stateful ? createState(tgt) : tgt;
-			objcache[i] = newobj;
-			return newobj;
-		};
 
-		// "0" pointer is the root object
-		target = de(0);
-	}
+				let state = serialized.s ? createState(target) : target;
+				if (isStateful(state) && autosave === "auto")
+					stateListen(state as any, saveHook);
+				cache[i] = state;
+				return state;
+			};
 
-	let state = createState(target);
-	delegates.push(save);
-	switch (autosave) {
-		case "beforeunload":
+			target = de(0);
+		}
+
+		let state = createState(target);
+		delegates.push(save);
+
+		if (autosave === "auto") {
+			stateListen(state, saveHook);
+		} else if (autosave === "beforeunload") {
 			addEventListener(autosave, save);
-			break;
-		case "auto":
-			stateListen(state, (_prop, value) => autohook(target, value));
-			break;
-		case "manual":
-			break;
-		default:
-			dev: {
-				throw "Unknown autosave type: " + autosave;
-			}
-	}
+		}
 
-	return state;
-};
+		return state;
+	};
+
+	let data = read(ident);
+	return data instanceof Promise ? data.then(finish) : finish(data);
+}
 
 export let saveAllStores = () => {
 	delegates.forEach((cb) => cb());
