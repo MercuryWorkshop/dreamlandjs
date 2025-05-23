@@ -142,7 +142,7 @@ function jsxFactory(
 		cx.mount?.();
 	} else {
 		let xmlns = props?.xmlns;
-		el = DOCUMENT["createElement" + (xmlns ? "NS" : "")](xmlns || init, xmlns);
+		el = DOCUMENT["createElement" + (xmlns ? "NS" : "")](xmlns || init, init);
 
 		let currySetVal = (param: string) => (val: any) => {
 			el.setAttribute(param, val);
