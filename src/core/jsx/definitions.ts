@@ -62,7 +62,8 @@ type DLElementTagNames = HTMLElementTagNameMap &
 		SVGElementTagNameMap,
 		Exclude<keyof SVGElementTagNameMap, keyof HTMLElementTagNameMap>
 	>;
-export type DLElementNameToElement<T extends string> = T extends keyof DLElementTagNames ? DLElementTagNames[T] : HTMLElement;
+export type DLElementNameToElement<T extends string> =
+	T extends keyof DLElementTagNames ? DLElementTagNames[T] : HTMLElement;
 type GlobalElement = Element;
 
 declare global {

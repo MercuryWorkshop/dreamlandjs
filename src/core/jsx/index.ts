@@ -1,7 +1,14 @@
 import { DOCUMENT } from "../consts";
 import { createState, isBasePtr, isBoundPtr, stateProxy } from "../state";
 import { cssBoundary, cssComponent, genuid, rewriteCSS } from "../css";
-import { Component, ComponentChild, ComponentContext, ComponentInstance, DLElement, DLElementNameToElement } from "./definitions";
+import {
+	Component,
+	ComponentChild,
+	ComponentContext,
+	ComponentInstance,
+	DLElement,
+	DLElementNameToElement,
+} from "./definitions";
 import { fatal } from "../utils";
 
 export {
@@ -93,9 +100,16 @@ let mapChild = (child: ComponentChild, el: Node, before?: Node): Node => {
 	}
 };
 
-
-function jsxFactory<T extends Component<any, any, any>>(init: T, props: Record<string, any> | null, ...children: ComponentChild[]): ComponentInstance<T>;
-function jsxFactory<T extends string>(init: T, props: Record<string, any> | null, ...children: ComponentChild[]): DLElementNameToElement<T>;
+function jsxFactory<T extends Component<any, any, any>>(
+	init: T,
+	props: Record<string, any> | null,
+	...children: ComponentChild[]
+): ComponentInstance<T>;
+function jsxFactory<T extends string>(
+	init: T,
+	props: Record<string, any> | null,
+	...children: ComponentChild[]
+): DLElementNameToElement<T>;
 function jsxFactory(
 	init: Component<any, any, any> | string,
 	props: Record<string, any> | null,
@@ -147,7 +161,7 @@ function jsxFactory(
 		let currySetVal = (param: string) => (val: any) => {
 			el.setAttribute(param, val);
 			(el as any).value = val;
-		}
+		};
 
 		for (let attr in props) {
 			let val = props[attr];
@@ -163,7 +177,10 @@ function jsxFactory(
 				if (isBasePtr(val)) {
 					val.listen(set);
 					if (isBoundPtr(val))
-						el.addEventListener("change", () => (val.value = (el as any).value));
+						el.addEventListener(
+							"change",
+							() => (val.value = (el as any).value)
+						);
 				} else {
 					set(val);
 				}
@@ -172,7 +189,10 @@ function jsxFactory(
 				if (isBasePtr(val)) {
 					val.listen(set);
 					if (isBoundPtr(val))
-						el.addEventListener("change", () => (val.value = (el as any).value));
+						el.addEventListener(
+							"change",
+							() => (val.value = (el as any).value)
+						);
 				} else {
 					set(val);
 				}
@@ -216,6 +236,6 @@ function jsxFactory(
 	}
 
 	return el;
-};
+}
 
 export { jsxFactory as h };

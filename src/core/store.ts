@@ -13,11 +13,11 @@ export let createStore = <T extends Object>(
 	options: {
 		ident: string;
 		backing:
-		| "localstorage"
-		| {
-			read: (ident: string) => string;
-			write: (ident: string, data: string) => void;
-		};
+			| "localstorage"
+			| {
+					read: (ident: string) => string;
+					write: (ident: string, data: string) => void;
+			  };
 		autosave: "auto" | "manual" | "beforeunload";
 	}
 ): Stateful<T> => {
