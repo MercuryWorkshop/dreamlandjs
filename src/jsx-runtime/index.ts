@@ -6,6 +6,7 @@ function jsx(
 	key: string | undefined
 ): HTMLElement {
 	let { children, ...mapped } = props;
+	if (children === undefined) children = []
 	if (key) mapped.key = key;
 	return h(
 		type,
