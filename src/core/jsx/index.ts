@@ -155,6 +155,8 @@ function jsxFactory(
 		cx.root = el;
 		cx.mount?.();
 	} else {
+		// <svg> elemnts need to be created with createElementNS specifically
+		// we know it's an svg element if it has the xmlns attribute
 		let xmlns = props?.xmlns;
 		el = DOCUMENT["createElement" + (xmlns ? "NS" : "")](xmlns || init, init);
 
@@ -232,6 +234,10 @@ function jsxFactory(
 			el.appendChild(mapChild(child, el));
 		}
 
+		// all children would need to also be created with the correct namespace if we were doing this properly
+		// this is annoying and expensive bundle size wise, so it's easier to just force a reparse
+		// NOTE: bindings on children of svgs will be lost, and conditionals inside svgs will break
+		// this is fine, no one does that anyway
 		if (xmlns) el.innerHTML = el.innerHTML;
 	}
 
