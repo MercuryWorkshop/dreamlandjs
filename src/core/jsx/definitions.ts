@@ -15,7 +15,7 @@ export type ComponentContext<T> = {
 
 	root: HTMLElement;
 
-	children: ComponentChild[] | undefined[];
+	children: ComponentChild[];
 
 	css?: string;
 
