@@ -151,6 +151,7 @@ function jsxFactory(
 		// first mark the slot children as parent-managed components
 		for (let child of children) {
 			if (child instanceof HTMLElement || isBasePtr(child)) {
+				if (child.$) continue;
 				child.$nopaint = true;
 			}
 		}
@@ -159,6 +160,7 @@ function jsxFactory(
 		const descend = (el: Node) => {
 			for (let child of el.childNodes) {
 				if (!(child instanceof HTMLElement)) continue;
+				// console.log(child.$);
 				if (child.$) continue;
 				if (child.$nopaint) continue;
 				child.$ident = cssIdent;
@@ -180,7 +182,7 @@ function jsxFactory(
 				if (child.$nopaint) {
 					child.$ident = cssIdent;
 					child.classList.add(cssIdent);
-					descend(child);
+					if (!child.$) descend(child);
 				} else {
 					descendNopaint(child);
 				}
