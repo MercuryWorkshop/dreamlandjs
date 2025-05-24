@@ -5,7 +5,6 @@ import {
 	Component,
 	ComponentChild,
 	ComponentContext,
-	ComponentInstance,
 	DLElement,
 	DLElementNameToElement,
 } from "./definitions";
@@ -16,8 +15,8 @@ export {
 	Component,
 	ComponentChild,
 	ComponentContext,
-	ComponentInstance,
 	DLElementNameToElement,
+	JSX,
 } from "./definitions";
 
 let comment = (text?: string) => {
@@ -35,19 +34,21 @@ let mapChild = (child: ComponentChild, el: Node, before?: Node): Node => {
 			if (childEl) el.replaceChild(newEl, childEl);
 			childEl = newEl;
 
-			// propagate $nopaint to the actual element
-			if (child.$nopaint) {
-				newEl.$nopaint = true;
+			if (newEl instanceof HTMLElement) {
+				// propagate $nopaint to the actual element
+				if (child.$nopaint) {
+					newEl.$nopaint = true;
+				}
+				// propagate $ident to the actual element
+				if (child.$ident) {
+					newEl.$ident = child.$ident;
+					newEl.classList.add(child.$ident);
+				} else if (el.$ident) {
+					newEl.$ident = el.$ident;
+					newEl.classList.add(el.$ident);
+				}
+				newEl.$sourceptr = child;
 			}
-			// propagate $ident to the actual element
-			if (child.$ident) {
-				newEl.$ident = child.$ident;
-				newEl.classList.add(child.$ident);
-			} else if (el.$ident) {
-				newEl.$ident = el.$ident;
-				newEl.classList.add(el.$ident);
-			}
-			newEl.$sourceptr = child;
 		};
 
 		setNode(child.value);
@@ -138,10 +139,6 @@ function jsxFactory(
 			}
 		}
 
-		let cx = Object.create(init.prototype) as ComponentContext<any>;
-		cx.state = state;
-		cx.children = children;
-
 		let cssIdent = "dl-" + genuid();
 		dev: {
 			cssIdent += "-" + init.name;
@@ -155,12 +152,13 @@ function jsxFactory(
 				child.$nopaint = true;
 			}
 		}
-		el = init.call(state, cx);
+
+		let instance = new init(state);
+		el = instance.html;
 
 		const descend = (el: Node) => {
 			for (let child of el.childNodes) {
 				if (!(child instanceof HTMLElement)) continue;
-				// console.log(child.$);
 				if (child.$) continue;
 				if (child.$nopaint) continue;
 				child.$ident = cssIdent;
@@ -192,17 +190,16 @@ function jsxFactory(
 		el.$ident = cssIdent;
 		el.classList.add(cssIdent);
 
-		(el as DLElement<any>).$ = cx;
+		(el as DLElement<any>).$ = instance;
 
 		el.classList.add(cssComponent);
-		if (cx.css) {
+		if (instance.css) {
 			let el = DOCUMENT.createElement("style");
-			el.innerText = rewriteCSS(cx.css, cssIdent);
+			el.innerText = rewriteCSS(instance.css, cssIdent);
 			DOCUMENT.head.append(el);
 		}
 
-		cx.root = el;
-		cx.mount?.();
+		instance.mount?.();
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute

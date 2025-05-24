@@ -3,6 +3,7 @@ import {
 	ComponentInstance,
 	h,
 	DLElementNameToElement,
+	JSX,
 } from "dreamland/core";
 
 function jsx<T extends Component<any, any, any>>(
@@ -30,4 +31,4 @@ function jsx(
 	);
 }
 
-export { jsx as jsx, jsx as jsxs, jsx as jsxDEV };
+export { jsx as jsx, jsx as jsxs, jsx as jsxDEV, JSX };

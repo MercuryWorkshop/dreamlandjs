@@ -27,14 +27,21 @@ type ProxiedProps<Props> = {
 		? Pointed
 		: Props[Key];
 };
-export type Component<Props = {}, Private = {}, Public = {}> = (
-	this: Stateful<ProxiedProps<Props> & Private & Public>,
-	cx: ComponentContext<ProxiedProps<Props> & Private & Public>
-) => HTMLElement;
-export type ComponentInstance<T extends Component> =
-	T extends Component<infer Props, infer Private, infer Public>
-		? DLElement<ProxiedProps<Props> & Private & Public>
-		: never;
+// export type Component<Props = {}, Private = {}, Public = {}> = (
+// 	this: Stateful<ProxiedProps<Props> & Private & Public>,
+// 	cx: ComponentContext<ProxiedProps<Props> & Private & Public>
+// ) => HTMLElement;
+// export type ComponentInstance<T extends Component> =
+// 	T extends Component<infer Props, infer Private, infer Public>
+// 		? DLElement<ProxiedProps<Props> & Private & Public>
+// 		: never;
+export class Component {
+	css?: string;
+	html: HTMLElement;
+	constructor(state: Stateful<any>) {
+		return state;
+	}
+}
 export type DLElement<T> = HTMLElement & { $: ComponentContext<T> };
 
 type OnEventMap<T> = {
@@ -65,19 +72,33 @@ export type DLElementNameToElement<T extends string> =
 	T extends keyof DLElementTagNames ? DLElementTagNames[T] : HTMLElement;
 type GlobalElement = Element;
 
-declare global {
-	namespace JSX {
-		export type IntrinsicElements = {
-			[El in keyof DLElementTagNames]: IntrinsicProps<DLElementTagNames[El]>;
-		} & {
-			[element: string]: IntrinsicProps<GlobalElement>;
-		};
+// declare global {
+// 	namespace JSX {
 
-		export type ElementType =
-			| keyof IntrinsicElements
-			| Component<any, any, any>;
-		export type Element = HTMLElement;
-		export type LibraryManagedAttributes<C, _> =
-			C extends Component<infer Props, any, any> ? Props : never;
-	}
+// 		export type ElementType = keyof IntrinsicElements | Component;
+// 		export type Element = HTMLElement;
+// 		export type LibraryManagedAttributes<C, _> = C extends Component
+// 			? C
+// 			: never;
+// 	}
+// }
+type PropsOf<C> = {
+	[K in keyof C as C[K] extends Function ? never : K]: C[K];
+};
+type Constructor<T = any> = new (...args: any[]) => T;
+export namespace JSX {
+	export type IntrinsicElements = {
+		[El in keyof DLElementTagNames]: IntrinsicProps<DLElementTagNames[El]>;
+	} & {
+		[element: string]: IntrinsicProps<GlobalElement>;
+	};
+	export type ElementType = keyof IntrinsicElements | any;
+	export type Element = HTMLElement;
+	export type LibraryManagedAttributes<C, _> = C extends new (
+		...args: any
+	) => any
+		? InstanceType<C> extends Component
+			? Omit<PropsOf<InstanceType<C>>, keyof Component>
+			: never
+		: never;
 }
