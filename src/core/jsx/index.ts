@@ -232,9 +232,8 @@ function jsxFactory(
 							"change",
 							() => (val.value = (el as any).value)
 						);
-				} else {
-					set(val);
 				}
+				set(val);
 			} else if (attr === "checked") {
 				let set = currySetVal("checked");
 				if (isBasePtr(val)) {
@@ -244,9 +243,8 @@ function jsxFactory(
 							"change",
 							() => (val.value = (el as any).value)
 						);
-				} else {
-					set(val);
 				}
+				set(val);
 			} else if (attr.startsWith("on:")) {
 				el.addEventListener(attr.substring(3), (e) => val(e));
 			} else if (attr.startsWith("class:")) {
