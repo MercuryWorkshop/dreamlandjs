@@ -211,6 +211,10 @@ function jsxFactory(
 			(el as any).value = val;
 		};
 
+		for (let child of children) {
+			el.appendChild(mapChild(child, el));
+		}
+
 		for (let attr in props) {
 			let val = props[attr];
 			if (attr === "this") {
@@ -229,6 +233,7 @@ function jsxFactory(
 							"change",
 							() => (val.value = (el as any).value)
 						);
+					set(val.value)
 				} else {
 					set(val);
 				}
@@ -241,6 +246,7 @@ function jsxFactory(
 							"change",
 							() => (val.value = (el as any).value)
 						);
+					set(val.value);
 				} else {
 					set(val);
 				}
@@ -269,10 +275,6 @@ function jsxFactory(
 			} else {
 				el.setAttribute(attr, val);
 			}
-		}
-
-		for (let child of children) {
-			el.appendChild(mapChild(child, el));
 		}
 
 		// all children would need to also be created with the correct namespace if we were doing this properly
