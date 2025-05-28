@@ -1,6 +1,6 @@
 import { DOCUMENT } from "../consts";
 import { createState, isBasePtr, isBoundPtr, stateProxy } from "../state";
-import { cssComponent, genuid, rewriteCSS } from "../css";
+import { CSS_COMPONENT, genuid, rewriteCSS } from "../css";
 import {
 	Component,
 	ComponentChild,
@@ -21,51 +21,64 @@ export {
 	JSX,
 } from "./definitions";
 
+let CSS_IDENT = "dlcss-";
+let currentCssIdent: string | null = null;
+
 let comment = (text?: string) => {
 	return new Comment(text);
 };
 
-let mapChild = (child: ComponentChild, el: Node, before?: Node): Node => {
+let mapChild = (
+	child: ComponentChild,
+	parent: Node,
+	before: Node | null,
+	cssIdent: string,
+	identOverride?: string
+): Node => {
 	if (child == null) {
 		return comment();
 	} else if (isBasePtr(child)) {
 		let childEl: Node = null!;
 
 		let setNode = (val: ComponentChild) => {
-			let newEl: Node = mapChild(val, el, childEl);
-			if (childEl) el.replaceChild(newEl, childEl);
+			let newEl: Node = mapChild(
+				val,
+				parent,
+				childEl,
+				cssIdent,
+				child._cssIdent
+			);
+			if (childEl) parent.replaceChild(newEl, childEl);
 			childEl = newEl;
-
-			// propagate $nopaint to the actual element
-			if (child.$nopaint) {
-				newEl.$nopaint = true;
-			}
-			// propagate $ident to the actual element
-			if (child.$ident) {
-				newEl.$ident = child.$ident;
-				newEl.classList.add(child.$ident);
-			} else if (el.$ident) {
-				newEl.$ident = el.$ident;
-				newEl.classList.add(el.$ident);
-			}
-			newEl.$sourceptr = child;
 		};
 
 		setNode(child.value);
 		child.listen(setNode);
 		return childEl;
 	} else if (child instanceof Node) {
+		if (child instanceof HTMLElement) {
+			let list = child.classList;
+			let other = Array.from(list).find((x) => x.startsWith(CSS_IDENT));
+
+			if (!other) {
+				list.add(identOverride || cssIdent);
+			} else if (identOverride && other !== identOverride) {
+				list.remove(other);
+				list.add(identOverride);
+			}
+		}
+
 		return child;
 	} else if (child instanceof Array) {
 		// TODO make this smarter
 		let uid: string, start: Comment, end: Comment;
-		let children = Array.from(el.childNodes);
+		let children = Array.from(parent.childNodes);
 		if (!before) {
 			uid = "dlarr-" + genuid();
 			start = comment(uid);
 			end = comment(uid);
-			el.appendChild(start);
-			el.appendChild(end);
+			parent.appendChild(start);
+			parent.appendChild(end);
 		} else {
 			uid = (before as Comment).data;
 			end = before as Comment;
@@ -90,12 +103,12 @@ let mapChild = (child: ComponentChild, el: Node, before?: Node): Node => {
 				current.push(child);
 			}
 		}
-		for (let x of current) el.removeChild(x);
+		for (let x of current) parent.removeChild(x);
 
 		let anchor: Node = end;
 		for (let x of [...child].reverse()) {
-			let mapped = mapChild(x, el);
-			el.insertBefore(mapped, anchor);
+			let mapped = mapChild(x, parent, null, cssIdent, identOverride);
+			parent.insertBefore(mapped, anchor);
 			anchor = mapped;
 		}
 
@@ -139,63 +152,32 @@ function jsxFactory(
 			}
 		}
 
+		for (let child of children) {
+			// any pointers passed as children were unable to inherit the currentCssIdent.
+			// we add the currentCssIdent (which is of the parent) here since we know that the pointer came from the parent.
+			// this might break if pointers of elements are being passed as props but oh well
+			if (isBasePtr(child)) {
+				child._cssIdent ||= currentCssIdent;
+			}
+		}
+
 		let cx = Object.create(init.prototype) as ComponentContext<any>;
 		cx.state = state;
 		cx.children = children;
 
-		let cssIdent = "dl-" + genuid();
+		let cssIdent = CSS_IDENT + genuid();
 		dev: {
 			cssIdent += "-" + init.name;
 		}
 
-		// start of the css painting process
-		// first mark the slot children as parent-managed components
-		for (let child of children) {
-			if (child instanceof HTMLElement || isBasePtr(child)) {
-				if (child.$) continue;
-				child.$nopaint = true;
-			}
-		}
+		let oldIdent = currentCssIdent;
+		currentCssIdent = cssIdent;
 		el = init.call(state, cx);
-
-		const descend = (el: Node) => {
-			for (let child of el.childNodes) {
-				if (!(child instanceof HTMLElement)) continue;
-				// console.log(child.$);
-				if (child.$) continue;
-				if (child.$nopaint) continue;
-				child.$ident = cssIdent;
-				child.classList.add(cssIdent);
-				descend(child);
-			}
-		};
-		descend(el);
-		// second run, find the $nopaint elements and mark them with this tag
-		const descendNopaint = (el: Node) => {
-			for (let child of el.childNodes) {
-				if (child.$sourceptr && child.$sourceptr.$nopaint) {
-					child.$ident = cssIdent;
-					child.classList.add(cssIdent);
-					child.$sourceptr.$ident = cssIdent;
-					continue;
-				}
-				if (!(child instanceof HTMLElement)) continue;
-				if (child.$nopaint) {
-					child.$ident = cssIdent;
-					child.classList.add(cssIdent);
-					if (!child.$) descend(child);
-				} else {
-					descendNopaint(child);
-				}
-			}
-		};
-		descendNopaint(el);
-		el.$ident = cssIdent;
-		el.classList.add(cssIdent);
+		currentCssIdent = oldIdent;
 
 		(el as DLElement<any>).$ = cx;
 
-		el.classList.add(cssComponent);
+		el.classList.add(CSS_COMPONENT);
 		if (cx.css) {
 			let el = DOCUMENT.createElement("style");
 			el.innerText = rewriteCSS(cx.css, cssIdent);
@@ -216,7 +198,7 @@ function jsxFactory(
 		};
 
 		for (let child of children) {
-			el.appendChild(mapChild(child, el));
+			el.appendChild(mapChild(child, el, null, currentCssIdent));
 		}
 
 		for (let attr in props) {
@@ -280,6 +262,8 @@ function jsxFactory(
 				el.setAttribute(attr, val);
 			}
 		}
+
+		if (currentCssIdent) el.classList.add(currentCssIdent);
 
 		// all children would need to also be created with the correct namespace if we were doing this properly
 		// this is annoying and expensive bundle size wise, so it's easier to just force a reparse

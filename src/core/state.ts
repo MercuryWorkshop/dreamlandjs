@@ -278,6 +278,9 @@ export abstract class DLBasePointer<T> {
 	// @internal
 	_reverse?: (val: any) => any;
 
+	// @internal
+	_cssIdent?: string;
+
 	abstract readonly bound: boolean;
 
 	// @internal

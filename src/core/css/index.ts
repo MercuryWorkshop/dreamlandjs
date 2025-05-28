@@ -2,7 +2,7 @@ import { COMBINATOR_TOKEN, COMMA_TOKEN, PSEUDO_CLASS_TOKEN } from "../consts";
 import { stringify, Token, tokenize } from "./selectorParser";
 
 // added to every component's root, determines start of scoped css scope
-export let cssComponent = "dlc";
+export let CSS_COMPONENT = "dlc";
 
 export let genuid = () => {
 	// prettier-ignore
@@ -53,7 +53,7 @@ export let rewriteCSS = (css: string, tag: string): string => {
 
 				rule.selectorText = stringify(tokens).replace(
 					":scope",
-					`.${tag}.${cssComponent}`
+					`.${tag}.${CSS_COMPONENT}`
 				);
 			}
 			if ("cssRules" in rule) {
