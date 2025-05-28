@@ -267,7 +267,7 @@ export let isBoundPtr = (val: any): val is DLBoundPointer<any> => {
 	return isBasePtr(val) && val.bound;
 };
 export let isStateful = (val: any): val is Stateful<any> => {
-	return val[DREAMLAND] === STATEFUL;
+	return DREAMLAND in val && val[DREAMLAND] === STATEFUL;
 };
 
 export abstract class DLBasePointer<T> {
@@ -322,15 +322,15 @@ export abstract class DLBasePointer<T> {
 
 	andThen<True, False>(
 		then: True,
-		otherwise: False
+		otherwise?: False
 	): DLPointer<
-		| (True extends () => infer TR ? TR : True)
-		| (False extends () => infer FR ? FR : False)
+		| (True extends (val: T) => infer TR ? TR : True)
+		| (False extends (val: T) => infer FR ? FR : False)
 	> {
 		return this.map((val) => {
 			let real = val ? then : otherwise;
 			// typescript is an idiot
-			return typeof real === "function" ? (real as Function)() : real;
+			return typeof real === "function" ? (real as (val: T) => any)(val) : real;
 		});
 	}
 	map<U>(func: (val: T) => U): DLPointer<U> {
