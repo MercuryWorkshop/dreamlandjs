@@ -24,8 +24,8 @@ export type ComponentContext<T> = {
 
 type ProxiedProps<Props> = {
 	[Key in keyof Props]: Props[Key] extends DLBasePointer<infer Pointed>
-	? Pointed
-	: Props[Key];
+		? Pointed
+		: Props[Key];
 };
 export type Component<Props = {}, Private = {}, Public = {}> = (
 	this: Stateful<ProxiedProps<Props> & Private & Public>,
@@ -33,8 +33,8 @@ export type Component<Props = {}, Private = {}, Public = {}> = (
 ) => HTMLElement;
 export type ComponentInstance<T extends Component> =
 	T extends Component<infer Props, infer Private, infer Public>
-	? DLElement<ProxiedProps<Props> & Private & Public>
-	: never;
+		? DLElement<ProxiedProps<Props> & Private & Public>
+		: never;
 export type DLElement<T> = HTMLElement & { $: ComponentContext<T> };
 
 type OnEventMap<T> = {
@@ -44,17 +44,17 @@ type OnEventMap<T> = {
 };
 type IntrinsicProps<ElementType extends Element> =
 	| OnEventMap<
-		ElementType["addEventListener"] extends (name: infer Events) => void
-		? Events
-		: never
-	>
+			ElementType["addEventListener"] extends (name: infer Events) => void
+				? Events
+				: never
+	  >
 	| {
-		this?: DLBoundPointer<ElementType | Element | null | undefined>;
-		children?: any;
-		[key: `class:${string}`]: DLBasePointer<boolean>;
-		[key: `on:${string}`]: (event: Event) => void;
-		[key: string]: any;
-	};
+			this?: DLBoundPointer<ElementType | Element | null | undefined>;
+			children?: any;
+			[key: `class:${string}`]: DLBasePointer<boolean>;
+			[key: `on:${string}`]: (event: Event) => void;
+			[key: string]: any;
+	  };
 type DLElementTagNames = HTMLElementTagNameMap &
 	HTMLElementDeprecatedTagNameMap &
 	Pick<
@@ -72,9 +72,7 @@ export namespace JSX {
 		[element: string]: IntrinsicProps<GlobalElement>;
 	};
 
-	export type ElementType =
-		| keyof IntrinsicElements
-		| Component<any, any, any>;
+	export type ElementType = keyof IntrinsicElements | Component<any, any, any>;
 	export type Element = HTMLElement;
 	export type LibraryManagedAttributes<C, _> =
 		C extends Component<infer Props, any, any> ? Props : never;
