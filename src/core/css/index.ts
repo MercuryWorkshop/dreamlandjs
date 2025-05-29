@@ -22,7 +22,7 @@ export let rewriteCSS = (css: string, tag: string): string => {
 		for (let rule of list) {
 			if ("selectorText" in rule) {
 				let tokens = tokenize(
-					(rule.selectorText as string).replace(
+					(rule.selectorText as string).replaceAll(
 						globalWhereTransformation,
 						GLOBAL
 					)
@@ -52,7 +52,7 @@ export let rewriteCSS = (css: string, tag: string): string => {
 				}
 
 				rule.selectorText = stringify(tokens).replace(
-					":scope",
+					/:scope/g,
 					`.${tag}.${CSS_COMPONENT}`
 				);
 			}
@@ -65,7 +65,7 @@ export let rewriteCSS = (css: string, tag: string): string => {
 	};
 
 	let sheet = new CSSStyleSheet();
-	sheet.replaceSync(css.replace(GLOBAL, globalWhereTransformation));
+	sheet.replaceSync(css.replaceAll(GLOBAL, globalWhereTransformation));
 	return rewriteRules(Array.from(sheet.cssRules))
 		.map((x) => x.cssText)
 		.join("");
