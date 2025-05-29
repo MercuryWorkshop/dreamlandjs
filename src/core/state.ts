@@ -267,7 +267,7 @@ export let isBoundPtr = (val: any): val is DLBoundPointer<any> => {
 	return isBasePtr(val) && val.bound;
 };
 export let isStateful = (val: any): val is Stateful<any> => {
-	return DREAMLAND in val && val[DREAMLAND] === STATEFUL;
+	return typeof val === "object" && val !== null && val[DREAMLAND] === STATEFUL;
 };
 
 export abstract class DLBasePointer<T> {
