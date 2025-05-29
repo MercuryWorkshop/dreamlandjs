@@ -236,6 +236,17 @@ function jsxFactory(
 				} else {
 					set(val);
 				}
+			} else if (attr === "class" && isBasePtr(val)) {
+				let classList = el.classList;
+				let old = [];
+				let set = (val: string) => {
+					let classes = val.split(" ");
+					classList.remove(...old);
+					classList.add(...classes);
+					old = classes;
+				};
+				set(val.value);
+				val.listen(set);
 			} else if (attr.startsWith("on:")) {
 				el.addEventListener(attr.substring(3), (e) => val(e));
 			} else if (attr.startsWith("class:")) {
