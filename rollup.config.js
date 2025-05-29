@@ -11,34 +11,42 @@ import MagicString from "magic-string";
 let DEV = false;
 let USESTR = true;
 
-const common = (include) => [
-	nodeResolve(),
-	typescript({
-		include: include + "/**/*",
-		filterRoot: process.cwd(),
-	}),
-	terser({
-		parse: {},
-		compress: {
-			passes: 4,
-			hoist_funs: true,
-		},
-		mangle: {
-			keep_classnames: false,
-			keep_fnames: false,
-			properties: {
-				regex: /^_.*/,
+const common = (include) => {
+	let tsconfig = import.meta.dirname + "/tsconfig.json";
+	if (fs.existsSync(include + "/tsconfig.json")) {
+		tsconfig = include + "/tsconfig.json";
+	}
+
+	return [
+		nodeResolve(),
+		typescript({
+			include: include + "/**/*",
+			filterRoot: process.cwd(),
+			tsconfig,
+		}),
+		terser({
+			parse: {},
+			compress: {
+				passes: 4,
+				hoist_funs: true,
 			},
-		},
-		format: {
-			wrap_func_args: false,
-		},
-		module: true,
-		ie8: false,
-		safari10: false,
-		ecma: 5,
-	}),
-];
+			mangle: {
+				keep_classnames: false,
+				keep_fnames: false,
+				properties: {
+					regex: /^_.*/,
+				},
+			},
+			format: {
+				wrap_func_args: false,
+			},
+			module: true,
+			ie8: false,
+			safari10: false,
+			ecma: 5,
+		}),
+	];
+};
 
 const cfg = (inputDir, inputFile, output, defs, plugins) => {
 	const stripCommon = {
@@ -132,5 +140,6 @@ export default (args) => {
 		]),
 		...cfg("src/js-runtime", "index.ts", "dist/js-runtime.js", true, []),
 		...cfg("src/jsx-runtime", "index.ts", "dist/jsx-runtime.js", true, []),
+		...cfg("src/router", "index.ts", "dist/router.js", true, []),
 	]);
 };

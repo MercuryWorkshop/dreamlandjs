@@ -22,6 +22,10 @@
 			"default": "./dist/js-runtime.js",
 			"types": "./dist/js-runtime.d.ts"
 		},
+		"./router": {
+			"default": "./dist/router.js",
+			"types": "./dist/router.d.ts"
+		},
 		"./jsx-runtime": {
 			"default": "./dist/jsx-runtime.js",
 			"types": "./dist/jsx-runtime.d.ts"
