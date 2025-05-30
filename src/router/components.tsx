@@ -11,6 +11,8 @@ export let Link: Component<
 		children: any;
 	}
 > = function () {
+	this.class = this.class || "";
+
 	return (
 		<a
 			href={this.href}
