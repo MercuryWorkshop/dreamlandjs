@@ -240,9 +240,9 @@ function jsxFactory(
 				let classList = el.classList;
 				let old = [];
 				let set = (val: string) => {
-					let classes = val.split(" ");
-					classList.remove(...old);
-					classList.add(...classes);
+					let classes = val.split(" ").filter(x => x.length);
+					if (old.length) classList.remove(...old);
+					if (classes.length) classList.add(...classes);
 					old = classes;
 				};
 				set(val.value);
