@@ -56,17 +56,24 @@ let mapChild = (
 		child.listen(setNode);
 		return childEl;
 	} else if (child instanceof Node) {
-		if (child instanceof HTMLElement) {
-			let list = child.classList;
-			let other = Array.from(list).find((x) => x.startsWith(CSS_IDENT));
+		let apply = (child: Node) => {
+			if (child instanceof HTMLElement) {
+				let list = child.classList;
+				let other = Array.from(list).find((x) => x.startsWith(CSS_IDENT));
 
-			if (!other) {
-				list.add(identOverride || cssIdent);
-			} else if (identOverride && other !== identOverride) {
-				list.remove(other);
-				list.add(identOverride);
+				if (!other) {
+					list.add(identOverride || cssIdent);
+				} else if (identOverride && other !== identOverride) {
+					list.remove(other);
+					list.add(identOverride);
+				}
+
+				for (let node of Array.from(child.childNodes)) {
+					apply(node);
+				}
 			}
-		}
+		};
+		if (identOverride || cssIdent) apply(child);
 
 		return child;
 	} else if (child instanceof Array) {
@@ -240,7 +247,7 @@ function jsxFactory(
 				let classList = el.classList;
 				let old = [];
 				let set = (val: string) => {
-					let classes = val.split(" ").filter(x => x.length);
+					let classes = val.split(" ").filter((x) => x.length);
 					if (old.length) classList.remove(...old);
 					if (classes.length) classList.add(...classes);
 					old = classes;
