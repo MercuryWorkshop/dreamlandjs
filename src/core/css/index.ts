@@ -18,43 +18,53 @@ export let rewriteCSS = (css: string, tag: string): string => {
 	let where = tokenize(`:where(.${tag})`);
 	let globalWhereTransformation = `:where(._${genuid()} `;
 
+	let rewriteSelector = (tokens: Token[], inGlobal?: boolean): Token[] => {
+		for (let i = 0; i < tokens.length; i++) {
+			let token = tokens[i];
+
+			let idx: number, cnt: number, arr: Token[];
+			if (token._type === PSEUDO_CLASS_TOKEN && token.arg) {
+				token.arg = stringify(
+					rewriteSelector(tokenize(token.arg), token.name === "global")
+				);
+				token._content = `:${token.name}(${token.arg})`;
+			}
+			if (token._type === PSEUDO_CLASS_TOKEN && token.name === "global") {
+				idx = i;
+				cnt = 1;
+				arr = tokenize(token.arg);
+			} else if (
+				!inGlobal &&
+				(i === tokens.length - 1 ||
+					[COMBINATOR_TOKEN, COMMA_TOKEN].includes(tokens[i + 1]._type))
+			) {
+				idx = i + 1;
+				cnt = 0;
+				arr = where;
+			}
+
+			if (arr) {
+				tokens.splice(idx, cnt, ...arr);
+				i += arr.length;
+			}
+		}
+		return tokens;
+	};
+
 	let rewriteRules = (list: CSSRule[]): CSSRule[] => {
 		for (let rule of list) {
 			if ("selectorText" in rule) {
-				let tokens = tokenize(
-					(rule.selectorText as string).replaceAll(
-						globalWhereTransformation,
-						GLOBAL
+				let rewritten = stringify(
+					rewriteSelector(
+						tokenize(
+							(rule.selectorText as string).replaceAll(
+								globalWhereTransformation,
+								GLOBAL
+							)
+						)
 					)
-				);
-
-				for (let i = 0; i < tokens.length; i++) {
-					let token = tokens[i];
-
-					let idx: number, cnt: number, arr: Token[];
-					if (token._type === PSEUDO_CLASS_TOKEN && token.name === "global") {
-						idx = i;
-						cnt = 1;
-						arr = tokenize(token.arg);
-					} else if (
-						i === tokens.length - 1 ||
-						[COMBINATOR_TOKEN, COMMA_TOKEN].includes(tokens[i + 1]._type)
-					) {
-						idx = i + 1;
-						cnt = 0;
-						arr = where;
-					}
-
-					if (arr) {
-						tokens.splice(idx, cnt, ...arr);
-						i += arr.length;
-					}
-				}
-
-				rule.selectorText = stringify(tokens).replace(
-					/:scope/g,
-					`.${tag}.${CSS_COMPONENT}`
-				);
+				).replace(/:scope/g, `.${tag}.${CSS_COMPONENT}`);
+				rule.selectorText = rewritten;
 			}
 			if ("cssRules" in rule) {
 				rewriteRules(Array.from(rule.cssRules as CSSRuleList));
