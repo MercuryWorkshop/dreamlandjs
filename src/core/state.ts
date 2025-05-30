@@ -301,16 +301,17 @@ export abstract class DLBasePointer<T> {
 
 	get value(): T {
 		let ptr = this._ptr;
+		let obj;
 		if (ptr._type === PointerType.Regular) {
-			let obj = ptr._state._target;
+			obj = ptr._state._target;
 			for (let step of ptr._path) {
 				let resolved = isBasePtr(step) ? step.value : step;
 				obj = obj[resolved];
 			}
-			return this._mapping ? this._mapping(obj) : obj;
 		} else {
-			return ptr._ptrs.map((x) => x.value) as T;
+			obj = ptr._ptrs.map((x) => x.value) as T;
 		}
+		return this._mapping ? this._mapping(obj) : obj;
 	}
 
 	[TOPRIMITIVE as typeof Symbol.toPrimitive]() {
