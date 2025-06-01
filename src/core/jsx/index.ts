@@ -124,26 +124,29 @@ let mapChild = (
 		return new Text(child as any);
 	}
 };
-
-function jsxFactory<T extends Component<any, any, any>>(
+function jsx<T extends Component<any, any, any>>(
 	init: T,
 	props: Record<string, any> | null,
-	...children: ComponentChild[]
+	key?: string
 ): ComponentInstance<T>;
-function jsxFactory<T extends string>(
+function jsx<T extends string>(
 	init: T,
 	props: Record<string, any> | null,
-	...children: ComponentChild[]
+	key?: string
 ): DLElementNameToElement<T>;
-function jsxFactory(
+function jsx(
 	init: Component<any, any, any> | string,
 	props: Record<string, any> | null,
-	...children: ComponentChild[]
+	key?: string
 ): HTMLElement {
 	dev: {
 		if (!["string", "function"].includes(typeof init))
 			throw new Error("invalid component");
 	}
+
+	let { children: _children, ...mapped } = props;
+	if (key) mapped.key = key;
+	let children = _children instanceof Array ? _children : [_children];
 
 	let el: HTMLElement;
 
@@ -293,4 +296,23 @@ function jsxFactory(
 	return el;
 }
 
-export { jsxFactory as h };
+function h<T extends Component<any, any, any>>(
+	init: T,
+	props: Record<string, any> | null,
+	...children: ComponentChild[]
+): ComponentInstance<T>;
+function h<T extends string>(
+	init: T,
+	props: Record<string, any> | null,
+	...children: ComponentChild[]
+): DLElementNameToElement<T>;
+function h(
+	init: Component<any, any, any> | string,
+	props: Record<string, any> | null,
+	...children: ComponentChild[]
+): HTMLElement {
+	// @ts-expect-error you suck
+	return jsx(init, { children, ...props });
+}
+
+export { jsx, h };
