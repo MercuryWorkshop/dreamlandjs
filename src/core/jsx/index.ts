@@ -136,7 +136,7 @@ function jsx<T extends string>(
 ): DLElementNameToElement<T>;
 function jsx(
 	init: Component<any, any, any> | string,
-	props: Record<string, any> | null,
+	_props: Record<string, any> | null,
 	key?: string
 ): HTMLElement {
 	dev: {
@@ -144,8 +144,8 @@ function jsx(
 			throw new Error("invalid component");
 	}
 
-	let { children: _children, ...mapped } = props;
-	if (key) mapped.key = key;
+	let { children: _children, ...props } = _props;
+	if (key) props.key = key;
 	let children = _children instanceof Array ? _children : [_children];
 
 	let el: HTMLElement;
