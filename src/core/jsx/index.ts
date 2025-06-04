@@ -146,6 +146,7 @@ function jsx(
 
 	let { children: _children, ...props } = _props;
 	if (key) props.key = key;
+	if (_children === undefined) _children = [] 
 	let children = _children instanceof Array ? _children : [_children];
 
 	let el: HTMLElement;
