@@ -376,7 +376,7 @@ export abstract class DLBasePointer<T> {
 
 	mapEach<U, R>(
 		this: DLBasePointer<ArrayLike<U>>,
-		func: (val: U) => R
+		func: (val: U, i: number) => R
 	): DLPointer<R[]> {
 		return this.map((x) => Array.from(x).map(func));
 	}
