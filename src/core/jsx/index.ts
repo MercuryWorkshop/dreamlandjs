@@ -146,7 +146,7 @@ function jsx(
 
 	let { children: _children, ...props } = _props;
 	if (key) props.key = key;
-	if (_children === undefined) _children = [] 
+	_children ||= [];
 	let children = _children instanceof Array ? _children : [_children];
 
 	let el: HTMLElement;
@@ -203,9 +203,20 @@ function jsx(
 		let xmlns = props?.xmlns;
 		el = DOCUMENT["createElement" + (xmlns ? "NS" : "")](xmlns || init, init);
 
-		let currySetVal = (param: string) => (val: any) => {
-			el.setAttribute(param, val);
-			(el as any).value = val;
+		let currySetVal = (param: string, val: any) => {
+			let set = (val: any) => {
+				el.setAttribute(param, val);
+				(el as any).value = val;
+			};
+
+			if (isBasePtr(val)) {
+				val.listen(set);
+				if (isBoundPtr(val))
+					el.addEventListener("change", () => (val.value = (el as any).value));
+				set(val.value);
+			} else {
+				set(val);
+			}
 		};
 
 		for (let child of children) {
@@ -221,32 +232,8 @@ function jsx(
 					}
 				}
 				val.value = el;
-			} else if (attr === "value") {
-				let set = currySetVal("value");
-				if (isBasePtr(val)) {
-					val.listen(set);
-					if (isBoundPtr(val))
-						el.addEventListener(
-							"change",
-							() => (val.value = (el as any).value)
-						);
-					set(val.value);
-				} else {
-					set(val);
-				}
-			} else if (attr === "checked") {
-				let set = currySetVal("checked");
-				if (isBasePtr(val)) {
-					val.listen(set);
-					if (isBoundPtr(val))
-						el.addEventListener(
-							"change",
-							() => (val.value = (el as any).value)
-						);
-					set(val.value);
-				} else {
-					set(val);
-				}
+			} else if (attr === "value" || attr === "checked") {
+				currySetVal(attr, val);
 			} else if (attr === "class" && isBasePtr(val)) {
 				let classList = el.classList;
 				let old = [];

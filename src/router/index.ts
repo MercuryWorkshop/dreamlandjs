@@ -19,7 +19,7 @@ export interface Route {
 	children?: Route[];
 }
 
-function validateRoute(route: Route) {
+let validateRoute = (route: Route) => {
 	let hasIndex = false;
 	if (route.children)
 		for (let child of route.children) {
@@ -30,7 +30,7 @@ function validateRoute(route: Route) {
 			}
 			validateRoute(child);
 		}
-}
+};
 
 function getShow(
 	route: Route,
@@ -56,13 +56,13 @@ function getShow(
 	return show instanceof Function ? show(path, params) : show;
 }
 
-function populateComponent(
+let populateComponent = (
 	el: ShowTarget,
 	required: boolean,
 	path: string,
 	params: RouteParams,
 	outlet?: HTMLElement
-) {
+) => {
 	if ("$" in el) {
 		// has an outlet
 		let state = el.$.state;
@@ -78,13 +78,13 @@ function populateComponent(
 			`Unable to navigate to ${path}, route's show target was not a component`
 		);
 	}
-}
+};
 
-function matchRoute(
+let matchRoute = (
 	segment: string,
 	route: string,
 	params: RouteParams
-): boolean {
+): boolean => {
 	if (route.startsWith(":")) {
 		// param
 		params[route.substring(1)] = segment;
@@ -92,7 +92,7 @@ function matchRoute(
 	} else {
 		return segment === route;
 	}
-}
+};
 
 export class Router {
 	// @internal
