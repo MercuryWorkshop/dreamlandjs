@@ -434,7 +434,7 @@ export class DLBoundPointer<T> extends DLBasePointer<T> {
 		if (reverse) {
 			let mapper = this._reverse
 				? (val: any) => this._reverse(reverse(val))
-				: func;
+				: reverse;
 			return new DLBoundPointer(this._ptr._id, forwards, mapper);
 		} else {
 			return new DLPointer(this._ptr._id, forwards);
