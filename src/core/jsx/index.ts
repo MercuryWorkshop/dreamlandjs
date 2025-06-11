@@ -59,7 +59,11 @@ let mapChild = (
 		let apply = (child: Node) => {
 			if (child instanceof HTMLElement) {
 				let list = child.classList;
-				let other = Array.from(list).find((x) => x.startsWith(CSS_IDENT));
+				let arr = Array.from(list);
+				let other = arr.find((x) => x.startsWith(CSS_IDENT));
+
+				if (arr.find(x => x === CSS_COMPONENT))
+					return;
 
 				if (!other) {
 					list.add(identOverride || cssIdent);
