@@ -62,8 +62,7 @@ let mapChild = (
 				let arr = Array.from(list);
 				let other = arr.find((x) => x.startsWith(CSS_IDENT));
 
-				if (arr.find(x => x === CSS_COMPONENT))
-					return;
+				if (arr.find((x) => x === CSS_COMPONENT)) return;
 
 				if (!other) {
 					list.add(identOverride || cssIdent);

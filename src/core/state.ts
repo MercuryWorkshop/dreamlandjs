@@ -215,10 +215,11 @@ export let createState = <T extends StatefulObject>(obj: T): Stateful<T> => {
 			return Reflect.get(target, prop, proxy);
 		},
 		set(target, prop, newValue, proxy) {
+			let ret = Reflect.set(target, prop, newValue, proxy);
 			for (let listener of state._listeners) {
 				listener(prop, newValue);
 			}
-			return Reflect.set(target, prop, newValue, proxy);
+			return ret;
 		},
 	});
 
@@ -357,7 +358,7 @@ export abstract class DLBasePointer<T> {
 			_type: PointerType.Dependent,
 			_id: Symbol(),
 			_listeners: [],
-			_ptrs: [new DLPointer(this._ptr._id), ...pointers],
+			_ptrs: [new DLPointer(this._ptr._id, this._mapping), ...pointers],
 		};
 
 		for (let [i, other] of ptr._ptrs.map((x, i) => [i, x] as const)) {
@@ -396,7 +397,7 @@ export class DLPointer<T> extends DLBasePointer<T> {
 	}
 
 	clone(): DLPointer<T> {
-		return new DLPointer(this._ptr._id);
+		return new DLPointer(this._ptr._id, this._mapping);
 	}
 }
 export class DLBoundPointer<T> extends DLBasePointer<T> {
@@ -422,7 +423,7 @@ export class DLBoundPointer<T> extends DLBasePointer<T> {
 	}
 
 	clone(): DLBoundPointer<T> {
-		return new DLBoundPointer(this._ptr._id);
+		return new DLBoundPointer(this._ptr._id, this._mapping, this._reverse);
 	}
 
 	map<U>(func: (val: T) => U): DLPointer<U>;
