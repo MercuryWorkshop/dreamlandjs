@@ -22,18 +22,16 @@ export type ComponentContext<T> = {
 	mount?: () => void;
 };
 
-type ProxiedProps<Props> = {
-	[Key in keyof Props]: Props[Key] extends DLBasePointer<infer Pointed>
-		? Pointed
-		: Props[Key];
+type MappedProps<Props> = {
+	[Key in keyof Props]: Props[Key] | DLBasePointer<Props[Key]>;
 };
 export type Component<Props = {}, Private = {}, Public = {}> = (
-	this: Stateful<ProxiedProps<Props> & Private & Public>,
-	cx: ComponentContext<ProxiedProps<Props> & Private & Public>
+	this: Stateful<Props & Private & Public>,
+	cx: ComponentContext<Props & Private & Public>
 ) => HTMLElement;
-export type ComponentInstance<T extends Component> =
+export type ComponentInstance<T extends Component<any, any, any>> =
 	T extends Component<infer Props, infer Private, infer Public>
-		? DLElement<ProxiedProps<Props> & Private & Public>
+		? DLElement<Props & Private & Public>
 		: never;
 export type DLElement<T> = HTMLElement & { $: ComponentContext<T> };
 
@@ -75,5 +73,5 @@ export namespace JSX {
 	export type ElementType = keyof IntrinsicElements | Component<any, any, any>;
 	export type Element = HTMLElement;
 	export type LibraryManagedAttributes<C, _> =
-		C extends Component<infer Props, any, any> ? Props : never;
+		C extends Component<infer Props, any, any> ? MappedProps<Props> : never;
 }

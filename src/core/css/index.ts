@@ -1,4 +1,9 @@
-import { COMBINATOR_TOKEN, COMMA_TOKEN, PSEUDO_CLASS_TOKEN } from "../consts";
+import {
+	COMBINATOR_TOKEN,
+	COMMA_TOKEN,
+	PSEUDO_CLASS_TOKEN,
+	PSEUDO_ELEMENT_TOKEN,
+} from "../consts";
 import { stringify, Token, tokenize } from "./selectorParser";
 
 // added to every component's root, determines start of scoped css scope
@@ -38,7 +43,12 @@ export let rewriteCSS = (css: string, tag: string): string => {
 				(i === tokens.length - 1 ||
 					[COMBINATOR_TOKEN, COMMA_TOKEN].includes(tokens[i + 1]._type))
 			) {
-				idx = i + 1;
+				let j = i;
+				while (j > 0 && tokens[j]._type === PSEUDO_ELEMENT_TOKEN) {
+					j--;
+				}
+
+				idx = j + 1;
 				cnt = 0;
 				arr = where;
 			}
