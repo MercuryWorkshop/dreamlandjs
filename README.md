@@ -19,7 +19,25 @@ dreamland is a reactive JSX-inspired UI library with **no virtual dom** and **no
 
 ## Plain JS
 
-Plain js (non-esm) builds aren't available yet
+dreamland can be integrated into plain javascript applications gradually and seamlessly. See the [website](https://dreamland.js.org) to learn the concepts that dreamland uses.
+
+To get started, in your HTML file, add `<script src="https://unpkg.com/dreamland"></script>` somewhere. This contains the html builder allowing you to start writing dreamland code in plain JS, such as the example shown below
+
+```javascript
+function App() {
+    this.counter = 0
+    return html`
+        <div>
+            <button on:click=${() => this.counter++}>Click me!</button>
+            <p>${use(this.counter)}</p>
+        </div>
+    `
+}
+
+window.addEventListener('load', () => {
+    document.body.appendChild(h(App))
+});
+```
 
 ## Typescript + Bundler (vite, rollup, webpack, esbuild, etc)
 
