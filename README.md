@@ -25,17 +25,17 @@ To get started, in your HTML file, add `<script src="https://unpkg.com/dreamland
 
 ```javascript
 function App() {
-    this.counter = 0
-    return html`
-        <div>
-            <button on:click=${() => this.counter++}>Click me!</button>
-            <p>${use(this.counter)}</p>
-        </div>
-    `
+	this.counter = 0;
+	return html`
+		<div>
+			<button on:click=${() => this.counter++}>Click me!</button>
+			<p>${use(this.counter)}</p>
+		</div>
+	`;
 }
 
-window.addEventListener('load', () => {
-    document.body.appendChild(h(App))
+window.addEventListener("load", () => {
+	document.body.appendChild(h(App));
 });
 ```
 

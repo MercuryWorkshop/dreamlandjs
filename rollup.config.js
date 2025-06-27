@@ -48,7 +48,15 @@ const common = (include) => {
 	];
 };
 
-const cfg = (inputDir, inputFile, output, defs, plugins, format, extraOutput = {}) => {
+const cfg = (
+	inputDir,
+	inputFile,
+	output,
+	defs,
+	plugins,
+	format,
+	extraOutput = {}
+) => {
 	const stripCommon = {
 		include: ["**/*.ts"],
 		functions: [],
@@ -99,7 +107,12 @@ const cfg = (inputDir, inputFile, output, defs, plugins, format, extraOutput = {
 	const out = [
 		defineConfig({
 			input,
-			output: [Object.assign({ file: output, sourcemap: true, format: format }, extraOutput)],
+			output: [
+				Object.assign(
+					{ file: output, sourcemap: true, format: format },
+					extraOutput
+				),
+			],
 			plugins: [common(inputDir), ...plugins],
 			external: format !== "iife" ? ["dreamland/core"] : [],
 		}),
@@ -124,37 +137,59 @@ export default (args) => {
 	if (args["config-nousestr"]) USESTR = false;
 
 	return defineConfig([
-		...cfg("src/core", "index.ts", "dist/core.js", true, [
-			{
-				name: "copy",
-				writeBundle: async () => {
-					await new Promise((r) =>
-						fs.copyFile(
-							"src/core/consts.d.ts",
-							"dist/types/core/consts.d.ts",
-							r
-						)
-					);
+		...cfg(
+			"src/core",
+			"index.ts",
+			"dist/core.js",
+			true,
+			[
+				{
+					name: "copy",
+					writeBundle: async () => {
+						await new Promise((r) =>
+							fs.copyFile(
+								"src/core/consts.d.ts",
+								"dist/types/core/consts.d.ts",
+								r
+							)
+						);
+					},
 				},
-			},
-		], "es"),
-		...cfg("src/js-runtime", "index.ts", "dist/js-runtime.js", false, [
-            {
-                name: 'iife-plus',
-                renderChunk(code) {
-                    // iife output doesn't support globals, and the name:"window" hack they told me to use on github doesn't work with a bundler
-                    // regex is good enough
-                    return code.replace(
-                        /\(this\.window.?=.?this\.window.?\|\|.?\{\}\);/,
-                        '(window)'
-                    )
-                },
-            },
-		], "iife", {
-			name: "window",
-        	extend: true,
-		}),
-		...cfg("src/jsx-runtime", "index.ts", "dist/jsx-runtime.js", true, [], "es"),
+			],
+			"es"
+		),
 		...cfg("src/router", "index.ts", "dist/router.js", true, [], "es"),
+		...cfg(
+			"src/js-runtime",
+			"index.ts",
+			"dist/js-runtime.js",
+			false,
+			[
+				{
+					name: "iife-plus",
+					renderChunk(code) {
+						// iife output doesn't support globals, and the name:"window" hack they told me to use on github doesn't work with a bundler
+						// regex is good enough
+						return code.replace(
+							/\(this\.window.?=.?this\.window.?\|\|.?\{\}\);/,
+							"(window)"
+						);
+					},
+				},
+			],
+			"iife",
+			{
+				name: "window",
+				extend: true,
+			}
+		),
+		...cfg(
+			"src/jsx-runtime",
+			"index.ts",
+			"dist/jsx-runtime.js",
+			true,
+			[],
+			"es"
+		),
 	]);
 };

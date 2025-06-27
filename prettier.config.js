@@ -1,5 +1,9 @@
-/* @type {import("prettier").Config} */
-export default {
+/**
+ * @type {import("prettier").Config}
+ */
+const config = {
 	trailingComma: "es5",
 	useTabs: true,
 };
+
+export default config;
