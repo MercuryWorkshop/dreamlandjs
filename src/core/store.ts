@@ -5,6 +5,7 @@ import {
 	Stateful,
 	stateListen,
 } from "./state";
+import { deepMerge } from "./utils";
 
 let delegates = [];
 
@@ -156,7 +157,7 @@ export function createStore<T extends Object>(
 				return state;
 			};
 
-			target = Object.assign(target, de(0));
+			target = deepMerge(target, de(0));
 		}
 
 		let state = createState(target);
