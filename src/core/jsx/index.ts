@@ -25,17 +25,18 @@ export {
 let CSS_IDENT = "dlcss-";
 let currentCssIdent: string | null = null;
 
-let comment = (text?: string) => {
-	return new Comment(text);
-};
+let comment = (text?: string) => new Comment(text);
+function isComment(x: Node): x is Comment {
+	return x.nodeType == 8;
+}
 
-let mapChild = (
+function mapChild(
 	child: ComponentChild,
 	parent: Node,
 	before: Node | null,
 	cssIdent: string,
 	identOverride?: string
-): Node => {
+): Node {
 	if (child == null) {
 		return comment();
 	} else if (isBasePtr(child)) {
@@ -81,43 +82,28 @@ let mapChild = (
 
 		return child;
 	} else if (child instanceof Array) {
-		// TODO make this smarter
-		let uid: string, start: Comment, end: Comment;
+		let uid: string, end: Comment;
 		let children = Array.from(parent.childNodes);
+		let current: Node[];
+
 		if (!before) {
 			uid = "dlarr-" + genuid();
-			start = comment(uid);
-			end = comment(uid);
-			parent.appendChild(start);
-			parent.appendChild(end);
+			parent.appendChild(comment(uid));
+			end = parent.appendChild(comment(uid));
+			current = [];
 		} else {
 			uid = (before as Comment).data;
 			end = before as Comment;
-			for (let child of children) {
-				// comment node
-				if (child.nodeType === 8 && (child as Comment).data === uid) {
-					start = child as Comment;
-					break;
-				}
-			}
+			let start = children.findIndex((x) => isComment(x) && x.data === uid);
+			let endIdx = children.findIndex((x) => x === end);
+			current = children.slice(start, endIdx);
 		}
 		if (!end) fatal();
 
-		let started = false;
-		let current: Node[] = [];
-		for (let child of children) {
-			if (child === start) {
-				started = true;
-			} else if (child === end) {
-				break;
-			} else if (started) {
-				current.push(child);
-			}
-		}
 		for (let x of current) parent.removeChild(x);
 
 		let anchor: Node = end;
-		for (let x of [...child].reverse()) {
+		for (let x of child.reverse()) {
 			let mapped = mapChild(x, parent, null, cssIdent, identOverride);
 			parent.insertBefore(mapped, anchor);
 			anchor = mapped;
@@ -127,7 +113,7 @@ let mapChild = (
 	} else {
 		return new Text(child as any);
 	}
-};
+}
 function jsx<T extends Component<any, any, any>>(
 	init: T,
 	props: Record<string, any> | null,
