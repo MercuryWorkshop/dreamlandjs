@@ -29,6 +29,7 @@ const common = (include) => {
 			compress: {
 				passes: 4,
 				hoist_funs: true,
+				unsafe_arrows: true,
 			},
 			mangle: {
 				keep_classnames: false,
@@ -43,7 +44,7 @@ const common = (include) => {
 			module: true,
 			ie8: false,
 			safari10: false,
-			ecma: 5,
+			ecma: 2015,
 		}),
 	];
 };
