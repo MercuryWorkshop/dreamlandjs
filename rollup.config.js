@@ -159,30 +159,7 @@ export default (args) => {
 			"es"
 		),
 		...cfg("src/router", "index.ts", "dist/router.js", true, [], "es"),
-		...cfg(
-			"src/js-runtime",
-			"index.ts",
-			"dist/js-runtime.js",
-			false,
-			[
-				{
-					name: "iife-plus",
-					renderChunk(code) {
-						// iife output doesn't support globals, and the name:"window" hack they told me to use on github doesn't work with a bundler
-						// regex is good enough
-						return code.replace(
-							/\(this\.window.?=.?this\.window.?\|\|.?\{\}\);/,
-							"(window)"
-						);
-					},
-				},
-			],
-			"iife",
-			{
-				name: "window",
-				extend: true,
-			}
-		),
+		...cfg("src/js-runtime", "index.ts", "dist/js-runtime.js", false, [], "es"),
 		...cfg(
 			"src/jsx-runtime",
 			"index.ts",

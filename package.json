@@ -13,8 +13,6 @@
 		"format": "prettier -w .",
 		"prepack": "npm run build"
 	},
-	"unpkg": "./dist/js-runtime.js",
-	"jsdelivr": "./dist/js-runtime.js",
 	"exports": {
 		"./core": {
 			"default": "./dist/core.js",
