@@ -1,5 +1,4 @@
 import { DOCUMENT } from "../consts";
-import { createState, isBasePtr, isBoundPtr, stateProxy } from "../state";
 import { CSS_COMPONENT, genuid, rewriteCSS } from "../css";
 import {
 	Component,
@@ -10,6 +9,8 @@ import {
 	DLElementNameToElement,
 } from "./definitions";
 import { fatal } from "../utils";
+import { isBasePtr, isBoundPtr } from "../state/pointers";
+import { createState, stateProxy } from "../state/state";
 
 export {
 	DLElement,

@@ -2,6 +2,7 @@ export let [
 	// dl
 	DREAMLAND,
 	STATEFUL,
+	NO_CHANGE,
 	// selectorParser
 	COMMA_TOKEN,
 	COMBINATOR_TOKEN,
@@ -12,5 +13,6 @@ export let [
 	UNIVERSAL_TOKEN,
 	ATTRIBUTE_TOKEN,
 	TYPE_TOKEN,
-] = Array.from(Array(12), Symbol);
+] = Array.from(Array(13), Symbol);
 export let DOCUMENT = document;
+export let TOPRIMITIVE = Symbol.toPrimitive;

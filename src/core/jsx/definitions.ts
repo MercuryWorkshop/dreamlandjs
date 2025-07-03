@@ -1,4 +1,5 @@
-import { DLBasePointer, DLBoundPointer, Stateful } from "../state";
+import { BasePointer, BoundPointer } from "../state/pointers";
+import { Stateful } from "../state/state";
 
 export type ComponentChild =
 	| Node
@@ -8,7 +9,7 @@ export type ComponentChild =
 	| null
 	| undefined
 	| ComponentChild[]
-	| DLBasePointer<ComponentChild>;
+	| BasePointer<ComponentChild>;
 
 export type ComponentContext<T> = {
 	state: Stateful<T>;
@@ -23,7 +24,7 @@ export type ComponentContext<T> = {
 };
 
 type MappedProps<Props> = {
-	[Key in keyof Props]: Props[Key] | DLBasePointer<Props[Key]>;
+	[Key in keyof Props]: Props[Key] | BasePointer<Props[Key]>;
 };
 export type Component<Props = {}, Private = {}, Public = {}> = (
 	this: Stateful<Props & Private & Public>,
@@ -47,9 +48,9 @@ type IntrinsicProps<ElementType extends Element> =
 				: never
 	  >
 	| {
-			this?: DLBoundPointer<ElementType | Element | null | undefined>;
+			this?: BoundPointer<ElementType | Element | null | undefined>;
 			children?: any;
-			[key: `class:${string}`]: DLBasePointer<boolean>;
+			[key: `class:${string}`]: BasePointer<boolean>;
 			[key: `on:${string}`]: (event: Event) => void;
 			[key: string]: any;
 	  };

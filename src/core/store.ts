@@ -1,10 +1,5 @@
-import {
-	createState,
-	isBasePtr,
-	isStateful,
-	Stateful,
-	stateListen,
-} from "./state";
+import { isBasePtr } from "./state/pointers";
+import { createState, isStateful, Stateful, stateListen } from "./state/state";
 import { deepMerge } from "./utils";
 
 let delegates = [];
