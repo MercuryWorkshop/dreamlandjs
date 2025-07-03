@@ -200,7 +200,7 @@ let tokenizeBy = (text: string): Token[] => {
 	return tokens as Token[];
 };
 
-let STRING_PATTERN = /(['"])([^\\\n]+?)\1/g;
+let STRING_PATTERN = /(['"])([^\\\n]*?)\1/g;
 let ESCAPE_PATTERN = /\\./g;
 export let tokenize = (selector: string): Token[] => {
 	// Prevent leading/trailing whitespaces from being interpreted as combinators
