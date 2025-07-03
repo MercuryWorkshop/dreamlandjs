@@ -79,3 +79,6 @@ window.addEventListener("load", () => {
 	document.body.appendChild(<App />);
 });
 ```
+
+# Acknowledgements
+dreamland uses the [parsel](https://github.com/LeaVerou/parsel) CSS selector parsing library to transform CSS in components.
