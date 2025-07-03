@@ -13,6 +13,6 @@ export let [
 	UNIVERSAL_TOKEN,
 	ATTRIBUTE_TOKEN,
 	TYPE_TOKEN,
-] = Array.from(Array(13), Symbol);
+] = Array.from(Array(12), Symbol);
 export let DOCUMENT = document;
 export let TOPRIMITIVE = Symbol.toPrimitive;

@@ -26,17 +26,17 @@ let CSS_IDENT = "dlcss-";
 let currentCssIdent: string | null = null;
 
 let comment = (text?: string) => new Comment(text);
-function isComment(x: Node): x is Comment {
+let isComment = (x: Node): x is Comment => {
 	return x.nodeType == 8;
-}
+};
 
-function mapChild(
+let mapChild = (
 	child: ComponentChild,
 	parent: Node,
 	before: Node | null,
 	cssIdent: string,
 	identOverride?: string
-): Node {
+): Node => {
 	if (child == null) {
 		return comment();
 	} else if (isBasePtr(child)) {
@@ -113,18 +113,18 @@ function mapChild(
 	} else {
 		return new Text(child as any);
 	}
-}
-function jsx<T extends Component<any, any, any>>(
+};
+function _jsx<T extends Component<any, any, any>>(
 	init: T,
 	props: Record<string, any> | null,
 	key?: string
 ): ComponentInstance<T>;
-function jsx<T extends string>(
+function _jsx<T extends string>(
 	init: T,
 	props: Record<string, any> | null,
 	key?: string
 ): DLElementNameToElement<T>;
-function jsx(
+function _jsx(
 	init: Component<any, any, any> | string,
 	_props: Record<string, any> | null,
 	key?: string
@@ -274,17 +274,17 @@ function jsx(
 	return el;
 }
 
-function h<T extends Component<any, any, any>>(
+function _h<T extends Component<any, any, any>>(
 	init: T,
 	props: Record<string, any> | null,
 	...children: ComponentChild[]
 ): ComponentInstance<T>;
-function h<T extends string>(
+function _h<T extends string>(
 	init: T,
 	props: Record<string, any> | null,
 	...children: ComponentChild[]
 ): DLElementNameToElement<T>;
-function h(
+function _h(
 	init: Component<any, any, any> | string,
 	props: Record<string, any> | null,
 	...children: ComponentChild[]
@@ -293,4 +293,5 @@ function h(
 	return jsx(init, { children, ...props });
 }
 
-export { jsx, h };
+export let h = _h;
+export let jsx = _jsx;

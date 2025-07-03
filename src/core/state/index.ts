@@ -34,31 +34,32 @@ let usestr = (template: TemplateStringsArray, params: any[]) => {
 	return use(state._string);
 };
 
-Object.defineProperty(globalThis, "use", {
-	get() {
-		useTrap = true;
-		return (
-			magicPtr: { [Symbol.toPrimitive]: () => symbol } | TemplateStringsArray,
-			...params: any[]
-		) => {
-			useTrap = false;
+export let defineUse = () =>
+	Object.defineProperty(globalThis, "use", {
+		get() {
+			useTrap = true;
+			return (
+				magicPtr: { [Symbol.toPrimitive]: () => symbol } | TemplateStringsArray,
+				...params: any[]
+			) => {
+				useTrap = false;
 
-			usestr: {
-				if (magicPtr instanceof Array && "raw" in magicPtr)
-					return usestr(magicPtr, params);
-			}
+				usestr: {
+					if (magicPtr instanceof Array && "raw" in magicPtr)
+						return usestr(magicPtr, params);
+				}
 
-			let id = magicPtr[TOPRIMITIVE]();
-			dev: {
-				if (isBasePtr(magicPtr)) throw "Illegal invocation";
-			}
+				let id = magicPtr[TOPRIMITIVE]();
+				dev: {
+					if (isBasePtr(magicPtr)) throw "Illegal invocation";
+				}
 
-			initRegularPtr(id);
+				initRegularPtr(id);
 
-			return new Pointer(id);
-		};
-	},
-});
+				return new Pointer(id);
+			};
+		},
+	});
 
 declare global {
 	function use<T>(stateful: T): Pointer<T>;

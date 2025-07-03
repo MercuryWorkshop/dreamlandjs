@@ -15,7 +15,7 @@ type StoreAsyncBacking = {
 
 let LOCALSTORAGE = localStorage;
 
-export function createStore<T extends Object>(
+function _createStore<T extends Object>(
 	target: T,
 	options: {
 		ident: string;
@@ -23,7 +23,7 @@ export function createStore<T extends Object>(
 		autosave: "auto" | "manual" | "beforeunload";
 	}
 ): Promise<Stateful<T>>;
-export function createStore<T extends Object>(
+function _createStore<T extends Object>(
 	target: T,
 	options: {
 		ident: string;
@@ -31,7 +31,7 @@ export function createStore<T extends Object>(
 		autosave: "auto" | "manual" | "beforeunload";
 	}
 ): Stateful<T>;
-export function createStore<T extends Object>(
+function _createStore<T extends Object>(
 	target: T,
 	options: {
 		ident: string;
@@ -170,6 +170,7 @@ export function createStore<T extends Object>(
 	let data = read(ident);
 	return data instanceof Promise ? data.then(finish) : finish(data);
 }
+export let createStore = _createStore;
 
 export let saveAllStores = () => {
 	delegates.forEach((cb) => cb());

@@ -27,9 +27,9 @@ const common = (include) => {
 		terser({
 			parse: {},
 			compress: {
-				passes: 4,
+				passes: 5,
 				hoist_funs: true,
-				unsafe_arrows: true,
+				unsafe: true,
 			},
 			mangle: {
 				keep_classnames: false,

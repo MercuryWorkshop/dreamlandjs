@@ -32,19 +32,19 @@ let validateRoute = (route: Route) => {
 		}
 };
 
-function getShow(
+function _getShow(
 	route: Route,
 	required: false,
 	path: string,
 	params: RouteParams
 ): ShowTarget | null;
-function getShow(
+function _getShow(
 	route: Route,
 	required: true,
 	path: string,
 	params: RouteParams
 ): ShowTarget;
-function getShow(
+function _getShow(
 	route: Route,
 	required: boolean,
 	path: string,
@@ -55,6 +55,7 @@ function getShow(
 		throw new Error(`Unable to navigate to ${path}, route had no show target`);
 	return show instanceof Function ? show(path, params) : show;
 }
+let getShow = _getShow;
 
 let populateComponent = (
 	el: ShowTarget,
