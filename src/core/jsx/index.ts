@@ -61,7 +61,7 @@ let mapChild = (
 		let apply = (child: Node) => {
 			if (child instanceof HTMLElement) {
 				let list = child.classList;
-				let arr = Array.from(list);
+				let arr = [...list];
 				let other = arr.find((x) => x.startsWith(CSS_IDENT));
 
 				if (arr.find((x) => x === CSS_COMPONENT)) return;
@@ -73,7 +73,7 @@ let mapChild = (
 					list.add(identOverride);
 				}
 
-				for (let node of Array.from(child.childNodes)) {
+				for (let node of child.childNodes) {
 					apply(node);
 				}
 			}
@@ -83,7 +83,7 @@ let mapChild = (
 		return child;
 	} else if (child instanceof Array) {
 		let uid: string, end: Comment;
-		let children = Array.from(parent.childNodes);
+		let children = [...parent.childNodes];
 		let current: Node[];
 
 		if (!before) {

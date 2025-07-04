@@ -1,6 +1,6 @@
 {
 	"compilerOptions": {
-		"lib": ["ES2022", "dom"],
+		"lib": ["ES2022", "dom", "dom.iterable"],
 		"target": "ES2022",
 		"declaration": true,
 		"declarationDir": "dist/types",

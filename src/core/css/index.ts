@@ -61,7 +61,7 @@ export let rewriteCSS = (css: string, tag: string): string => {
 		return tokens;
 	};
 
-	let rewriteRules = (list: CSSRule[]): CSSRule[] => {
+	let rewriteRules = (list: CSSRuleList): CSSRuleList => {
 		for (let rule of list) {
 			if ("selectorText" in rule) {
 				let rewritten = stringify(
@@ -77,7 +77,7 @@ export let rewriteCSS = (css: string, tag: string): string => {
 				rule.selectorText = rewritten;
 			}
 			if ("cssRules" in rule) {
-				rewriteRules(Array.from(rule.cssRules as CSSRuleList));
+				rewriteRules(rule.cssRules as CSSRuleList);
 			}
 		}
 
@@ -86,7 +86,5 @@ export let rewriteCSS = (css: string, tag: string): string => {
 
 	let sheet = new CSSStyleSheet();
 	sheet.replaceSync(css.replaceAll(GLOBAL, globalWhereTransformation));
-	return rewriteRules(Array.from(sheet.cssRules))
-		.map((x) => x.cssText)
-		.join("");
+	return [...rewriteRules(sheet.cssRules)].map((x) => x.cssText).join("");
 };
