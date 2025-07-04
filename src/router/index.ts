@@ -1,18 +1,16 @@
-import { Component, DLElement } from "dreamland/core";
+import { DLElement } from "dreamland/core";
 
 export * from "./components";
 
 export type RouteParams = Record<string, string>;
 
 export type ShowTarget =
-	| DLElement<
-			Component & {
-				outlet: HTMLElement | null | undefined;
-				"on:routeshown"?: (path: string) => void;
+	| DLElement<{
+			outlet: HTMLElement | null | undefined;
+			"on:routeshown"?: (path: string) => void;
 
-				[index: string]: any;
-			}
-	  >
+			[index: string]: any;
+	  }>
 	| HTMLElement;
 
 export interface Route {
