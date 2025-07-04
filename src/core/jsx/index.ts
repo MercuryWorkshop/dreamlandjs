@@ -3,8 +3,6 @@ import { CSS_COMPONENT, genuid, rewriteCSS } from "../css";
 import {
 	Component,
 	ComponentChild,
-	ComponentContext,
-	ComponentInstance,
 	DLElement,
 	DLElementNameToElement,
 } from "./definitions";
@@ -16,8 +14,6 @@ export {
 	DLElement,
 	Component,
 	ComponentChild,
-	ComponentContext,
-	ComponentInstance,
 	DLElementNameToElement,
 	JSX,
 } from "./definitions";
@@ -114,18 +110,19 @@ let mapChild = (
 		return new Text(child as any);
 	}
 };
-function _jsx<T extends Component<any, any, any>>(
+
+function _jsx<T extends typeof Component>(
 	init: T,
 	props: Record<string, any> | null,
 	key?: string
-): ComponentInstance<T>;
+): DLElement<InstanceType<T>>;
 function _jsx<T extends string>(
 	init: T,
 	props: Record<string, any> | null,
 	key?: string
 ): DLElementNameToElement<T>;
-function _jsx(
-	init: Component<any, any, any> | string,
+function _jsx<T extends typeof Component>(
+	init: T | string,
 	_props: Record<string, any> | null,
 	key?: string
 ): HTMLElement {
@@ -162,10 +159,6 @@ function _jsx(
 			}
 		}
 
-		let cx = Object.create(init.prototype) as ComponentContext<any>;
-		cx.state = state;
-		cx.children = children;
-
 		let cssIdent = CSS_IDENT + genuid();
 		dev: {
 			cssIdent += "-" + init.name;
@@ -173,20 +166,22 @@ function _jsx(
 
 		let oldIdent = currentCssIdent;
 		currentCssIdent = cssIdent;
-		el = init.call(state, cx);
+		let instance = new init(state);
+		el = instance.html;
 		currentCssIdent = oldIdent;
 
-		(el as DLElement<any>).$ = cx;
+		(el as DLElement<any>).$ = instance;
 
 		el.classList.add(CSS_COMPONENT);
-		if (cx.css) {
+		if (instance.css) {
 			let el = DOCUMENT.createElement("style");
-			el.innerText = rewriteCSS(cx.css, cssIdent);
+			el.innerText = rewriteCSS(instance.css, cssIdent);
 			DOCUMENT.head.append(el);
 		}
 
-		cx.root = el;
-		cx.mount?.();
+		// TODO don't do this for eventual ssr
+		instance.init();
+		instance.mount();
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
@@ -274,18 +269,18 @@ function _jsx(
 	return el;
 }
 
-function _h<T extends Component<any, any, any>>(
+function _h<T extends typeof Component>(
 	init: T,
 	props: Record<string, any> | null,
 	...children: ComponentChild[]
-): ComponentInstance<T>;
+): DLElement<InstanceType<T>>;
 function _h<T extends string>(
 	init: T,
 	props: Record<string, any> | null,
 	...children: ComponentChild[]
 ): DLElementNameToElement<T>;
-function _h(
-	init: Component<any, any, any> | string,
+function _h<T extends typeof Component>(
+	init: T | string,
 	props: Record<string, any> | null,
 	...children: ComponentChild[]
 ): HTMLElement {

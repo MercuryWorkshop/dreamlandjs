@@ -1,29 +1,23 @@
 import { Component, h } from "dreamland/core";
 import { Router } from ".";
 
-export let Link: Component<
-	{
-		href: string;
-		class?: string;
-	},
-	{
-		root: HTMLAnchorElement;
-		children: any;
-	}
-> = function () {
-	this.class = this.class || "";
+export class Link extends Component {
+	href: string;
+	class?: string;
 
-	return (
+	children: any;
+
+	html = (
 		<a
-			href={this.href}
+			href={use(this.href)}
 			class={use(this.class)}
 			on:click={(e: MouseEvent) => {
 				e.preventDefault();
 				if (!Router._instance) throw new Error("No router exists");
-				Router._instance.navigate(this.root.href);
+				Router._instance.navigate(this.href);
 			}}
 		>
 			{this.children}
 		</a>
 	);
-};
+}
