@@ -56,9 +56,8 @@ export let createState = <T extends StatefulObject>(obj: T): Stateful<T> => {
 
 	let proxy = new Proxy(obj, {
 		get(target, prop, proxy) {
+			if (prop == DREAMLAND) return useTrap ? state._id : STATEFUL;
 			if (useTrap) {
-				if (prop === DREAMLAND) return state._id;
-
 				let ptr: PointerData = registerPointer({
 					_type: PointerType.Regular,
 					_state: state,
@@ -72,7 +71,7 @@ export let createState = <T extends StatefulObject>(obj: T): Stateful<T> => {
 					{},
 					{
 						get(_target, prop, proxy) {
-							if (prop === TOPRIMITIVE) return () => ptr._id;
+							if (prop == TOPRIMITIVE) return () => ptr._id;
 
 							ptr._path.push(mapStateStep(prop));
 
@@ -82,7 +81,6 @@ export let createState = <T extends StatefulObject>(obj: T): Stateful<T> => {
 				);
 			}
 
-			if (prop === DREAMLAND) return STATEFUL;
 			return Reflect.get(target, prop, proxy);
 		},
 		set(target, prop, newValue, proxy) {
@@ -108,9 +106,9 @@ let getStatefulInner = (state: Stateful<any>): StateData => {
 };
 export let stateListen = <T extends StatefulObject>(
 	state: Stateful<T>,
-	func: (prop: string | symbol, newValue: any) => void
+	func: (newValue: any, prop: string | symbol) => void
 ) => {
-	getStatefulInner(state)._listeners.push((prop) => func(prop, state[prop]));
+	getStatefulInner(state)._listeners.push((prop) => func(state[prop], prop));
 };
 export let stateProxy = <T extends StatefulObject, Key extends string | symbol>(
 	state: Stateful<T>,
@@ -137,5 +135,5 @@ export let stateProxy = <T extends StatefulObject, Key extends string | symbol>(
 };
 
 export let isStateful = (val: any): val is Stateful<any> => {
-	return typeof val === "object" && val !== null && val[DREAMLAND] === STATEFUL;
+	return typeof val === "object" && val !== null && val[DREAMLAND] == STATEFUL;
 };

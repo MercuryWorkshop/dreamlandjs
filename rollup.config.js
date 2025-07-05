@@ -28,8 +28,16 @@ const common = (include) => {
 			parse: {},
 			compress: {
 				passes: 5,
-				hoist_funs: true,
 				unsafe: true,
+				unsafe_Function: true,
+				unsafe_arrows: true,
+				unsafe_comps: true,
+				unsafe_math: true,
+				unsafe_methods: true,
+				unsafe_proto: true,
+				unsafe_regexp: true,
+				unsafe_symbols: true,
+				unsafe_undefined: true,
 			},
 			mangle: {
 				keep_classnames: false,
@@ -44,7 +52,7 @@ const common = (include) => {
 			module: true,
 			ie8: false,
 			safari10: false,
-			ecma: 2015,
+			ecma: 2022,
 		}),
 	];
 };

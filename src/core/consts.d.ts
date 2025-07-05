@@ -14,3 +14,4 @@ export const TYPE_TOKEN: unique symbol;
 
 export const DOCUMENT: typeof document;
 export const TOPRIMITIVE: typeof Symbol.toPrimitive;
+export const ASSIGN: typeof Object.assign;

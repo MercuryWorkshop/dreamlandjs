@@ -1,13 +1,15 @@
+import { ASSIGN } from "./consts";
+
 export let fatal = () => {
 	throw new Error("dl");
 };
 
-export let deepMerge = (target: any, source: any): any => {
+export let deepMerge = (target: object, source: any) => {
 	for (let key in source) {
 		if (source[key] instanceof Object && key in target) {
-			Object.assign(source[key], deepMerge(target[key], source[key]));
+			ASSIGN(source[key], deepMerge(target[key], source[key]));
 		}
 	}
 
-	return Object.assign(target || {}, source);
+	ASSIGN(target, source);
 };

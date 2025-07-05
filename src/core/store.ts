@@ -116,7 +116,7 @@ function _createStore<T extends Object>(
 		saving = asyncSave();
 	};
 
-	let saveHook = (_key: any, value: any) => {
+	let saveHook = (value: any) => {
 		if (isStateful(value)) stateListen(value, saveHook);
 		save();
 	};
@@ -124,7 +124,7 @@ function _createStore<T extends Object>(
 	let finish = (data: string): Stateful<T> => {
 		let stack = JSON.parse(data);
 		if (stack) {
-			let cache = Array(stack.length);
+			let cache = [];
 
 			let de = (i: number) => {
 				if (cache[i]) return cache[i];
@@ -152,7 +152,7 @@ function _createStore<T extends Object>(
 				return state;
 			};
 
-			target = deepMerge(target, de(0));
+			deepMerge(target, de(0));
 		}
 
 		let state = createState(target);

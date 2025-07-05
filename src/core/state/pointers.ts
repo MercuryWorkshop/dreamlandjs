@@ -36,21 +36,21 @@ let internalPointers: Map<symbol, PointerData> = new Map();
 
 let getPtrValue = (ptr: PointerData): any => {
 	let obj: any;
-	if (ptr._type === PointerType.Regular) {
+	if (ptr._type == PointerType.Regular) {
 		obj = ptr._state._target;
 		for (let step of ptr._path) {
 			let resolved = isBasePtr(step) ? step.value : step;
 			obj = obj[resolved];
 		}
-	} else if (ptr._type === PointerType.Zipped) {
+	} else if (ptr._type == PointerType.Zipped) {
 		obj = ptr._ptrs.map((x) => x.value);
-	} else if (ptr._type === PointerType.Mapped) {
+	} else if (ptr._type == PointerType.Mapped) {
 		obj = ptr._map(getPtrValue(ptr._ptr));
 	}
 	return obj;
 };
 let setPtrValue = (ptr: PointerData, value: any) => {
-	if (ptr._type === PointerType.Regular) {
+	if (ptr._type == PointerType.Regular) {
 		let obj = ptr._state._proxy;
 		let path = ptr._path;
 		for (let step of path.slice(0, -1)) {
@@ -60,16 +60,14 @@ let setPtrValue = (ptr: PointerData, value: any) => {
 		let step = path.at(-1);
 		let resolved = isBasePtr(step) ? step.value : step;
 		obj[resolved] = value;
-	} else if (ptr._type === PointerType.Mapped && ptr._reverse) {
+	} else if (ptr._type == PointerType.Mapped && ptr._reverse) {
 		let val = ptr._reverse(value);
 		if (val !== NO_CHANGE) setPtrValue(ptr._ptr, val);
 	}
 };
 
 let callAllListeners = (ptr: PointerData) => {
-	for (let listener of ptr._listeners) {
-		listener();
-	}
+	ptr._listeners.forEach((x) => x());
 };
 
 export let registerPointer = <T extends PointerData>(ptr: T): T => {
@@ -84,7 +82,7 @@ export let initRegularPtr = (id: symbol): boolean => {
 	if (!ptr) return false;
 
 	dev: {
-		if (ptr._type !== PointerType.Regular) throw "Illegal invocation";
+		if (ptr._type != PointerType.Regular) throw "Illegal invocation";
 	}
 
 	for (let step of ptr._path) {
@@ -151,11 +149,7 @@ export abstract class BasePointer<T> {
 			_ptr: this._ptr,
 		});
 
-		this.listen((_) => {
-			for (let listener of ptr._listeners) {
-				listener();
-			}
-		});
+		this.listen((_) => callAllListeners(ptr));
 
 		return ptr._id;
 	}
@@ -218,7 +212,7 @@ export class Pointer<T> extends BasePointer<T> {
 	readonly bound: false = false;
 
 	bind(): BoundPointer<T> {
-		if (this._ptr._type !== PointerType.Zipped) {
+		if (this._ptr._type != PointerType.Zipped) {
 			return new BoundPointer(this._ptr._id);
 		} else {
 			dev: {

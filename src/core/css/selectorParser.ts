@@ -33,6 +33,7 @@ import {
 	UNIVERSAL_TOKEN,
 	ATTRIBUTE_TOKEN,
 	TYPE_TOKEN,
+	ASSIGN,
 } from "../consts";
 import { fatal } from "../utils";
 
@@ -51,7 +52,7 @@ export interface CombinatorToken extends BaseToken {
 }
 
 export interface NamedToken extends BaseToken {
-	name: string;
+	nm: string;
 }
 
 export interface IdToken extends NamedToken {
@@ -73,7 +74,7 @@ export interface PseudoClassToken extends NamedToken {
 }
 
 export interface NamespacedToken extends BaseToken {
-	namespace?: string;
+	ns?: string;
 }
 
 export interface UniversalToken extends NamespacedToken {
@@ -110,28 +111,21 @@ export type Token =
 let TOKENS: Map<symbol, RegExp> = new Map([
 	[
 		ATTRIBUTE_TOKEN,
-		/\[\s*(?:(?<namespace>\*|[-\w\P{ASCII}]*)\|)?(?<name>[-\w\P{ASCII}]+)\s*(?:(?<op>\W?=)\s*(?<val>.+?)\s*(\s(?<case>[iIsS]))?\s*)?\]/gu,
+		/\[\s*(?:(?<ns>\*|[-\w\P{ASCII}]*)\|)?(?<nm>[-\w\P{ASCII}]+)\s*(?:(?<op>\W?=)\s*(?<val>.+?)\s*(\s(?<case>[iIsS]))?\s*)?\]/gu,
 	],
-	[ID_TOKEN, /#(?<name>[-\w\P{ASCII}]+)/gu],
-	[CLASS_TOKEN, /\.(?<name>[-\w\P{ASCII}]+)/gu],
+	[ID_TOKEN, /#(?<nm>[-\w\P{ASCII}]+)/gu],
+	[CLASS_TOKEN, /\.(?<nm>[-\w\P{ASCII}]+)/gu],
 	[COMMA_TOKEN, /\s*,\s*/g], // must be before combinator
 	[COMBINATOR_TOKEN, /\s*[\s>+~]\s*/g], // this must be after attribute
-	[PSEUDO_ELEMENT_TOKEN, /::(?<name>[-\w\P{ASCII}]+)(?:\((?<arg>¶*)\))?/gu], // this must be before pseudo-class
-	[PSEUDO_CLASS_TOKEN, /:(?<name>[-\w\P{ASCII}]+)(?:\((?<arg>¶*)\))?/gu],
-	[UNIVERSAL_TOKEN, /(?:(?<namespace>\*|[-\w\P{ASCII}]*)\|)?\*/gu],
-	[
-		TYPE_TOKEN,
-		/(?:(?<namespace>\*|[-\w\P{ASCII}]*)\|)?(?<name>[-\w\P{ASCII}]+)/gu,
-	], // this must be last
+	[PSEUDO_ELEMENT_TOKEN, /::(?<nm>[-\w\P{ASCII}]+)(?:\((?<arg>¶*)\))?/gu], // this must be before pseudo-class
+	[PSEUDO_CLASS_TOKEN, /:(?<nm>[-\w\P{ASCII}]+)(?:\((?<arg>¶*)\))?/gu],
+	[UNIVERSAL_TOKEN, /(?:(?<ns>\*|[-\w\P{ASCII}]*)\|)?\*/gu],
+	[TYPE_TOKEN, /(?:(?<ns>\*|[-\w\P{ASCII}]*)\|)?(?<nm>[-\w\P{ASCII}]+)/gu], // this must be last
 ]);
-let TRIM_TOKENS = new Set<symbol>([COMBINATOR_TOKEN, COMMA_TOKEN]);
 
 let getArgumentPatternByType = (type: symbol) => {
-	if ([PSEUDO_CLASS_TOKEN, PSEUDO_ELEMENT_TOKEN].includes(type)) {
-		return new RegExp(
-			TOKENS.get(type)!.source.replace("(?<arg>¶*)", "(?<arg>.*)"),
-			"gu"
-		);
+	if (type == PSEUDO_CLASS_TOKEN || type == PSEUDO_ELEMENT_TOKEN) {
+		return new RegExp(TOKENS.get(type)!.source.replace("¶", "."), "gu");
 	} else {
 		return TOKENS.get(type);
 	}
@@ -143,9 +137,9 @@ let gobbleParens = (text: string, offset: number): string => {
 	for (; offset < text.length; offset++) {
 		let char = text[offset];
 
-		if (char === "(") {
+		if (char == "(") {
 			++nesting;
-		} else if (char === ")") {
+		} else if (char == ")") {
 			--nesting;
 		}
 
@@ -212,9 +206,8 @@ let tokenizeBy = (text: string): Token[] => {
 				fatal();
 			}
 		} else {
-			offset += token._content.length;
-			token._pos = [offset - token._content.length, offset];
-			if (TRIM_TOKENS.has(token._type)) {
+			token._pos = [offset, (offset += token._content.length)];
+			if (token._type == COMBINATOR_TOKEN || token._type == COMMA_TOKEN) {
 				token._content = token._content.trim() || " ";
 			}
 		}
@@ -271,7 +264,7 @@ export let tokenize = (selector: string): Token[] => {
 	let tokens = tokenizeBy(selector);
 
 	// Replace placeholders in reverse order.
-	let changedTokens = new Set<Token>();
+	let changedTokens: Token[] = [];
 	for (let replacement of replacements.reverse()) {
 		for (let token of tokens) {
 			let { _offset, _value } = replacement;
@@ -288,7 +281,7 @@ export let tokenize = (selector: string): Token[] => {
 				_value +
 				_content.slice(tokenOffset + _value.length);
 			if (token._content !== _content) {
-				changedTokens.add(token);
+				changedTokens.push(token);
 			}
 		}
 	}
@@ -316,7 +309,7 @@ export let tokenize = (selector: string): Token[] => {
 				fatal();
 			}
 		}
-		Object.assign(token, match.groups);
+		ASSIGN(token, match.groups);
 	}
 
 	return tokens;

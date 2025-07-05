@@ -19,7 +19,7 @@ export let genuid = () => {
 };
 
 let GLOBAL = ":global(";
-export let rewriteCSS = (css: string, tag: string): string => {
+export let rewriteCSS = (style: HTMLStyleElement, css: string, tag: string) => {
 	let where = tokenize(`:where(.${tag})`);
 	let globalWhereTransformation = `:where(._${genuid()} `;
 
@@ -28,27 +28,29 @@ export let rewriteCSS = (css: string, tag: string): string => {
 			let token = tokens[i];
 
 			let idx: number, cnt: number, arr: Token[];
-			if (token._type === PSEUDO_CLASS_TOKEN && token.arg) {
-				token.arg = stringify(
-					rewriteSelector(tokenize(token.arg), token.name === "global")
-				);
-				token._content = `:${token.name}(${token.arg})`;
-			}
-			if (token._type === PSEUDO_CLASS_TOKEN && token.name === "global") {
-				idx = i;
-				cnt = 1;
-				arr = tokenize(token.arg);
+			if (token._type == PSEUDO_CLASS_TOKEN && token.arg) {
+				let global = token.nm == "global";
+
+				let rewritten = rewriteSelector(tokenize(token.arg), global);
+				if (global) {
+					idx = i;
+					cnt = 1;
+					arr = rewritten;
+				} else {
+					token.arg = stringify(rewritten);
+					token._content = `:${token.nm}(${token.arg})`;
+				}
 			} else if (
 				!inGlobal &&
 				(i === tokens.length - 1 ||
 					[COMBINATOR_TOKEN, COMMA_TOKEN].includes(tokens[i + 1]._type))
 			) {
-				let j = i;
-				while (j > 0 && tokens[j]._type === PSEUDO_ELEMENT_TOKEN) {
-					j--;
+				idx = i;
+				while (idx > 0 && tokens[idx]._type == PSEUDO_ELEMENT_TOKEN) {
+					idx--;
 				}
 
-				idx = j + 1;
+				idx++;
 				cnt = 0;
 				arr = where;
 			}
@@ -61,30 +63,30 @@ export let rewriteCSS = (css: string, tag: string): string => {
 		return tokens;
 	};
 
-	let rewriteRules = (list: CSSRuleList): CSSRuleList => {
+	let rewriteRules = (list: any) => {
 		for (let rule of list) {
-			if ("selectorText" in rule) {
-				let rewritten = stringify(
+			if (rule.selectorText) {
+				rule.selectorText = stringify(
 					rewriteSelector(
 						tokenize(
-							(rule.selectorText as string).replaceAll(
-								globalWhereTransformation,
-								GLOBAL
-							)
+							rule.selectorText.replaceAll(globalWhereTransformation, GLOBAL)
 						)
 					)
 				).replace(/:scope/g, `.${tag}.${CSS_COMPONENT}`);
-				rule.selectorText = rewritten;
 			}
-			if ("cssRules" in rule) {
-				rewriteRules(rule.cssRules as CSSRuleList);
+			if (rule.cssRules) {
+				rewriteRules(rule.cssRules);
 			}
 		}
 
 		return list;
 	};
 
-	let sheet = new CSSStyleSheet();
-	sheet.replaceSync(css.replaceAll(GLOBAL, globalWhereTransformation));
-	return [...rewriteRules(sheet.cssRules)].map((x) => x.cssText).join("");
+	style.innerText = css.replaceAll(GLOBAL, globalWhereTransformation);
+	rewriteRules(style.sheet.cssRules);
+	dev: {
+		style.innerText = [...style.sheet.cssRules]
+			.map((x) => x.cssText)
+			.join("\n");
+	}
 };

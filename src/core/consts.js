@@ -16,3 +16,4 @@ export let [
 ] = Array.from(Array(12), Symbol);
 export let DOCUMENT = document;
 export let TOPRIMITIVE = Symbol.toPrimitive;
+export let ASSIGN = Object.assign;

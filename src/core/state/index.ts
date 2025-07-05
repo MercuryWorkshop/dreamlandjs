@@ -22,9 +22,9 @@ let usestr = (template: TemplateStringsArray, params: any[]) => {
 					flattened[i] = val;
 					state._string = flattened.join("");
 				});
-				flattened.push("" + prop.value);
+				flattened.push(prop.value);
 			} else {
-				flattened.push("" + val);
+				flattened.push(val);
 			}
 		}
 	}

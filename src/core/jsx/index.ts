@@ -26,9 +26,6 @@ let CSS_IDENT = "dlcss-";
 let currentCssIdent: string | null = null;
 
 let comment = (text?: string) => new Comment(text);
-let isComment = (x: Node): x is Comment => {
-	return x.nodeType == 8;
-};
 
 let mapChild = (
 	child: ComponentChild,
@@ -58,13 +55,13 @@ let mapChild = (
 		child.listen(setNode);
 		return childEl;
 	} else if (child instanceof Node) {
-		let apply = (child: Node) => {
-			if (child instanceof HTMLElement) {
-				let list = child.classList;
+		let list: DOMTokenList;
+		let apply = (child: any) => {
+			if ((list = child.classList)) {
 				let arr = [...list];
 				let other = arr.find((x) => x.startsWith(CSS_IDENT));
 
-				if (arr.find((x) => x === CSS_COMPONENT)) return;
+				if (arr.find((x) => x == CSS_COMPONENT)) return;
 
 				if (!other) {
 					list.add(identOverride || cssIdent);
@@ -94,13 +91,15 @@ let mapChild = (
 		} else {
 			uid = (before as Comment).data;
 			end = before as Comment;
-			let start = children.findIndex((x) => isComment(x) && x.data === uid);
+			let start = children.findIndex(
+				(x) => x.nodeType == 8 && (x as Comment).data == uid
+			);
 			let endIdx = children.findIndex((x) => x === end);
 			current = children.slice(start, endIdx);
 		}
 		if (!end) fatal();
 
-		for (let x of current) parent.removeChild(x);
+		current.forEach((x) => parent.removeChild(x));
 
 		let anchor: Node = end;
 		for (let x of child.reverse()) {
@@ -114,6 +113,9 @@ let mapChild = (
 		return new Text(child as any);
 	}
 };
+
+let CREATE_ELEMENT = "createElement";
+
 function _jsx<T extends Component<any, any, any>>(
 	init: T,
 	props: Record<string, any> | null,
@@ -162,9 +164,7 @@ function _jsx(
 			}
 		}
 
-		let cx = Object.create(init.prototype) as ComponentContext<any>;
-		cx.state = state;
-		cx.children = children;
+		let cx = { state, children } as ComponentContext<any>;
 
 		let cssIdent = CSS_IDENT + genuid();
 		dev: {
@@ -180,9 +180,9 @@ function _jsx(
 
 		el.classList.add(CSS_COMPONENT);
 		if (cx.css) {
-			let el = DOCUMENT.createElement("style");
-			el.innerText = rewriteCSS(cx.css, cssIdent);
+			let el = DOCUMENT[CREATE_ELEMENT]("style");
 			DOCUMENT.head.append(el);
+			rewriteCSS(el, cx.css, cssIdent);
 		}
 
 		cx.root = el;
@@ -191,7 +191,7 @@ function _jsx(
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
 		let xmlns = props?.xmlns;
-		el = DOCUMENT["createElement" + (xmlns ? "NS" : "")](xmlns || init, init);
+		el = DOCUMENT[CREATE_ELEMENT + (xmlns ? "NS" : "")](xmlns || init, init);
 
 		let currySetVal = (param: string, val: any) => {
 			let set = (val: any) => {
