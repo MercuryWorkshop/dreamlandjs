@@ -55,34 +55,25 @@ const common = (include, output) => {
 			safari10: false,
 			ecma: 2022,
 		}),
-		...(output ? [
-			visualizer({
-				filename: `dist/${output}.size.html`,
-				sourcemap: true,
-				gzipSize: true,
-				brotliSize: true,
-				title: `Dreamland ${output} Size`
-			})
-		] : [])
+		...(output
+			? [
+					visualizer({
+						filename: `dist/${output}.size.html`,
+						sourcemap: true,
+						gzipSize: true,
+						brotliSize: true,
+						title: `Dreamland ${output} Size`,
+					}),
+				]
+			: []),
 	];
 };
 
-const cfg = ({
-	input: entry,
-	output,
-	defs,
-	plugins,
-	visualize,
-}) => {
+const cfg = ({ input: entry, output, defs, plugins, visualize }) => {
 	plugins ||= [];
 	defs ??= true;
 
-	let stripLabels = [];
-	if (DEV) {
-		stripLabels.push("prod");
-	} else {
-		stripLabels.push("dev");
-	}
+	let stripLabels = [DEV ? "prod" : "dev"];
 
 	if (!USESTR) {
 		stripLabels.push("usestr");
@@ -105,19 +96,19 @@ const cfg = ({
 			},
 		});
 	}
-	plugins.push(strip({
-		include: ["**/*.ts"],
-		functions: [],
-		labels: stripLabels
-	}));
+	plugins.push(
+		strip({
+			include: ["**/*.ts"],
+			functions: [],
+			labels: stripLabels,
+		})
+	);
 
 	const input = `${entry[0]}/${entry[1] || "index.ts"}`;
 	const out = [
 		defineConfig({
 			input,
-			output: [
-				{ file: `dist/${output}.js`, sourcemap: true },
-			],
+			output: [{ file: `dist/${output}.js`, sourcemap: true }],
 			plugins: [common(entry[0], visualize && output), ...plugins],
 			external: ["dreamland/core"],
 		}),
