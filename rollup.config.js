@@ -12,7 +12,12 @@ import MagicString from "magic-string";
 let DEV = false;
 let USESTR = true;
 
-const common = (include, output) => {
+const onwarn = (warning, warn) => {
+	if (warning.code === "CIRCULAR_DEPENDENCY") return;
+	warn(warning);
+};
+
+const common = (include, output, unsafe) => {
 	let tsconfig = import.meta.dirname + "/tsconfig.json";
 	if (fs.existsSync(include + "/tsconfig.json")) {
 		tsconfig = include + "/tsconfig.json";
@@ -29,16 +34,16 @@ const common = (include, output) => {
 			parse: {},
 			compress: {
 				passes: 5,
-				unsafe: true,
-				unsafe_Function: true,
-				unsafe_arrows: true,
-				unsafe_comps: true,
-				unsafe_math: true,
-				unsafe_methods: true,
-				unsafe_proto: true,
-				unsafe_regexp: true,
-				unsafe_symbols: true,
-				unsafe_undefined: true,
+				unsafe: unsafe,
+				unsafe_Function: unsafe,
+				unsafe_arrows: unsafe,
+				unsafe_comps: unsafe,
+				unsafe_math: unsafe,
+				unsafe_methods: unsafe,
+				unsafe_proto: unsafe,
+				unsafe_regexp: unsafe,
+				unsafe_symbols: unsafe,
+				unsafe_undefined: unsafe,
 			},
 			mangle: {
 				keep_classnames: false,
@@ -69,9 +74,17 @@ const common = (include, output) => {
 	];
 };
 
-const cfg = ({ input: entry, output, defs, plugins, visualize }) => {
+const cfg = ({
+	input: entry,
+	output,
+	defs,
+	plugins,
+	visualize,
+	unsafeTerser,
+}) => {
 	plugins ||= [];
 	defs ??= true;
+	unsafeTerser ??= true;
 
 	let stripLabels = [DEV ? "prod" : "dev"];
 
@@ -109,8 +122,12 @@ const cfg = ({ input: entry, output, defs, plugins, visualize }) => {
 		defineConfig({
 			input,
 			output: [{ file: `dist/${output}.js`, sourcemap: true }],
-			plugins: [common(entry[0], visualize && output), ...plugins],
+			plugins: [
+				common(entry[0], visualize && output, unsafeTerser),
+				...plugins,
+			],
 			external: ["dreamland/core"],
+			onwarn,
 		}),
 	];
 	if (defs) {
@@ -122,6 +139,7 @@ const cfg = ({ input: entry, output, defs, plugins, visualize }) => {
 				output: [{ file: `dist/${output}.d.ts`, format: "es" }],
 				plugins: [dts()],
 				external: ["dreamland/core"],
+				onwarn,
 			})
 		);
 	}
@@ -139,18 +157,46 @@ export default (args) => {
 			plugins: [
 				{
 					name: "copyConstDefs",
-					writeBundle: async () => {
-						await new Promise((r) =>
+					writeBundle: () =>
+						new Promise((r) =>
 							fs.copyFile(
 								"src/core/consts.d.ts",
 								"dist/types/core/consts.d.ts",
 								r
 							)
-						);
-					},
+						),
 				},
 			],
 			visualize: true,
+		}),
+		...cfg({
+			input: ["src/ssr/server"],
+			output: "ssr.server",
+			plugins: [
+				{
+					name: "cssom-monkeypatch",
+					resolveId(source) {
+						if (source === "rrweb-cssom") {
+							return source;
+						}
+						return null;
+					},
+					load(source) {
+						if (source === "rrweb-cssom") {
+							let code = fs.readFileSync(
+								"node_modules/rrweb-cssom/build/CSSOM.js"
+							);
+							return `
+								let exports = {};
+								${code}
+								export { CSSOM };
+							`;
+						}
+						return null;
+					},
+				},
+			],
+			unsafeTerser: false,
 		}),
 		...cfg({ input: ["src/router"], output: "router" }),
 		...cfg({ input: ["src/js-runtime"], output: "js-runtime" }),

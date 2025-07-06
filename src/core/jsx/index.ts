@@ -42,7 +42,7 @@ let mapChild = (
 		setNode(child.value);
 		child.listen(setNode);
 		return childEl;
-	} else if (child instanceof node()) {
+	} else if (child instanceof node) {
 		let list: DOMTokenList;
 		let apply = (child: any) => {
 			if ((list = child.classList)) {

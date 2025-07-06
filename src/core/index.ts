@@ -16,7 +16,7 @@ export {
 	JSX,
 } from "./jsx/definitions";
 export { h, jsx } from "./jsx";
-export { setDomImpl } from "./jsx/dom";
+export { setDomImpl, getDomImpl, DomImpl } from "./jsx/dom";
 
 export { DREAMLAND, NO_CHANGE } from "./consts";
 

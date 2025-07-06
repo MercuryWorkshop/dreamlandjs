@@ -20,9 +20,9 @@
 			"default": "./dist/core.js",
 			"types": "./dist/core.d.ts"
 		},
-		"./router": {
-			"default": "./dist/router.js",
-			"types": "./dist/router.d.ts"
+		"./ssr/server": {
+			"default": "./dist/ssr.server.js",
+			"types": "./dist/ssr.server.d.ts"
 		},
 		"./jsx-runtime": {
 			"default": "./dist/jsx-runtime.js",
@@ -31,6 +31,10 @@
 		"./jsx-dev-runtime": {
 			"default": "./dist/jsx-runtime.js",
 			"types": "./dist/jsx-runtime.d.ts"
+		},
+		"./router": {
+			"default": "./dist/router.js",
+			"types": "./dist/router.d.ts"
 		}
 	},
 	"devDependencies": {
@@ -47,6 +51,8 @@
 		"typescript": "^5.8.3"
 	},
 	"dependencies": {
-		"htm": "^3.1.1"
+		"domhandler": "^5.0.3",
+		"htm": "^3.1.1",
+		"rrweb-cssom": "^0.8.0"
 	}
 }
