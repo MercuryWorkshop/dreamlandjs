@@ -1,4 +1,4 @@
-import { DOCUMENT } from "../consts";
+import { new_Comment, DOCUMENT, node, new_Text } from "./dom";
 import { CSS_COMPONENT, genuid, rewriteCSS } from "../css";
 import {
 	Component,
@@ -12,20 +12,8 @@ import { fatal } from "../utils";
 import { isBasePtr, isBoundPtr } from "../state/pointers";
 import { createState, stateProxy } from "../state/state";
 
-export {
-	DLElement,
-	Component,
-	ComponentChild,
-	ComponentContext,
-	ComponentInstance,
-	DLElementNameToElement,
-	JSX,
-} from "./definitions";
-
 let CSS_IDENT = "dlcss-";
 let currentCssIdent: string | null = null;
-
-let comment = (text?: string) => new Comment(text);
 
 let mapChild = (
 	child: ComponentChild,
@@ -35,7 +23,7 @@ let mapChild = (
 	identOverride?: string
 ): Node => {
 	if (child == null) {
-		return comment();
+		return new_Comment();
 	} else if (isBasePtr(child)) {
 		let childEl: Node = null!;
 
@@ -54,7 +42,7 @@ let mapChild = (
 		setNode(child.value);
 		child.listen(setNode);
 		return childEl;
-	} else if (child instanceof Node) {
+	} else if (child instanceof node()) {
 		let list: DOMTokenList;
 		let apply = (child: any) => {
 			if ((list = child.classList)) {
@@ -85,8 +73,8 @@ let mapChild = (
 
 		if (!before) {
 			uid = "dlarr-" + genuid();
-			parent.appendChild(comment(uid));
-			end = parent.appendChild(comment(uid));
+			parent.appendChild(new_Comment(uid));
+			end = parent.appendChild(new_Comment(uid));
 			current = [];
 		} else {
 			uid = (before as Comment).data;
@@ -110,7 +98,7 @@ let mapChild = (
 
 		return end;
 	} else {
-		return new Text(child as any);
+		return new_Text(child as any);
 	}
 };
 

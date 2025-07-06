@@ -6,7 +6,17 @@ export { Stateful, createState, stateListen, stateProxy } from "./state/state";
 
 export { createStore, saveAllStores } from "./store";
 
-export * from "./jsx";
+export {
+	DLElement,
+	Component,
+	ComponentChild,
+	ComponentContext,
+	ComponentInstance,
+	DLElementNameToElement,
+	JSX,
+} from "./jsx/definitions";
+export { h, jsx } from "./jsx";
+export { setDomImpl } from "./jsx/dom";
 
 export { DREAMLAND, NO_CHANGE } from "./consts";
 
