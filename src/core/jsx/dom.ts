@@ -1,7 +1,9 @@
-export let DOCUMENT = globalThis.document;
+import { GLOBAL } from "../consts";
+
+export let DOCUMENT = GLOBAL.document;
 export let new_Text = (text?: string) => new Text(text);
 export let new_Comment = (text?: string) => new Comment(text);
-export let node: () => typeof Node = () => proto(proto(proto(DOCUMENT)));
+export let node: () => typeof Node = () => GLOBAL.Node;
 
 export let setDomImpl = (
 	doc: any,
@@ -14,5 +16,3 @@ export let setDomImpl = (
 	new_Comment = comment;
 	node = Node;
 };
-
-let proto = (x: any) => x.__proto__;
