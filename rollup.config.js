@@ -6,12 +6,13 @@ import terser from "@rollup/plugin-terser";
 import typescript from "@rollup/plugin-typescript";
 import dts from "rollup-plugin-dts";
 import nodeResolve from "@rollup/plugin-node-resolve";
+import { visualizer } from "rollup-plugin-visualizer";
 import MagicString from "magic-string";
 
 let DEV = false;
 let USESTR = true;
 
-const common = (include) => {
+const common = (include, output) => {
 	let tsconfig = import.meta.dirname + "/tsconfig.json";
 	if (fs.existsSync(include + "/tsconfig.json")) {
 		tsconfig = include + "/tsconfig.json";
@@ -54,45 +55,38 @@ const common = (include) => {
 			safari10: false,
 			ecma: 2022,
 		}),
+		...(output ? [
+			visualizer({
+				filename: `dist/${output}.size.html`,
+				sourcemap: true,
+				gzipSize: true,
+				brotliSize: true,
+				title: `Dreamland ${output} Size`
+			})
+		] : [])
 	];
 };
 
-const cfg = (
-	inputDir,
-	inputFile,
+const cfg = ({
+	input: entry,
 	output,
 	defs,
 	plugins,
-	format,
-	extraOutput = {}
-) => {
-	const stripCommon = {
-		include: ["**/*.ts"],
-		functions: [],
-	};
+	visualize,
+}) => {
+	plugins ||= [];
+	defs ??= true;
+
+	let stripLabels = [];
 	if (DEV) {
-		plugins.push(
-			strip({
-				...stripCommon,
-				labels: ["prod"],
-			})
-		);
+		stripLabels.push("prod");
 	} else {
-		plugins.push(
-			strip({
-				...stripCommon,
-				labels: ["dev"],
-			})
-		);
+		stripLabels.push("dev");
 	}
 
 	if (!USESTR) {
-		plugins.push(
-			strip({
-				...stripCommon,
-				labels: ["usestr"],
-			})
-		);
+		stripLabels.push("usestr");
+
 		// only needed because of declare global
 		plugins.push({
 			name: "stripBetweenComment",
@@ -111,19 +105,21 @@ const cfg = (
 			},
 		});
 	}
+	plugins.push(strip({
+		include: ["**/*.ts"],
+		functions: [],
+		labels: stripLabels
+	}));
 
-	const input = inputDir + "/" + inputFile;
+	const input = `${entry[0]}/${entry[1] || "index.ts"}`;
 	const out = [
 		defineConfig({
 			input,
 			output: [
-				Object.assign(
-					{ file: output, sourcemap: true, format: format },
-					extraOutput
-				),
+				{ file: `dist/${output}.js`, sourcemap: true },
 			],
-			plugins: [common(inputDir), ...plugins],
-			external: format !== "iife" ? ["dreamland/core"] : [],
+			plugins: [common(entry[0], visualize && output), ...plugins],
+			external: ["dreamland/core"],
 		}),
 	];
 	if (defs) {
@@ -132,7 +128,7 @@ const cfg = (
 				input:
 					"dist/types/" +
 					input.substring("src/".length).replace(".ts", ".d.ts"),
-				output: [{ file: output.replace(".js", ".d.ts"), format: "es" }],
+				output: [{ file: `dist/${output}.d.ts`, format: "es" }],
 				plugins: [dts()],
 				external: ["dreamland/core"],
 			})
@@ -146,14 +142,12 @@ export default (args) => {
 	if (args["config-nousestr"]) USESTR = false;
 
 	return defineConfig([
-		...cfg(
-			"src/core",
-			"index.ts",
-			"dist/core.js",
-			true,
-			[
+		...cfg({
+			input: ["src/core"],
+			output: "core",
+			plugins: [
 				{
-					name: "copy",
+					name: "copyConstDefs",
 					writeBundle: async () => {
 						await new Promise((r) =>
 							fs.copyFile(
@@ -165,17 +159,10 @@ export default (args) => {
 					},
 				},
 			],
-			"es"
-		),
-		...cfg("src/router", "index.ts", "dist/router.js", true, [], "es"),
-		...cfg("src/js-runtime", "index.ts", "dist/js-runtime.js", false, [], "es"),
-		...cfg(
-			"src/jsx-runtime",
-			"index.ts",
-			"dist/jsx-runtime.js",
-			true,
-			[],
-			"es"
-		),
+			visualize: true,
+		}),
+		...cfg({ input: ["src/router"], output: "router" }),
+		...cfg({ input: ["src/js-runtime"], output: "js-runtime" }),
+		...cfg({ input: ["src/jsx-runtime"], output: "jsx-runtime" }),
 	]);
 };
