@@ -82,6 +82,7 @@ export class Element extends Node {
 	addEventListener() {}
 
 	setAttribute(key: string, value: string) {
+		if (key === "class") this.classList.push(...value.split(" "));
 		this.attributes.set(key, value);
 	}
 
@@ -152,20 +153,27 @@ export class Text extends Node {
 	}
 }
 
-export let newVDom = () => {
+export let newVDom = (old: DomImpl) => {
+	let elArr: Node[] = [];
+	let push = (el: Node) => {
+		elArr.push(el);
+		return el;
+	};
 	return [
 		{
 			createElement(type: string) {
-				return type === "style" ? new Style() : new Element(type);
+				return push(type === "style" ? new Style() : new Element(type));
 			},
 			createElementNS(ns: string, type: string) {
-				return new Element(type, ns);
+				return push(new Element(type, ns));
 			},
 
+			arr: elArr,
 			head: new Element("head"),
 		},
 		Node,
-		(text?: string) => new Text(text || ""),
-		(text?: string) => new Comment(text || ""),
+		(text?: string) => push(new Text(text || "")),
+		(text?: string) => push(new Comment(text || "")),
+		old[4],
 	] as const satisfies DomImpl;
 };

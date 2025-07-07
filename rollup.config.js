@@ -199,6 +199,11 @@ export default (args) => {
 			visualize: true,
 			unsafeTerser: false,
 		}),
+		...cfg({
+			input: ["src/ssr", "client/index.ts"],
+			output: "ssr.client",
+			visualize: true,
+		}),
 		...cfg({ input: ["src/router"], output: "router" }),
 		...cfg({ input: ["src/js-runtime"], output: "js-runtime" }),
 		...cfg({ input: ["src/jsx-runtime"], output: "jsx-runtime" }),

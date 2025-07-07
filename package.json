@@ -24,6 +24,10 @@
 			"default": "./dist/ssr.server.js",
 			"types": "./dist/ssr.server.d.ts"
 		},
+		"./ssr/client": {
+			"default": "./dist/ssr.client.js",
+			"types": "./dist/ssr.client.d.ts"
+		},
 		"./jsx-runtime": {
 			"default": "./dist/jsx-runtime.js",
 			"types": "./dist/jsx-runtime.d.ts"

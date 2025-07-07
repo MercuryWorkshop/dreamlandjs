@@ -1,4 +1,11 @@
-import { new_Comment, DOCUMENT, node, new_Text } from "./dom";
+import {
+	new_Comment,
+	DOCUMENT,
+	node,
+	new_Text,
+	genCssUid,
+	CSS_IDENT,
+} from "./dom";
 import { CSS_COMPONENT, genuid, rewriteCSS } from "../css";
 import {
 	Component,
@@ -11,9 +18,10 @@ import {
 import { fatal } from "../utils";
 import { isBasePtr, isBoundPtr } from "../state/pointers";
 import { createState, stateProxy } from "../state/state";
+import { DREAMLAND } from "../consts";
 
-let CSS_IDENT = "dlcss-";
 let currentCssIdent: string | null = null;
+let hydrating: boolean = false;
 
 let mapChild = (
 	child: ComponentChild,
@@ -35,7 +43,7 @@ let mapChild = (
 				cssIdent,
 				child._cssIdent
 			);
-			if (childEl) parent.replaceChild(newEl, childEl);
+			if (!hydrating && childEl) parent.replaceChild(newEl, childEl);
 			childEl = newEl;
 		};
 
@@ -152,10 +160,7 @@ function _jsx(
 			}
 		}
 
-		let cssIdent = CSS_IDENT + genuid();
-		dev: {
-			cssIdent += "-" + init.name;
-		}
+		let cssIdent = genCssUid(init.name);
 
 		let cx = { state, children, id: cssIdent } as ComponentContext<any>;
 
@@ -168,9 +173,11 @@ function _jsx(
 
 		el.classList.add(CSS_COMPONENT);
 		if (cx.css) {
-			let el = DOCUMENT[CREATE_ELEMENT]("style");
-			DOCUMENT.head.append(el);
-			rewriteCSS(el, cx.css, cssIdent);
+			let style = DOCUMENT[CREATE_ELEMENT]("style");
+			if (!hydrating) {
+				DOCUMENT.head.append(style);
+				rewriteCSS(style, cx.css, cssIdent);
+			}
 		}
 
 		cx.root = el;
@@ -198,7 +205,8 @@ function _jsx(
 		};
 
 		for (let child of children) {
-			el.appendChild(mapChild(child, el, null, currentCssIdent));
+			let ret = mapChild(child, el, null, currentCssIdent);
+			if (!hydrating) el.appendChild(ret);
 		}
 
 		for (let attr in props) {
@@ -261,6 +269,8 @@ function _jsx(
 
 	return el;
 }
+
+_jsx[DREAMLAND] = (status: boolean) => (hydrating = status);
 
 function _h<T extends Component<any, any, any>>(
 	init: T,

@@ -75,7 +75,6 @@ export let hydrateState = (state: any, target: any) => {
 	for (let [k, v] of Object.entries(state)) {
 		let internal = v?.[DL_INTERNAL_TYPE];
 		if (internal === DL_INTERNAL_TYPE_PTR) {
-			console.log(v);
 			hydratePtr(target[k], (v as SerializedPtr).p);
 		} else if (internal === DL_INTERNAL_TYPE_MAP) {
 			target[k] = new Map(Object.entries(v));
