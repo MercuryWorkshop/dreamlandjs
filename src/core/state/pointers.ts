@@ -1,4 +1,4 @@
-import { TOPRIMITIVE, NO_CHANGE } from "../consts";
+import { TOPRIMITIVE, NO_CHANGE, DREAMLAND } from "../consts";
 import { ObjectProp, StateData } from "./state";
 
 export const enum PointerType {
@@ -107,6 +107,11 @@ export let isBoundPtr = (val: any): val is BoundPointer<any> => {
 	return isBasePtr(val) && val.bound;
 };
 
+export type ExportedPointer =
+	| ExportedPointer[]
+	| { v: any; p: PointerStep[] }
+	| null;
+
 export abstract class BasePointer<T> {
 	// @internal
 	_ptr: PointerData;
@@ -128,6 +133,16 @@ export abstract class BasePointer<T> {
 
 	get value(): T {
 		return getPtrValue(this._ptr);
+	}
+
+	[DREAMLAND](): ExportedPointer {
+		let ptr = this._ptr;
+		if (ptr._type == PointerType.Regular) {
+			return { v: this.value, p: ptr._path };
+		} else if (ptr._type == PointerType.Zipped) {
+			return ptr._ptrs.map((x) => x[DREAMLAND]());
+		}
+		return null;
 	}
 
 	[TOPRIMITIVE]() {

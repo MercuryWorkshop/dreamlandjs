@@ -170,7 +170,7 @@ export default (args) => {
 			visualize: true,
 		}),
 		...cfg({
-			input: ["src/ssr/server"],
+			input: ["src/ssr", "server/index.ts"],
 			output: "ssr.server",
 			plugins: [
 				{
@@ -196,6 +196,7 @@ export default (args) => {
 					},
 				},
 			],
+			visualize: true,
 			unsafeTerser: false,
 		}),
 		...cfg({ input: ["src/router"], output: "router" }),

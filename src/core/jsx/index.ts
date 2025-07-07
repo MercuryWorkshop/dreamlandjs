@@ -152,12 +152,12 @@ function _jsx(
 			}
 		}
 
-		let cx = { state, children } as ComponentContext<any>;
-
 		let cssIdent = CSS_IDENT + genuid();
 		dev: {
 			cssIdent += "-" + init.name;
 		}
+
+		let cx = { state, children, id: cssIdent } as ComponentContext<any>;
 
 		let oldIdent = currentCssIdent;
 		currentCssIdent = cssIdent;
