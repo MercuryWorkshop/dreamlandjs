@@ -1,4 +1,4 @@
-import { BasePointer, ExportedPointer, DREAMLAND } from "dreamland/core";
+import { BasePointer, DREAMLAND, NO_CHANGE } from "dreamland/core";
 import {
 	DL_INTERNAL_TYPE,
 	DL_INTERNAL_TYPE_MAP,
@@ -16,9 +16,23 @@ type SerializedSet = {
 	d: any[];
 };
 
+type ExportedPointer = ExportedPointer[] | { v: any };
+
 type SerializedPtr = {
 	[DL_INTERNAL_TYPE]: typeof DL_INTERNAL_TYPE_PTR;
 	p: ExportedPointer;
+};
+
+let exportPtr = (ptr: BasePointer<any>) => {
+	let zipped = ptr[DREAMLAND]();
+	return zipped ? zipped.map(exportPtr) : { v: ptr.value };
+};
+let hydratePtr = (ptr: BasePointer<any>, data: ExportedPointer) => {
+	if (data instanceof Array) {
+		ptr[DREAMLAND]()!.forEach((x, i) => hydratePtr(x, data[i]));
+	} else {
+		ptr[NO_CHANGE](data.v);
+	}
 };
 
 // used on serverside only
@@ -35,13 +49,9 @@ export let serializeState: (state: any) => string = (
 		if (key === "") throw new Error("you suck");
 
 		if (value instanceof BasePointer) {
-			let data = value[DREAMLAND]();
-			if (!data)
-				throw new Error("failed to serialize pointer: type unsupported");
-
 			return <SerializedPtr>{
 				[DL_INTERNAL_TYPE]: DL_INTERNAL_TYPE_PTR,
-				p: data,
+				p: exportPtr(value),
 			};
 		}
 		if (value instanceof Map) {
@@ -59,4 +69,20 @@ export let serializeState: (state: any) => string = (
 
 		return value;
 	});
+};
+
+export let hydrateState = (state: any, target: any) => {
+	for (let [k, v] of Object.entries(state)) {
+		let internal = v?.[DL_INTERNAL_TYPE];
+		if (internal === DL_INTERNAL_TYPE_PTR) {
+			console.log(v);
+			hydratePtr(target[k], (v as SerializedPtr).p);
+		} else if (internal === DL_INTERNAL_TYPE_MAP) {
+			target[k] = new Map(Object.entries(v));
+		} else if (internal === DL_INTERNAL_TYPE_SET) {
+			target[k] = new Set(v as any[]);
+		} else if (!internal) {
+			target[k] = v;
+		}
+	}
 };

@@ -107,11 +107,6 @@ export let isBoundPtr = (val: any): val is BoundPointer<any> => {
 	return isBasePtr(val) && val.bound;
 };
 
-export type ExportedPointer =
-	| ExportedPointer[]
-	| { v: any; p: PointerStep[] }
-	| null;
-
 export abstract class BasePointer<T> {
 	// @internal
 	_ptr: PointerData;
@@ -135,14 +130,15 @@ export abstract class BasePointer<T> {
 		return getPtrValue(this._ptr);
 	}
 
-	[DREAMLAND](): ExportedPointer {
+	[DREAMLAND](): BasePointer<any>[] | null {
 		let ptr = this._ptr;
-		if (ptr._type == PointerType.Regular) {
-			return { v: this.value, p: ptr._path };
-		} else if (ptr._type == PointerType.Zipped) {
-			return ptr._ptrs.map((x) => x[DREAMLAND]());
+		if (ptr._type == PointerType.Zipped) {
+			return ptr._ptrs;
 		}
 		return null;
+	}
+	[NO_CHANGE](val: any) {
+		setPtrValue(this._ptr, val);
 	}
 
 	[TOPRIMITIVE]() {

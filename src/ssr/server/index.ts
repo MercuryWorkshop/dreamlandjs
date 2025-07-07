@@ -2,7 +2,7 @@ import { Element as DomElement, Text as DomText } from "domhandler";
 import { getDomImpl, setDomImpl } from "dreamland/core";
 import { Element, newVDom } from "./vdom";
 
-import { serializeState } from "../common/serialize";
+import { hydrateState, serializeState } from "../common/serialize";
 import { DL_COMPONENT_STATE_ATTR } from "../common/consts";
 
 export interface RenderedComponent {
