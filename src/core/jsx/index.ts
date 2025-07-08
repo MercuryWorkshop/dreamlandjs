@@ -135,7 +135,15 @@ function _jsx(
 
 		let cssIdent = genCssUid();
 
-		let cx = { state, children, id: cssIdent } as ComponentContext<any>;
+		let css: string | undefined;
+		let cx = {
+			state,
+			children,
+			id: cssIdent,
+			css(...args) {
+				css = String.raw(...args);
+			},
+		} as ComponentContext<any>;
 
 		let oldIdent = currentCssIdent;
 		currentCssIdent = cssIdent;
@@ -145,11 +153,11 @@ function _jsx(
 		(el as DLElement<any>).$ = cx;
 
 		el.classList.add(CSS_COMPONENT);
-		if (cx.css) {
+		if (css) {
 			let style = DOCUMENT[CREATE_ELEMENT]("style");
 			if (!hydrating) {
 				DOCUMENT.head.append(style);
-				rewriteCSS(style, cx.css, cssIdent);
+				rewriteCSS(style, css, cssIdent);
 			}
 		}
 

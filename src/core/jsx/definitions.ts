@@ -18,7 +18,7 @@ export type ComponentContext<T> = {
 
 	children: ComponentChild[];
 
-	css?: string;
+	css(tmp: TemplateStringsArray, ...params: any[]): void;
 	id: string;
 
 	mount?: () => void;
