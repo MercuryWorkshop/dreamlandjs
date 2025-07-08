@@ -4,10 +4,10 @@ import { Comment, Element, newVDom } from "./vdom";
 
 import { serializeState } from "../common/serialize";
 import {
-	DL_SSR_COMPONENT_STATE,
-	DL_SSR_CSS_ID,
-	DL_SSR_ID,
-	DL_SSR_STATE_ATTR,
+	SSR,
+	SSR_COMPONENT_STATE,
+	SSR_ID,
+	SSR_STATE_ATTR,
 } from "../common/consts";
 
 export interface RenderedComponent {
@@ -42,34 +42,23 @@ export function render(component: () => any): RenderedComponent {
 				let state = serializeState(dom.component.state);
 				if (state.length > 2) {
 					componentState.push(
-						ssrData(DL_SSR_COMPONENT_STATE, dom.component.id, state)
+						ssrData(SSR_COMPONENT_STATE, dom.component.id, state)
 					);
 				}
 			}
-			dom.setAttribute(DL_SSR_ID, "" + i);
+			dom.setAttribute(SSR_ID, "" + i);
 		}
 		if (dom instanceof Comment) {
-			dom.data = i + " " + dom.data;
+			dom.data = `${i} ${SSR} ${dom.data}`;
 		}
 	}
-
-	function propagate(dom: Element, css?: string) {
-		if (css) dom.setAttribute(DL_SSR_CSS_ID, css);
-
-		for (let child of dom.childNodes) {
-			if (child instanceof Element) propagate(child, dom.component?.id || css);
-		}
-	}
-	propagate(root, root.component?.id);
 
 	let head = vdom[0].head.childNodes.map((x) => x.toStandard()) as DomElement[];
 
 	head.push(
-		new DomElement(
-			"div",
-			{ [DL_SSR_STATE_ATTR]: ":3", style: "display:none;" },
-			[...componentState]
-		)
+		new DomElement("div", { [SSR_STATE_ATTR]: ":3", style: "display:none;" }, [
+			...componentState,
+		])
 	);
 
 	return {

@@ -6,12 +6,7 @@ import {
 	jsx,
 	setDomImpl,
 } from "dreamland/core";
-import {
-	DL_SSR_COMPONENT_STATE,
-	DL_SSR_CSS_ID,
-	DL_SSR_ID,
-	DL_SSR_STATE_ATTR,
-} from "../common/consts";
+import { SSR_COMPONENT_STATE, SSR_ID, SSR_STATE_ATTR } from "../common/consts";
 import { hydrateState } from "../common/serialize";
 
 export let hydrate = (
@@ -20,7 +15,7 @@ export let hydrate = (
 	dataRoot: HTMLElement
 ) => {
 	dev: {
-		if (dataRoot.getAttribute(DL_SSR_STATE_ATTR) !== ":3")
+		if (dataRoot.getAttribute(SSR_STATE_ATTR) !== ":3")
 			throw "invalid ssr root";
 	}
 
@@ -37,11 +32,10 @@ export let hydrate = (
 	walk(ssr);
 	let comments = new Map(commentArr);
 
-	let rootIdx = +ssr.getAttribute(DL_SSR_ID);
+	let rootIdx = +ssr.getAttribute(SSR_ID);
 	let idx = -1;
 	let getInternal = (idx) => {
-		let ret =
-			rootIdx == idx ? ssr : ssr.querySelector(`[${DL_SSR_ID}="${idx}"]`);
+		let ret = rootIdx == idx ? ssr : ssr.querySelector(`[${SSR_ID}="${idx}"]`);
 		if (ret) els.push(ret);
 		return ret;
 	};
@@ -67,7 +61,9 @@ export let hydrate = (
 			return comments.get(idx);
 		},
 		(name) => {
-			let ret = getInternal(idx + 1).getAttribute(DL_SSR_CSS_ID);
+			let ret = [...getInternal(idx + 1).classList].find((x) =>
+				x.startsWith("dlcss-")
+			);
 			return ret;
 		},
 	] as const satisfies DomImpl;
@@ -83,7 +79,7 @@ export let hydrate = (
 
 	let componentState = new Map(
 		ssrData.flatMap((x) => {
-			let component = x.getAttribute(DL_SSR_COMPONENT_STATE);
+			let component = x.getAttribute(SSR_COMPONENT_STATE);
 			return component ? [[component, JSON.parse(x.innerHTML)]] : [];
 		})
 	);

@@ -1,25 +1,25 @@
 import { BasePointer, DREAMLAND, NO_CHANGE } from "dreamland/core";
 import {
-	DL_INTERNAL_TYPE,
-	DL_INTERNAL_TYPE_MAP,
-	DL_INTERNAL_TYPE_PTR,
-	DL_INTERNAL_TYPE_SET,
+	INTERNAL_TYPE,
+	INTERNAL_TYPE_MAP,
+	INTERNAL_TYPE_PTR,
+	INTERNAL_TYPE_SET,
 } from "./consts";
 
 type SerializedMap = {
-	[DL_INTERNAL_TYPE]: typeof DL_INTERNAL_TYPE_MAP;
+	[INTERNAL_TYPE]: typeof INTERNAL_TYPE_MAP;
 	d: Record<any, any>;
 };
 
 type SerializedSet = {
-	[DL_INTERNAL_TYPE]: typeof DL_INTERNAL_TYPE_SET;
+	[INTERNAL_TYPE]: typeof INTERNAL_TYPE_SET;
 	d: any[];
 };
 
 type ExportedPointer = ExportedPointer[] | { v: any };
 
 type SerializedPtr = {
-	[DL_INTERNAL_TYPE]: typeof DL_INTERNAL_TYPE_PTR;
+	[INTERNAL_TYPE]: typeof INTERNAL_TYPE_PTR;
 	p: ExportedPointer;
 };
 
@@ -50,19 +50,19 @@ export let serializeState: (state: any) => string = (
 
 		if (value instanceof BasePointer) {
 			return <SerializedPtr>{
-				[DL_INTERNAL_TYPE]: DL_INTERNAL_TYPE_PTR,
+				[INTERNAL_TYPE]: INTERNAL_TYPE_PTR,
 				p: exportPtr(value),
 			};
 		}
 		if (value instanceof Map) {
 			return <SerializedMap>{
-				[DL_INTERNAL_TYPE]: DL_INTERNAL_TYPE_MAP,
+				[INTERNAL_TYPE]: INTERNAL_TYPE_MAP,
 				d: Object.fromEntries(value.entries()),
 			};
 		}
 		if (value instanceof Set) {
 			return <SerializedSet>{
-				[DL_INTERNAL_TYPE]: DL_INTERNAL_TYPE_SET,
+				[INTERNAL_TYPE]: INTERNAL_TYPE_SET,
 				d: [...value],
 			};
 		}
@@ -73,12 +73,12 @@ export let serializeState: (state: any) => string = (
 
 export let hydrateState = (state: any, target: any) => {
 	for (let [k, v] of Object.entries(state)) {
-		let internal = v?.[DL_INTERNAL_TYPE];
-		if (internal === DL_INTERNAL_TYPE_PTR) {
+		let internal = v?.[INTERNAL_TYPE];
+		if (internal === INTERNAL_TYPE_PTR) {
 			hydratePtr(target[k], (v as SerializedPtr).p);
-		} else if (internal === DL_INTERNAL_TYPE_MAP) {
+		} else if (internal === INTERNAL_TYPE_MAP) {
 			target[k] = new Map(Object.entries(v));
-		} else if (internal === DL_INTERNAL_TYPE_SET) {
+		} else if (internal === INTERNAL_TYPE_SET) {
 			target[k] = new Set(v as any[]);
 		} else if (!internal && typeof v != "object") {
 			target[k] = v;
