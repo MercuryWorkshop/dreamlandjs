@@ -60,7 +60,7 @@ export let hydrate = (
 			idx++;
 			return comments.get(idx);
 		},
-		(name) => {
+		() => {
 			let ret = [...getInternal(idx + 1).classList].find((x) =>
 				x.startsWith("dlcss-")
 			);

@@ -133,7 +133,7 @@ function _jsx(
 			}
 		}
 
-		let cssIdent = genCssUid(init.name);
+		let cssIdent = genCssUid();
 
 		let cx = { state, children, id: cssIdent } as ComponentContext<any>;
 
