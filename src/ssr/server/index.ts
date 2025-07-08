@@ -1,10 +1,10 @@
 import { Element as DomElement, Text as DomText } from "domhandler";
 import { getDomImpl, setDomImpl } from "dreamland/core";
-import { Element, newVDom } from "./vdom";
+import { Comment, Element, newVDom } from "./vdom";
 
 import { serializeState } from "../common/serialize";
 import {
-	DL_COMPONENT_STATE_ATTR,
+	DL_SSR_COMPONENT_STATE,
 	DL_SSR_CSS_ID,
 	DL_SSR_ID,
 	DL_SSR_STATE_ATTR,
@@ -42,11 +42,14 @@ export function render(component: () => any): RenderedComponent {
 				let state = serializeState(dom.component.state);
 				if (state.length > 2) {
 					componentState.push(
-						ssrData(DL_COMPONENT_STATE_ATTR, dom.component.id, state)
+						ssrData(DL_SSR_COMPONENT_STATE, dom.component.id, state)
 					);
 				}
 			}
 			dom.setAttribute(DL_SSR_ID, "" + i);
+		}
+		if (dom instanceof Comment) {
+			dom.data = i + " " + dom.data;
 		}
 	}
 
@@ -58,8 +61,6 @@ export function render(component: () => any): RenderedComponent {
 		}
 	}
 	propagate(root, root.component?.id);
-
-	console.log(vdom[0].arr);
 
 	let head = vdom[0].head.childNodes.map((x) => x.toStandard()) as DomElement[];
 

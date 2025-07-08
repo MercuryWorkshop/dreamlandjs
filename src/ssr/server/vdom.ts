@@ -24,6 +24,10 @@ export class Node {
 		return this.appendChild(node);
 	}
 
+	removeChild(node: Node) {
+		this.childNodes.filter((x) => x !== node);
+	}
+
 	insertBefore(node: Node, anchor: Node) {
 		this.childNodes.splice(
 			this.childNodes.findIndex((x) => x === anchor),

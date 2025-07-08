@@ -80,8 +80,10 @@ export let hydrateState = (state: any, target: any) => {
 			target[k] = new Map(Object.entries(v));
 		} else if (internal === DL_INTERNAL_TYPE_SET) {
 			target[k] = new Set(v as any[]);
-		} else if (!internal) {
+		} else if (!internal && typeof v != "object") {
 			target[k] = v;
+		} else {
+			hydrateState(v, (target[k] ||= {}));
 		}
 	}
 };

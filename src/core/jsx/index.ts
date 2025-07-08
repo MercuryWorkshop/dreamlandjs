@@ -6,7 +6,7 @@ import {
 	genCssUid,
 	CSS_IDENT,
 } from "./dom";
-import { CSS_COMPONENT, genuid, rewriteCSS } from "../css";
+import { CSS_COMPONENT, rewriteCSS } from "../css";
 import {
 	Component,
 	ComponentChild,
@@ -15,7 +15,6 @@ import {
 	DLElement,
 	DLElementNameToElement,
 } from "./definitions";
-import { fatal } from "../utils";
 import { isBasePtr, isBoundPtr } from "../state/pointers";
 import { createState, stateProxy } from "../state/state";
 import { DREAMLAND } from "../consts";
@@ -26,30 +25,33 @@ let hydrating: boolean = false;
 let mapChild = (
 	child: ComponentChild,
 	parent: Node,
-	before: Node | null,
 	cssIdent: string,
 	identOverride?: string
-): Node => {
+): Node[] => {
 	if (child == null) {
-		return new_Comment();
+		return [new_Comment()];
 	} else if (isBasePtr(child)) {
-		let childEl: Node = null!;
+		let start = new_Comment("[");
+		let current: Node[] = null!;
 
 		let setNode = (val: ComponentChild) => {
-			let newEl: Node = mapChild(
-				val,
-				parent,
-				childEl,
-				cssIdent,
-				child._cssIdent
-			);
-			if (!hydrating && childEl) parent.replaceChild(newEl, childEl);
-			childEl = newEl;
+			let mapped: Node[] = mapChild(val, parent, cssIdent, child._cssIdent);
+
+			if (!hydrating && current) {
+				current.map((x) => parent.removeChild(x));
+				let anchor: Node = start;
+				for (let child of mapped) {
+					parent.insertBefore(child, anchor.nextSibling);
+					anchor = child;
+				}
+			}
+			current = mapped;
 		};
 
 		setNode(child.value);
 		child.listen(setNode);
-		return childEl;
+
+		return [start, ...current, new_Comment("]")];
 	} else if (child instanceof node) {
 		let list: DOMTokenList;
 		let apply = (child: any) => {
@@ -73,40 +75,11 @@ let mapChild = (
 		};
 		if (identOverride || cssIdent) apply(child);
 
-		return child;
+		return [child];
 	} else if (child instanceof Array) {
-		let uid: string, end: Comment;
-		let children = [...parent.childNodes];
-		let current: Node[];
-
-		if (!before) {
-			uid = "dlarr-" + genuid();
-			parent.appendChild(new_Comment(uid));
-			end = parent.appendChild(new_Comment(uid));
-			current = [];
-		} else {
-			uid = (before as Comment).data;
-			end = before as Comment;
-			let start = children.findIndex(
-				(x) => x.nodeType == 8 && (x as Comment).data == uid
-			);
-			let endIdx = children.findIndex((x) => x === end);
-			current = children.slice(start, endIdx);
-		}
-		if (!end) fatal();
-
-		current.forEach((x) => parent.removeChild(x));
-
-		let anchor: Node = end;
-		for (let x of child.reverse()) {
-			let mapped = mapChild(x, parent, null, cssIdent, identOverride);
-			parent.insertBefore(mapped, anchor);
-			anchor = mapped;
-		}
-
-		return end;
+		return child.flatMap((x) => mapChild(x, parent, cssIdent, identOverride));
 	} else {
-		return new_Text(child as any);
+		return [new_Text(child as any)];
 	}
 };
 
@@ -205,8 +178,8 @@ function _jsx(
 		};
 
 		for (let child of children) {
-			let ret = mapChild(child, el, null, currentCssIdent);
-			if (!hydrating) el.appendChild(ret);
+			let ret = mapChild(child, el, currentCssIdent);
+			if (!hydrating) ret.map((x) => el.appendChild(x));
 		}
 
 		for (let attr in props) {
