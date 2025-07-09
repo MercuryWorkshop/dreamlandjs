@@ -61,6 +61,8 @@ export function render(component: () => any): RenderedComponent {
 		])
 	);
 
+	console.log(vdom[0].arr);
+
 	return {
 		head,
 		component: root.toStandard(),

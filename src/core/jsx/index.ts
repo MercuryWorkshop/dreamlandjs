@@ -85,10 +85,7 @@ let mapChild = (
 
 let CREATE_ELEMENT = "createElement";
 
-let componentCssData: Map<
-	Component,
-	{ _element: HTMLStyleElement; _ident: string }
-> = new Map();
+let componentCssIdents: Map<Component, string> = new Map();
 
 function _jsx<T extends Component<any, any, any>>(
 	init: T,
@@ -138,20 +135,17 @@ function _jsx(
 			}
 		}
 
-		let cssIdent: string | null = null;
-		if (componentCssData.has(init)) {
-			cssIdent = componentCssData.get(init)!._ident;
-		} else {
-			cssIdent = genCssUid();
-			if (init.css) {
-				let style;
+		let cssIdent: string | null = componentCssIdents.get(init);
+		if (init.css) {
+			let style = DOCUMENT[CREATE_ELEMENT]("style");
+			if (!cssIdent) {
+				cssIdent = genCssUid();
 				if (!hydrating) {
-					style = DOCUMENT[CREATE_ELEMENT]("style");
 					style["data-component"] = init.name;
 					DOCUMENT.head.append(style);
 					rewriteCSS(style, init.css, cssIdent);
+					componentCssIdents.set(init, cssIdent);
 				}
-				componentCssData.set(init, { _element: style, _ident: cssIdent });
 			}
 		}
 

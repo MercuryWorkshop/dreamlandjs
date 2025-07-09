@@ -37,6 +37,7 @@ export let hydrate = (
 	let getInternal = (idx) => {
 		let ret = rootIdx == idx ? ssr : ssr.querySelector(`[${SSR_ID}="${idx}"]`);
 		if (ret) els.push(ret);
+		console.log(idx, ret);
 		return ret;
 	};
 
