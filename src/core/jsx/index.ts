@@ -85,6 +85,11 @@ let mapChild = (
 
 let CREATE_ELEMENT = "createElement";
 
+let componentCssData: Map<
+	Component,
+	{ element: HTMLStyleElement; ident: string }
+> = new Map();
+
 function _jsx<T extends Component<any, any, any>>(
 	init: T,
 	props: Record<string, any> | null,
@@ -133,16 +138,26 @@ function _jsx(
 			}
 		}
 
-		let cssIdent = genCssUid();
+		let cssIdent: string | null = null;
+		if (componentCssData.has(init)) {
+			cssIdent = componentCssData.get(init)!.ident;
+		} else {
+			if (init.css) {
+				let cssIdent = genCssUid();
+				let style = DOCUMENT[CREATE_ELEMENT]("style");
+				style["data-component"] = init.name;
+				if (!hydrating) {
+					DOCUMENT.head.append(style);
+					rewriteCSS(style, init.css, cssIdent);
+				}
+				componentCssData.set(init, { element: style, ident: cssIdent });
+			}
+		}
 
-		let css: string | undefined;
 		let cx = {
 			state,
 			children,
 			id: cssIdent,
-			css(...args) {
-				css = String.raw(...args);
-			},
 		} as ComponentContext<any>;
 
 		let oldIdent = currentCssIdent;
@@ -153,13 +168,6 @@ function _jsx(
 		(el as DLElement<any>).$ = cx;
 
 		el.classList.add(CSS_COMPONENT);
-		if (css) {
-			let style = DOCUMENT[CREATE_ELEMENT]("style");
-			if (!hydrating) {
-				DOCUMENT.head.append(style);
-				rewriteCSS(style, css, cssIdent);
-			}
-		}
 
 		cx.root = el;
 		cx.mount?.();

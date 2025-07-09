@@ -18,7 +18,6 @@ export type ComponentContext<T> = {
 
 	children: ComponentChild[];
 
-	css(tmp: TemplateStringsArray, ...params: any[]): void;
 	id: string;
 
 	mount?: () => void;
@@ -27,10 +26,13 @@ export type ComponentContext<T> = {
 type MappedProps<Props> = {
 	[Key in keyof Props]: Props[Key] | BasePointer<Props[Key]>;
 };
-export type Component<Props = {}, Private = {}, Public = {}> = (
-	this: Stateful<Props & Private & Public>,
-	cx: ComponentContext<Props & Private & Public>
-) => HTMLElement;
+export type Component<Props = {}, Private = {}, Public = {}> = {
+	(
+		this: Stateful<Props & Private & Public>,
+		cx: ComponentContext<Props & Private & Public>
+	): HTMLElement;
+	css?: string;
+};
 export type ComponentInstance<T extends Component<any, any, any>> =
 	T extends Component<infer Props, infer Private, infer Public>
 		? DLElement<Props & Private & Public>
