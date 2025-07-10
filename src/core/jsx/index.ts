@@ -254,8 +254,6 @@ function _jsx(
 	return el;
 }
 
-_jsx[DREAMLAND] = (status: boolean) => (hydrating = status);
-
 function _h<T extends Component<any, any, any>>(
 	init: T,
 	props: Record<string, any> | null,
@@ -277,3 +275,4 @@ function _h(
 
 export let h = _h;
 export let jsx = _jsx;
+jsx[DREAMLAND] = (status: boolean) => (hydrating = status);

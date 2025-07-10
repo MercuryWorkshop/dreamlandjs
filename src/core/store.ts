@@ -1,6 +1,11 @@
-import { isBasePtr } from "./state/pointers";
-import { createState, isStateful, Stateful, stateListen } from "./state/state";
-import { deepMerge } from "./utils";
+import { ASSIGN } from "./consts";
+import {
+	createState,
+	getStatefulInner,
+	isStateful,
+	Stateful,
+	stateListen,
+} from "./state/state";
 
 let delegates = [];
 
@@ -14,6 +19,7 @@ type StoreAsyncBacking = {
 };
 
 let LOCALSTORAGE = localStorage;
+let INTERNAL = "__dls_ty";
 
 function _createStore<T extends Object>(
 	target: T,
@@ -40,16 +46,14 @@ function _createStore<T extends Object>(
 	}
 ): Stateful<T> | Promise<Stateful<T>> {
 	let { ident, backing, autosave } = options;
-
-	let read: (ident: string) => Promise<string | null> | string | null;
-	let write: (ident: string, data: string) => Promise<void>;
+	ident = "dls-" + ident;
+	let isAuto = autosave === "auto";
 
 	if (backing === "localstorage") {
-		read = (ident) => LOCALSTORAGE[ident] || null;
-		write = async (ident, data) => (LOCALSTORAGE[ident] = data) as any;
-	} else {
-		read = (ident) => backing.read(ident);
-		write = async (ident, data) => await backing.write(ident, data);
+		backing = {
+			read: (ident) => LOCALSTORAGE[ident] || null,
+			write: (ident, data) => (LOCALSTORAGE[ident] = data),
+		};
 	}
 
 	let last = "";
@@ -57,60 +61,24 @@ function _createStore<T extends Object>(
 	let asyncSave = async () => {
 		await saving;
 
-		let stack = [];
-
-		let ser = (target: object) => {
-			let serialized = {
-				s /*stateful*/: isStateful(target),
-				v /*values*/: {},
-			};
-			let i = stack.length;
-			stack[i] = serialized;
-
-			let serOne = (target: any) => {
-				if (typeof target === "object") {
-					if (target instanceof Array) {
-						return target.map(serOne);
-					} else if (target === null) {
-						return "null";
-					} else {
-						dev: {
-							if (target.__proto__ === Object.prototype) {
-								throw "Only plain objects can be serialized in stores";
-							}
-						}
-
-						return ser(target);
-					}
-				} else {
-					return JSON.stringify(target);
+		let serialized = JSON.stringify(target, (_, v) => {
+			dev: {
+				if (v.__proto__ === Object.prototype) {
+					throw "Only plain objects can be serialized in stores";
 				}
-			};
-
-			for (let key in target) {
-				if (isBasePtr(key)) {
-					dev: {
-						console.warn(
-							`[dreamland.js]: skipping pointer ${key} while saving ${ident}`
-						);
-					}
-					continue;
-				}
-
-				serialized.v[key] = serOne(target[key]);
 			}
 
-			return i;
-		};
-
-		ser(target);
-		let serialized = JSON.stringify(stack);
+			if (isStateful(v)) {
+				return { [INTERNAL]: "s", v: getStatefulInner(v)._target };
+			}
+			return v;
+		});
 
 		if (serialized === last) return;
 		dev: {
 			console.info("[dreamland.js]: saving " + ident);
 		}
-		await write(ident, serialized);
+		await backing.write(ident, serialized);
 	};
 	let save = () => {
 		saving = asyncSave();
@@ -121,44 +89,35 @@ function _createStore<T extends Object>(
 		save();
 	};
 
+	let deepMerge = (target: object, source: any) => {
+		for (let key in source) {
+			let val = source[key];
+			if (isStateful(val) && isAuto) stateListen(val, saveHook);
+			if (val instanceof Object && key in target) {
+				ASSIGN(val, deepMerge(target[key], val));
+			}
+		}
+
+		ASSIGN(target, source);
+	};
+
 	let finish = (data: string): Stateful<T> => {
-		let stack = JSON.parse(data);
-		if (stack) {
-			let cache = [];
-
-			let de = (i: number) => {
-				if (cache[i]) return cache[i];
-				let serialized = stack[i];
-				let target = {};
-
-				let deOne = (val: any) => {
-					if (typeof val === "string") {
-						return JSON.parse(val);
-					} else if (val instanceof Array) {
-						return val.map(deOne);
-					} else {
-						return de(val);
+		if (data) {
+			deepMerge(
+				target,
+				JSON.parse(data, (_, v) => {
+					if (v[INTERNAL] === "s") {
+						return createState(v.v);
 					}
-				};
-
-				for (let key in serialized.v) {
-					target[key] = deOne(serialized.v[key]);
-				}
-
-				let state = serialized.s ? createState(target) : target;
-				if (isStateful(state) && autosave === "auto")
-					stateListen(state as any, saveHook);
-				cache[i] = state;
-				return state;
-			};
-
-			deepMerge(target, de(0));
+					return v;
+				})
+			);
 		}
 
 		let state = createState(target);
 		delegates.push(save);
 
-		if (autosave === "auto") {
+		if (isAuto) {
 			stateListen(state, saveHook);
 		} else if (autosave === "beforeunload") {
 			addEventListener(autosave, save);
@@ -167,7 +126,7 @@ function _createStore<T extends Object>(
 		return state;
 	};
 
-	let data = read(ident);
+	let data = backing.read(ident);
 	return data instanceof Promise ? data.then(finish) : finish(data);
 }
 export let createStore = _createStore;

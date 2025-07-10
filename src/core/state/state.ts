@@ -97,7 +97,7 @@ export let createState = <T extends StatefulObject>(obj: T): Stateful<T> => {
 	return proxy as Stateful<T>;
 };
 
-let getStatefulInner = (state: Stateful<any>): StateData => {
+export let getStatefulInner = (state: Stateful<any>): StateData => {
 	/*@__INLINE__*/ setUseTrap(true);
 	let id = state[DREAMLAND];
 	/*@__INLINE__*/ setUseTrap(false);
