@@ -39,24 +39,14 @@ export type ComponentInstance<T extends Component<any, any, any>> =
 		: never;
 export type DLElement<T> = HTMLElement & { $: ComponentContext<T> };
 
-type OnEventMap<T> = {
-	[K in keyof T as K extends string ? `on:${K}` : never]?: (
-		event: T[K]
-	) => void;
+type IntrinsicProps<ElementType extends Element> = {
+	this?: BoundPointer<ElementType | Element | null | undefined>;
+	children?: any;
+	[key: `class:${string}`]: BasePointer<boolean>;
+	[key: `on:${string}`]: (e: Event) => void;
+	[key: string]: any;
 };
-type IntrinsicProps<ElementType extends Element> =
-	| OnEventMap<
-			ElementType["addEventListener"] extends (name: infer Events) => void
-				? Events
-				: never
-	  >
-	| {
-			this?: BoundPointer<ElementType | Element | null | undefined>;
-			children?: any;
-			[key: `class:${string}`]: BasePointer<boolean>;
-			[key: `on:${string}`]: (event: Event) => void;
-			[key: string]: any;
-	  };
+
 type DLElementTagNames = HTMLElementTagNameMap &
 	HTMLElementDeprecatedTagNameMap &
 	Pick<
