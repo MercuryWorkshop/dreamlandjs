@@ -141,7 +141,7 @@ function _jsx(
 			if (!cssIdent) {
 				cssIdent = genCssUid();
 				if (!hydrating) {
-					style["data-component"] = init.name;
+					style["dl-" + CSS_COMPONENT] = init.name;
 					DOCUMENT.head.append(style);
 					rewriteCSS(style, init.css, cssIdent);
 					componentCssIdents.set(init, cssIdent);
@@ -237,6 +237,17 @@ function _jsx(
 			} else if (isBasePtr(val)) {
 				val.listen((val) => el.setAttribute(attr, val));
 				el.setAttribute(attr, val.value);
+			} else if (attr == "style" && typeof val == "object") {
+				for (let k in val) {
+					let set = (v: any) => (el.style[k] = v);
+					let v = val[k];
+					if (isBasePtr(v)) {
+						set(v.value);
+						v.listen(set);
+					} else {
+						set(v);
+					}
+				}
 			} else {
 				el.setAttribute(attr, val);
 			}

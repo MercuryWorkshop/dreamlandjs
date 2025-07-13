@@ -76,6 +76,8 @@ export class Element extends Node {
 
 	component?: ComponentContext<any> = null;
 
+	style = {};
+
 	constructor(type: string, namespace?: string) {
 		super();
 
@@ -95,6 +97,19 @@ export class Element extends Node {
 	}
 
 	toStandard(): DomElement {
+		let styles = Object.entries(this.style);
+		if (styles.length) {
+			this.attributes.set(
+				"style",
+				styles
+					.map(([k, v]) => {
+						const kebab = k.replace(/([A-Z])/g, "-$1").toLowerCase();
+						return `${kebab}: ${v};`;
+					})
+					.join(" ")
+			);
+		}
+
 		let el = new DomElement(this.type, {
 			...Object.fromEntries(this.attributes.entries()),
 			...(this.classList.empty() ? {} : { class: this.classList.toString() }),
