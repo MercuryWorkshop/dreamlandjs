@@ -35,6 +35,8 @@ let hydratePtr = (ptr: BasePointer<any>, data: ExportedPointer) => {
 	}
 };
 
+let OBJECT = Object;
+
 // used on serverside only
 export let serializeState: (state: any) => string = (
 	state: any,
@@ -57,7 +59,7 @@ export let serializeState: (state: any) => string = (
 		if (value instanceof Map) {
 			return <SerializedMap>{
 				[INTERNAL_TYPE]: INTERNAL_TYPE_MAP,
-				d: Object.fromEntries(value.entries()),
+				d: OBJECT.fromEntries(value.entries()),
 			};
 		}
 		if (value instanceof Set) {
@@ -72,18 +74,18 @@ export let serializeState: (state: any) => string = (
 };
 
 export let hydrateState = (state: any, target: any) => {
-	for (let [k, v] of Object.entries(state)) {
+	for (let [k, v] of OBJECT.entries(state)) {
 		let internal = v?.[INTERNAL_TYPE];
 		if (internal === INTERNAL_TYPE_PTR) {
 			hydratePtr(target[k], (v as SerializedPtr).p);
 		} else if (internal === INTERNAL_TYPE_MAP) {
-			target[k] = new Map(Object.entries(v));
+			target[k] = new Map(OBJECT.entries(v));
 		} else if (internal === INTERNAL_TYPE_SET) {
 			target[k] = new Set(v as any[]);
-		} else if (!internal && typeof v != "object") {
-			target[k] = v;
-		} else {
+		} else if (v instanceof OBJECT) {
 			hydrateState(v, (target[k] ||= {}));
+		} else {
+			target[k] = v;
 		}
 	}
 };

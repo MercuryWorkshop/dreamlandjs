@@ -23,9 +23,8 @@ export let hydrate = (
 	let commentArr = [];
 
 	let walk = (node: Node) => {
-		if (node instanceof Comment) {
-			let data = node.data.split(" ");
-			commentArr.push([+data[0], node]);
+		if (node.nodeType == 8) {
+			commentArr.push([+(node as Comment).data.split(" ")[0], node as Comment]);
 		}
 		node.childNodes.forEach(walk);
 	};
@@ -34,17 +33,13 @@ export let hydrate = (
 
 	let rootIdx = +ssr.getAttribute(SSR_ID);
 	let idx = -1;
-	let getInternal = (idx) => {
+	let getInternal = (idx: number) => {
 		let ret = rootIdx == idx ? ssr : ssr.querySelector(`[${SSR_ID}="${idx}"]`);
 		if (ret) els.push(ret);
-		console.log(idx, ret);
 		return ret;
 	};
 
-	let get = () => {
-		idx++;
-		return getInternal(idx);
-	};
+	let get = () => getInternal(++idx);
 
 	let vdom = [
 		{
@@ -58,15 +53,10 @@ export let hydrate = (
 			return new Text(text);
 		},
 		(comment) => {
-			idx++;
-			return comments.get(idx);
+			return comments.get(++idx);
 		},
-		() => {
-			let ret = [...getInternal(idx + 1).classList].find((x) =>
-				x.startsWith("dlcss-")
-			);
-			return ret;
-		},
+		() =>
+			[...getInternal(idx + 1).classList].find((x) => x.startsWith("dlcss-")),
 	] as const satisfies DomImpl;
 
 	let old = getDomImpl();
@@ -76,10 +66,8 @@ export let hydrate = (
 	jsx[DREAMLAND](false);
 	setDomImpl(old);
 
-	let ssrData = [...dataRoot.children];
-
 	let componentState = new Map(
-		ssrData.flatMap((x) => {
+		[...dataRoot.children].flatMap((x) => {
 			let component = x.getAttribute(SSR_COMPONENT_STATE);
 			return component ? [[component, JSON.parse(x.innerHTML)]] : [];
 		})
