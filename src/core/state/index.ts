@@ -38,6 +38,7 @@ export let defineUse = () =>
 	Object.defineProperty(globalThis, "use", {
 		get() {
 			useTrap = true;
+
 			return (
 				magicPtr: { [Symbol.toPrimitive]: () => symbol } | TemplateStringsArray,
 				...params: any[]
@@ -56,7 +57,17 @@ export let defineUse = () =>
 
 				initRegularPtr(id);
 
-				return new Pointer(id);
+				let pointer = new Pointer(id);
+				for (const param of params) {
+					let id = param[TOPRIMITIVE]();
+					dev: {
+						if (isBasePtr(param)) throw "Illegal invocation";
+					}
+					initRegularPtr(id);
+					pointer = pointer.zip(new Pointer(id));
+				}
+
+				return pointer;
 			};
 		},
 	});
