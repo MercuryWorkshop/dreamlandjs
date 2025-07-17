@@ -1,5 +1,5 @@
 import { TOPRIMITIVE, NO_CHANGE, DREAMLAND } from "../consts";
-import { ObjectProp, StateData } from "./state";
+import { isStateful, ObjectProp, StateData } from "./state";
 
 export const enum PointerType {
 	// state + pointer step
@@ -126,6 +126,8 @@ export abstract class BasePointer<T> {
 		}
 	}
 
+	_alreadylistening: [obj: any, resolved: any][] = [];
+
 	get value(): T {
 		return getPtrValue(this._ptr);
 	}
@@ -166,7 +168,41 @@ export abstract class BasePointer<T> {
 	}
 
 	listen(func: (val: T) => void) {
-		this._ptr._listeners.push(() => func(this.value));
+		// the hackfix
+		let doReResolve = () => {
+			if (this._ptr._type == PointerType.Regular) {
+				let obj;
+				obj = this._ptr._state._target;
+				for (let step of this._ptr._path) {
+					let resolved = isBasePtr(step) ? step.value : step;
+
+					if (
+						isStateful(obj) &&
+						!this._alreadylistening.some(
+							([o, r]) => o === obj && r === resolved
+						)
+					) {
+						console.log("injecting hack into " + String(resolved), obj);
+						// oh god
+						use(obj[resolved]).listen(() => {
+							callAllListeners(this._ptr);
+							doReResolve();
+						});
+						this._alreadylistening.push([obj, resolved]);
+					}
+					obj = obj[resolved];
+				}
+			}
+		};
+		doReResolve();
+		let valbefore;
+		this._ptr._listeners.push(() => {
+			func(this.value);
+			if (this.value != valbefore) {
+				doReResolve();
+				valbefore = this.value;
+			}
+		});
 	}
 
 	zip<Ptrs extends ReadonlyArray<BasePointer<any>>>(
