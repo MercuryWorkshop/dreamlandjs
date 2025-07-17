@@ -235,8 +235,11 @@ function _jsx(
 					handle(val);
 				}
 			} else if (isBasePtr(val)) {
-				val.listen((val) => el.setAttribute(attr, val));
-				el.setAttribute(attr, val.value);
+				val.listen((val) => {
+					if (val === undefined) el.removeAttribute(attr);
+					else el.setAttribute(attr, val);
+				});
+				if (val.value !== undefined) el.setAttribute(attr, val.value);
 			} else if (attr == "style" && typeof val == "object") {
 				for (let k in val) {
 					let set = (v: any) => (el.style[k] = v);
@@ -249,7 +252,7 @@ function _jsx(
 					}
 				}
 			} else {
-				el.setAttribute(attr, val);
+				if (val !== undefined) el.setAttribute(attr, val);
 			}
 		}
 
