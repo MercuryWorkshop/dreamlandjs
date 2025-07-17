@@ -182,7 +182,6 @@ export abstract class BasePointer<T> {
 							([o, r]) => o === obj && r === resolved
 						)
 					) {
-						console.log("injecting hack into " + String(resolved), obj);
 						// oh god
 						use(obj[resolved]).listen(() => {
 							callAllListeners(this._ptr);
