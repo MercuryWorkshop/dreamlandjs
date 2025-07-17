@@ -20,6 +20,10 @@
 			"default": "./dist/core.js",
 			"types": "./dist/core.d.ts"
 		},
+		"./utils": {
+			"default": "./dist/utils.js",
+			"types": "./dist/utils.d.ts"
+		},
 		"./ssr/server": {
 			"default": "./dist/ssr.server.js",
 			"types": "./dist/ssr.server.d.ts"
