@@ -4,7 +4,23 @@ import {
 	PSEUDO_CLASS_TOKEN,
 	PSEUDO_ELEMENT_TOKEN,
 } from "../consts";
+import { Component } from "../jsx/definitions";
 import { stringify, Token, tokenize } from "./selectorParser";
+
+export type CssInit = {
+	_strings: TemplateStringsArray;
+	_funcs: ((state: any) => any)[];
+};
+
+export function css<T extends Component<any, any, any>>(
+	_strings: TemplateStringsArray,
+	..._funcs: ((state: ThisParameterType<T>) => any)[]
+): CssInit {
+	return {
+		_strings,
+		_funcs,
+	};
+}
 
 // added to every component's root, determines start of scoped css scope
 export let CSS_COMPONENT = "dlc";

@@ -1,3 +1,4 @@
+import { CssInit } from "../css";
 import { BasePointer, BoundPointer } from "../state/pointers";
 import { Stateful } from "../state/state";
 
@@ -31,7 +32,7 @@ export type Component<Props = {}, Private = {}, Public = {}> = {
 		this: Stateful<Props & Private & Public>,
 		cx: ComponentContext<Props & Private & Public>
 	): HTMLElement;
-	css?: string;
+	style?: CssInit;
 };
 export type ComponentInstance<T extends Component<any, any, any>> =
 	T extends Component<infer Props, infer Private, infer Public>

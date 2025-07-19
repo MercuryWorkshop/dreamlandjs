@@ -6,7 +6,7 @@ import {
 	genCssUid,
 	CSS_IDENT,
 } from "./dom";
-import { CSS_COMPONENT, rewriteCSS } from "../css";
+import { CssInit, CSS_COMPONENT, rewriteCSS } from "../css";
 import {
 	Component,
 	ComponentChild,
@@ -86,6 +86,8 @@ let mapChild = (
 let CREATE_ELEMENT = "createElement";
 
 let componentCssIdents: Map<Component, string> = new Map();
+let componentCssVars: Map<Component, [string, (props: any) => any][]> =
+	new Map();
 
 function _jsx<T extends Component<any, any, any>>(
 	init: T,
@@ -136,15 +138,29 @@ function _jsx(
 		}
 
 		let cssIdent: string | null = componentCssIdents.get(init);
-		if (init.css) {
-			let style = DOCUMENT[CREATE_ELEMENT]("style");
+		if (init.style) {
+			let style = init.style;
+			let styleEl = DOCUMENT[CREATE_ELEMENT]("style");
 			if (!cssIdent) {
 				cssIdent = genCssUid();
 				if (!hydrating) {
-					style["dl-" + CSS_COMPONENT] = init.name;
-					DOCUMENT.head.append(style);
-					rewriteCSS(style, init.css, cssIdent);
+					let cssString = "";
+					let varinfo = [];
+
+					for (let i = 0; i < style._strings.length; i++) {
+						cssString += style._strings[i];
+						if (i + 1 < style._strings.length) {
+							let varid = genCssUid();
+							cssString += `var(--${varid})`;
+							varinfo.push([varid, style._funcs[i]]);
+						}
+					}
+
+					styleEl["dl-" + CSS_COMPONENT] = init.name;
+					DOCUMENT.head.append(styleEl);
+					rewriteCSS(styleEl, cssString, cssIdent);
 					componentCssIdents.set(init, cssIdent);
+					componentCssVars.set(init, varinfo);
 				}
 			}
 		}
@@ -165,6 +181,28 @@ function _jsx(
 		el.classList.add(CSS_COMPONENT);
 
 		cx.root = el;
+
+		let vars = componentCssVars.get(init);
+		if (vars) {
+			for (let [varid, func] of vars) {
+				let val = func(cx.state);
+				if (isBasePtr(val)) {
+					val.listen((val) => {
+						if (val === undefined) {
+							el.style.removeProperty(`--${varid}`);
+						} else {
+							el.style.setProperty(`--${varid}`, val);
+						}
+					});
+					if (val.value !== undefined) {
+						el.style.setProperty(`--${varid}`, val.value);
+					}
+				} else if (val.value !== undefined) {
+					el.style.setProperty(`--${varid}`, val);
+				}
+			}
+		}
+
 		cx.mount?.();
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically

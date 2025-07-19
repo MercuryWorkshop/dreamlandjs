@@ -20,4 +20,6 @@ export { setDomImpl, getDomImpl, DomImpl } from "./jsx/dom";
 
 export { DREAMLAND, NO_CHANGE } from "./consts";
 
+export { css } from "./css";
+
 defineUse();
