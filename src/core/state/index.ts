@@ -50,30 +50,27 @@ export let defineUse = () =>
 						return usestr(magicPtr, params);
 				}
 
-				let id = magicPtr[TOPRIMITIVE]();
-				dev: {
-					if (isBasePtr(magicPtr)) throw "Illegal invocation";
-				}
-
-				initRegularPtr(id);
-
-				let pointer = new Pointer(id);
-				for (const param of params) {
-					let id = param[TOPRIMITIVE]();
+				let init = (x) => {
+					let id = x[TOPRIMITIVE]();
 					dev: {
-						if (isBasePtr(param)) throw "Illegal invocation";
+						if (isBasePtr(x)) throw "Illegal invocation";
 					}
 					initRegularPtr(id);
-					pointer = pointer.zip(new Pointer(id));
-				}
+					return new Pointer(id);
+				};
 
-				return pointer;
+				params = params.map(init);
+				magicPtr = init(magicPtr);
+				return params.length
+					? (magicPtr as Pointer<any>).zip(...params)
+					: magicPtr;
 			};
 		},
 	});
 
 declare global {
 	function use<T>(stateful: T): Pointer<T>;
+	function use<T extends any[]>(...statefuls: T): Pointer<T>;
 	/* USESTR.START */
 	function use(
 		template: TemplateStringsArray,
