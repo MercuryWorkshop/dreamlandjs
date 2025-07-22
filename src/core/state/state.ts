@@ -11,6 +11,7 @@ import {
 	BasePointer,
 	BoundPointer,
 	initRegularPtr,
+	isBoundPtr,
 	Pointer,
 	PointerData,
 	PointerStep,
@@ -113,13 +114,13 @@ export let stateListen = <T extends StatefulObject>(
 export let stateProxy = <T extends StatefulObject, Key extends string | symbol>(
 	state: Stateful<T>,
 	key: Key,
-	pointer: BasePointer<T[Key]>
+	ptr: BasePointer<T[Key]>
 ) => {
 	let inner = getStatefulInner(state);
-	inner._target[key] = pointer.value;
+	inner._target[key] = ptr.value;
 
 	let setting = false;
-	pointer.listen((x) => {
+	ptr.listen((x) => {
 		setting = true;
 		inner._proxy[key] = x;
 	});
@@ -130,7 +131,7 @@ export let stateProxy = <T extends StatefulObject, Key extends string | symbol>(
 			setting = false;
 			return;
 		}
-		if (pointer instanceof BoundPointer) pointer.value = state[prop];
+		if (isBoundPtr(ptr)) ptr.value = state[prop];
 	});
 };
 

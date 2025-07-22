@@ -6,7 +6,7 @@ import {
 	genCssUid,
 	CSS_IDENT,
 } from "./dom";
-import { CssInit, CSS_COMPONENT, rewriteCSS } from "../css";
+import { CSS_COMPONENT, rewriteCSS } from "../css";
 import {
 	Component,
 	ComponentChild,
@@ -15,7 +15,7 @@ import {
 	DLElement,
 	DLElementNameToElement,
 } from "./definitions";
-import { isBasePtr, isBoundPtr } from "../state/pointers";
+import { isBasePtr, isBoundPtr, maybeListen } from "../state/pointers";
 import { createState, stateProxy } from "../state/state";
 import { DREAMLAND } from "../consts";
 
@@ -34,7 +34,7 @@ let mapChild = (
 		let start = new_Comment("[");
 		let current: Node[] = null!;
 
-		let setNode = (val: ComponentChild) => {
+		maybeListen(child, (val: ComponentChild) => {
 			let mapped: Node[] = mapChild(val, parent, cssIdent, child._cssIdent);
 
 			if (!hydrating && current) {
@@ -46,10 +46,7 @@ let mapChild = (
 				}
 			}
 			current = mapped;
-		};
-
-		setNode(child.value);
-		child.listen(setNode);
+		});
 
 		return [start, ...current, new_Comment("]")];
 	} else if (child instanceof node) {
@@ -185,21 +182,13 @@ function _jsx(
 		let vars = componentCssVars.get(init);
 		if (vars) {
 			for (let [varid, func] of vars) {
-				let val = func(cx.state);
-				if (isBasePtr(val)) {
-					val.listen((val) => {
-						if (val === undefined) {
-							el.style.removeProperty(`--${varid}`);
-						} else {
-							el.style.setProperty(`--${varid}`, val);
-						}
-					});
-					if (val.value !== undefined) {
-						el.style.setProperty(`--${varid}`, val.value);
-					}
-				} else if (val.value !== undefined) {
-					el.style.setProperty(`--${varid}`, val);
-				}
+				let id = `--${varid}`;
+				let style = el.style;
+
+				maybeListen(func(cx.state), (val: any) => {
+					if (val === undefined) style.removeProperty(id);
+					else style.setProperty(id, val);
+				});
 			}
 		}
 
@@ -210,20 +199,9 @@ function _jsx(
 		let xmlns = props?.xmlns;
 		el = DOCUMENT[CREATE_ELEMENT + (xmlns ? "NS" : "")](xmlns || init, init);
 
-		let currySetVal = (param: string, val: any) => {
-			let set = (val: any) => {
-				el.setAttribute(param, val);
-				(el as any).value = val;
-			};
-
-			if (isBasePtr(val)) {
-				val.listen(set);
-				if (isBoundPtr(val))
-					el.addEventListener("change", () => (val.value = (el as any).value));
-				set(val.value);
-			} else {
-				set(val);
-			}
+		let setAttr = (param: string, val: any) => {
+			if (val === undefined) el.removeAttribute(param);
+			else el.setAttribute(param, val);
 		};
 
 		for (let child of children) {
@@ -241,56 +219,41 @@ function _jsx(
 				}
 				val.value = el;
 			} else if (attr === "value" || attr === "checked") {
-				currySetVal(attr, val);
-			} else if (attr === "class" && isBasePtr(val)) {
+				maybeListen(val, (val: any) => {
+					setAttr(attr, val);
+					(el as any).value = val;
+				}, () => {
+					el.addEventListener("change", () => (val.value = (el as any).value));
+				});
+			} else if (attr === "class") {
 				let classList = el.classList;
 				let old = [];
-				let set = (val: string) => {
+
+				maybeListen(val, (val: string) => {
 					let classes = val.split(" ").filter((x) => x.length);
 					if (old.length) classList.remove(...old);
 					if (classes.length) classList.add(...classes);
 					old = classes;
-				};
-				set(val.value);
-				val.listen(set);
+				});
 			} else if (attr.startsWith("on:")) {
 				el.addEventListener(attr.substring(3), (e) => val(e));
 			} else if (attr.startsWith("class:")) {
 				let name = attr.substring(6);
 				let cls = el.classList;
-				let handle = (val: boolean) => {
+
+				maybeListen(val, (val: boolean) => {
 					if (val) {
 						cls.add(name);
 					} else {
 						cls.remove(name);
 					}
-				};
-
-				if (isBasePtr(val)) {
-					val.listen(handle);
-					handle(val.value);
-				} else {
-					handle(val);
-				}
-			} else if (isBasePtr(val)) {
-				val.listen((val) => {
-					if (val === undefined) el.removeAttribute(attr);
-					else el.setAttribute(attr, val);
 				});
-				if (val.value !== undefined) el.setAttribute(attr, val.value);
-			} else if (attr == "style" && typeof val == "object") {
+			} else if (attr == "style" && typeof val == "object" && !isBasePtr(val)) {
 				for (let k in val) {
-					let set = (v: any) => (el.style[k] = v);
-					let v = val[k];
-					if (isBasePtr(v)) {
-						set(v.value);
-						v.listen(set);
-					} else {
-						set(v);
-					}
+					maybeListen(val[k], (v: any) => (el.style[k] = v));
 				}
 			} else {
-				if (val !== undefined) el.setAttribute(attr, val);
+				maybeListen(val, (val) => setAttr(attr, val));
 			}
 		}
 

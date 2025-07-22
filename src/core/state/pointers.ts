@@ -34,13 +34,8 @@ export type PointerData = {
 
 let internalPointers: Map<symbol, PointerData> = new Map();
 
-let followPath = (obj: any, path: PointerStep[]): any => {
-	for (let step of path) {
-		let resolved = isBasePtr(step) ? step.value : step;
-		obj = obj[resolved];
-	}
-	return obj;
-};
+let followPath = (obj: any, path: PointerStep[]): any =>
+	path.reduce((acc, x) => acc[unwrapValue(x)], obj);
 
 let getPtrValue = (ptr: PointerData): any => {
 	let obj: any;
@@ -55,15 +50,9 @@ let getPtrValue = (ptr: PointerData): any => {
 };
 let setPtrValue = (ptr: PointerData, value: any) => {
 	if (ptr._type == PointerType.Regular) {
-		let obj = ptr._state._proxy;
 		let path = ptr._path;
-		for (let step of path.slice(0, -1)) {
-			let resolved = isBasePtr(step) ? step.value : step;
-			obj = obj[resolved];
-		}
-		let step = path.at(-1);
-		let resolved = isBasePtr(step) ? step.value : step;
-		obj[resolved] = value;
+		followPath(ptr._state._proxy, path.slice(0, -1))[unwrapValue(path.at(-1))] =
+			value;
 	} else if (ptr._type == PointerType.Mapped && ptr._reverse) {
 		let val = ptr._reverse(value);
 		if (val !== NO_CHANGE) setPtrValue(ptr._ptr, val);
@@ -122,7 +111,7 @@ export let initRegularPtr = (id: symbol): boolean => {
 		return {
 			_steps: path.slice(0, i + 1),
 			_listener: (prop) => {
-				if (prop === (isBasePtr(x) ? x.value : x)) {
+				if (prop === unwrapValue(x)) {
 					callAllListeners(ptr);
 				}
 			},
@@ -139,6 +128,18 @@ export let isBasePtr = (val: any): val is BasePointer<any> => {
 };
 export let isBoundPtr = (val: any): val is BoundPointer<any> => {
 	return isBasePtr(val) && val.bound;
+};
+
+export let unwrapValue = <T>(val: Pointer<T> | T): T =>
+	isBasePtr(val) ? val.value : val;
+export let maybeListen = <T>(
+	val: Pointer<T> | T,
+	func: (val: T) => void,
+	bound?: () => void
+) => {
+	if (isBasePtr(val)) val.listen(func);
+	if (isBoundPtr(val)) bound();
+	func(unwrapValue(val));
 };
 
 export abstract class BasePointer<T> {
