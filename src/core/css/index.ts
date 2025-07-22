@@ -80,7 +80,7 @@ export let rewriteCSS = (style: HTMLStyleElement, css: string, tag: string) => {
 	};
 
 	let rewriteRules = (list: any) =>
-		list.map((rule: any) => {
+		[...list].map((rule: any) => {
 			if (rule.selectorText) {
 				rule.selectorText = stringify(
 					rewriteSelector(

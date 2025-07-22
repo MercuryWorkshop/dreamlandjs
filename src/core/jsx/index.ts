@@ -168,7 +168,7 @@ function _jsx(
 		} as ComponentContext<any>;
 
 		let oldIdent = currentCssIdent;
-		currentCssIdent = cssInfo._id;
+		currentCssIdent = cssInfo?._id;
 		el = init.call(state, cx);
 		currentCssIdent = oldIdent;
 
