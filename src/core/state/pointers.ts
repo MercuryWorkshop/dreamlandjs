@@ -1,5 +1,5 @@
 import { TOPRIMITIVE, NO_CHANGE, DREAMLAND } from "../consts";
-import { isStateful, ObjectProp, StateData } from "./state";
+import { getStatefulInner, isStateful, ObjectProp, StateData } from "./state";
 
 export const enum PointerType {
 	// state + pointer step
@@ -34,14 +34,18 @@ export type PointerData = {
 
 let internalPointers: Map<symbol, PointerData> = new Map();
 
+let followPath = (obj: any, path: PointerStep[]): any => {
+	for (let step of path) {
+		let resolved = isBasePtr(step) ? step.value : step;
+		obj = obj[resolved];
+	}
+	return obj;
+};
+
 let getPtrValue = (ptr: PointerData): any => {
 	let obj: any;
 	if (ptr._type == PointerType.Regular) {
-		obj = ptr._state._target;
-		for (let step of ptr._path) {
-			let resolved = isBasePtr(step) ? step.value : step;
-			obj = obj[resolved];
-		}
+		obj = followPath(ptr._state._target, ptr._path);
 	} else if (ptr._type == PointerType.Zipped) {
 		obj = ptr._ptrs.map((x) => x.value);
 	} else if (ptr._type == PointerType.Mapped) {
@@ -75,6 +79,12 @@ export let registerPointer = <T extends PointerData>(ptr: T): T => {
 	return ptr;
 };
 
+interface PtrInitStep {
+	_steps: PointerStep[];
+	_listener: (prop: ObjectProp) => void;
+	_state?: StateData;
+}
+
 // once the path has been collected listeners are added to all state objects and pointers touched
 // any changes to props that the pointer touches trigger a recalculate and notify all of the pointers' listeners
 export let initRegularPtr = (id: symbol): boolean => {
@@ -85,17 +95,41 @@ export let initRegularPtr = (id: symbol): boolean => {
 		if (ptr._type != PointerType.Regular) throw "Illegal invocation";
 	}
 
-	for (let step of ptr._path) {
-		if (isBasePtr(step)) {
-			step.listen((_) => callAllListeners(ptr));
-		} else {
-			ptr._state._listeners.push((prop) => {
-				if (prop === step) {
+	let path = ptr._path;
+	let target = ptr._state._target;
+	let steps: PtrInitStep[];
+
+	let recalculate = () =>
+		steps.forEach((x, i) => {
+			if (x._state)
+				x._state._listeners = x._state._listeners.filter(
+					(y) => y !== x._listener
+				);
+
+			let stateful = steps
+				.slice(0, i)
+				.map((x) => followPath(target, x._steps))
+				.find(isStateful);
+			x._state = stateful ? getStatefulInner(stateful) : ptr._state;
+
+			x._state._listeners.push(x._listener);
+		});
+
+	steps = path.map((x, i) => {
+		if (isBasePtr(x)) {
+			x.listen(recalculate);
+		}
+		return {
+			_steps: path.slice(0, i + 1),
+			_listener: (prop) => {
+				if (prop === (isBasePtr(x) ? x.value : x)) {
 					callAllListeners(ptr);
 				}
-			});
-		}
-	}
+			},
+		};
+	});
+
+	recalculate();
 
 	return true;
 };
@@ -125,8 +159,6 @@ export abstract class BasePointer<T> {
 			}
 		}
 	}
-
-	_alreadylistening: [obj: any, resolved: any][] = [];
 
 	get value(): T {
 		return getPtrValue(this._ptr);
@@ -168,40 +200,7 @@ export abstract class BasePointer<T> {
 	}
 
 	listen(func: (val: T) => void) {
-		// the hackfix
-		let doReResolve = () => {
-			if (this._ptr._type == PointerType.Regular) {
-				let obj;
-				obj = this._ptr._state._target;
-				for (let step of this._ptr._path) {
-					let resolved = isBasePtr(step) ? step.value : step;
-
-					if (
-						isStateful(obj) &&
-						!this._alreadylistening.some(
-							([o, r]) => o === obj && r === resolved
-						)
-					) {
-						// oh god
-						use(obj[resolved]).listen(() => {
-							callAllListeners(this._ptr);
-							doReResolve();
-						});
-						this._alreadylistening.push([obj, resolved]);
-					}
-					obj = obj[resolved];
-				}
-			}
-		};
-		doReResolve();
-		let valbefore;
-		this._ptr._listeners.push(() => {
-			func(this.value);
-			if (this.value != valbefore) {
-				doReResolve();
-				valbefore = this.value;
-			}
-		});
+		this._ptr._listeners.push(() => func(this.value));
 	}
 
 	zip<Ptrs extends ReadonlyArray<BasePointer<any>>>(
