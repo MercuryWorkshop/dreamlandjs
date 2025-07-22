@@ -223,9 +223,7 @@ export abstract class BasePointer<T> {
 			_ptrs: [new Pointer(this._ptr._id), ...pointers],
 		});
 
-		for (let other of ptr._ptrs) {
-			other.listen((_) => callAllListeners(ptr));
-		}
+		ptr._ptrs.map((x) => x.listen((_) => callAllListeners(ptr)));
 
 		return new Pointer(ptr._id);
 	}

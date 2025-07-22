@@ -9,7 +9,6 @@ import { setUseTrap, useTrap } from ".";
 import { DREAMLAND, STATEFUL, TOPRIMITIVE } from "../consts";
 import {
 	BasePointer,
-	BoundPointer,
 	initRegularPtr,
 	isBoundPtr,
 	Pointer,
@@ -86,9 +85,7 @@ export let createState = <T extends StatefulObject>(obj: T): Stateful<T> => {
 		},
 		set(target, prop, newValue, proxy) {
 			let ret = Reflect.set(target, prop, newValue, proxy);
-			for (let listener of state._listeners) {
-				listener(prop);
-			}
+			state._listeners.map((x) => x(prop));
 			return ret;
 		},
 	});

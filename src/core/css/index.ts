@@ -79,8 +79,8 @@ export let rewriteCSS = (style: HTMLStyleElement, css: string, tag: string) => {
 		return tokens;
 	};
 
-	let rewriteRules = (list: any) => {
-		for (let rule of list) {
+	let rewriteRules = (list: any) =>
+		list.map((rule: any) => {
 			if (rule.selectorText) {
 				rule.selectorText = stringify(
 					rewriteSelector(
@@ -93,10 +93,8 @@ export let rewriteCSS = (style: HTMLStyleElement, css: string, tag: string) => {
 			if (rule.cssRules) {
 				rewriteRules(rule.cssRules);
 			}
-		}
-
-		return list;
-	};
+			return rule;
+		});
 
 	style.innerText = css.replaceAll(GLOBAL, globalWhereTransformation);
 	rewriteRules(style.sheet.cssRules);

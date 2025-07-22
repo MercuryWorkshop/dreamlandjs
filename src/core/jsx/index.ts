@@ -65,9 +65,7 @@ let mapChild = (
 					list.add(identOverride);
 				}
 
-				for (let node of child.childNodes) {
-					apply(node);
-				}
+				[...child.childNodes].map(apply);
 			}
 		};
 		if (identOverride || cssIdent) apply(child);
@@ -166,7 +164,7 @@ function _jsx(
 		let cx = {
 			state,
 			children,
-			id: cssInfo._id,
+			id: cssInfo?._id,
 		} as ComponentContext<any>;
 
 		let oldIdent = currentCssIdent;
