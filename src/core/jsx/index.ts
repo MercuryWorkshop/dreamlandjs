@@ -6,7 +6,7 @@ import {
 	genCssUid,
 	CSS_IDENT,
 } from "./dom";
-import { CSS_COMPONENT, rewriteCSS } from "../css";
+import { css, CSS_COMPONENT, rewriteCSS } from "../css";
 import {
 	Component,
 	ComponentChild,
@@ -82,9 +82,12 @@ let mapChild = (
 
 let CREATE_ELEMENT = "createElement";
 
-let componentCssIdents: Map<Component, string> = new Map();
-let componentCssVars: Map<Component, [string, (props: any) => any][]> =
-	new Map();
+interface CssInfo {
+	_id: string;
+	_vars: [string, (props: any) => any][];
+}
+
+let componentCssInfo: Map<Component, CssInfo> = new Map();
 
 function _jsx<T extends Component<any, any, any>>(
 	init: T,
@@ -134,30 +137,28 @@ function _jsx(
 			}
 		}
 
-		let cssIdent: string | null = componentCssIdents.get(init);
+		let cssInfo: CssInfo | null = componentCssInfo.get(init);
 		if (init.style) {
 			let style = init.style;
 			let styleEl = DOCUMENT[CREATE_ELEMENT]("style");
-			if (!cssIdent) {
-				cssIdent = genCssUid();
+			if (!cssInfo) {
+				cssInfo = { _id: genCssUid(), _vars: [] };
 				if (!hydrating) {
 					let cssString = "";
-					let varinfo = [];
 
 					for (let i = 0; i < style._strings.length; i++) {
 						cssString += style._strings[i];
 						if (i + 1 < style._strings.length) {
 							let varid = genCssUid();
 							cssString += `var(--${varid})`;
-							varinfo.push([varid, style._funcs[i]]);
+							cssInfo._vars.push([varid, style._funcs[i]]);
 						}
 					}
 
 					styleEl["dl-" + CSS_COMPONENT] = init.name;
 					DOCUMENT.head.append(styleEl);
-					rewriteCSS(styleEl, cssString, cssIdent);
-					componentCssIdents.set(init, cssIdent);
-					componentCssVars.set(init, varinfo);
+					rewriteCSS(styleEl, cssString, cssInfo._id);
+					componentCssInfo.set(init, cssInfo);
 				}
 			}
 		}
@@ -165,11 +166,11 @@ function _jsx(
 		let cx = {
 			state,
 			children,
-			id: cssIdent,
+			id: cssInfo._id,
 		} as ComponentContext<any>;
 
 		let oldIdent = currentCssIdent;
-		currentCssIdent = cssIdent;
+		currentCssIdent = cssInfo._id;
 		el = init.call(state, cx);
 		currentCssIdent = oldIdent;
 
@@ -179,9 +180,8 @@ function _jsx(
 
 		cx.root = el;
 
-		let vars = componentCssVars.get(init);
-		if (vars) {
-			for (let [varid, func] of vars) {
+		if (cssInfo)
+			for (let [varid, func] of cssInfo._vars) {
 				let id = `--${varid}`;
 				let style = el.style;
 
@@ -190,7 +190,6 @@ function _jsx(
 					else style.setProperty(id, val);
 				});
 			}
-		}
 
 		cx.mount?.();
 	} else {
@@ -219,12 +218,19 @@ function _jsx(
 				}
 				val.value = el;
 			} else if (attr === "value" || attr === "checked") {
-				maybeListen(val, (val: any) => {
-					setAttr(attr, val);
-					(el as any).value = val;
-				}, () => {
-					el.addEventListener("change", () => (val.value = (el as any).value));
-				});
+				maybeListen(
+					val,
+					(val: any) => {
+						setAttr(attr, val);
+						(el as any).value = val;
+					},
+					() => {
+						el.addEventListener(
+							"change",
+							() => (val.value = (el as any).value)
+						);
+					}
+				);
 			} else if (attr === "class") {
 				let classList = el.classList;
 				let old = [];
