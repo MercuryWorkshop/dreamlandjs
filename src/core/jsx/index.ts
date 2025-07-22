@@ -19,7 +19,10 @@ import { isBasePtr, isBoundPtr, maybeListen } from "../state/pointers";
 import { createState, stateProxy } from "../state/state";
 import { DREAMLAND } from "../consts";
 
-let currentCssIdent: string | null = null;
+export let currentCssIdent: string | null = null;
+export let setCurrentCssIdent = (ident: string | null) => {
+	currentCssIdent = ident;
+};
 let hydrating: boolean = false;
 
 let mapChild = (
