@@ -106,7 +106,7 @@ function _createStore<T extends Object>(
 			deepMerge(
 				target,
 				JSON.parse(data, (_, v) => {
-					if (v[INTERNAL] === "s") {
+					if (v && v[INTERNAL] === "s") {
 						return createState(v.v);
 					}
 					return v;
