@@ -1,24 +1,20 @@
-import { currentCssIdent, setCurrentCssIdent } from "./jsx/index";
+import { callDelegateListeners, currentCssIdent } from "./jsx/index";
+
+export interface DelegateListener<T> {
+	_callback: (value: T) => void;
+	_cssIdent: string | null;
+}
 
 export type Delegate<T> = {
 	listen: (callback: (value: T) => void) => void;
 	(value: T): void;
 };
 
-export function createDelegate<T>(): Delegate<T> {
-	const listeners: Array<{
-		_callback: (value: T) => void;
-		_cssIdent: string | null;
-	}> = [];
+export let createDelegate = <T>(): Delegate<T> => {
+	let listeners: DelegateListener<T>[] = [];
 
-	const delegate = (value: T) => {
-		for (const listener of listeners) {
-			let oldIdent = currentCssIdent;
-			setCurrentCssIdent(listener._cssIdent);
-			listener._callback(value);
-			setCurrentCssIdent(oldIdent);
-		}
-	};
+	let delegate = ((value: T) =>
+		callDelegateListeners(value, listeners)) as Delegate<T>;
 
 	delegate.listen = (callback: (value: T) => void) => {
 		listeners.push({
@@ -28,4 +24,4 @@ export function createDelegate<T>(): Delegate<T> {
 	};
 
 	return delegate;
-}
+};

@@ -1,11 +1,6 @@
 import { ASSIGN } from "./consts";
-import {
-	createState,
-	getStatefulInner,
-	isStateful,
-	Stateful,
-	stateListen,
-} from "./state/state";
+import { getStatefulInner } from "./state";
+import { createState, isStateful, Stateful, stateListen } from "./state/state";
 
 let delegates = [];
 

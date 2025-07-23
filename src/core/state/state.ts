@@ -5,7 +5,7 @@
 // while the trap is active, stateful objects return a proxy that collects all accesses and coerces to a Symbol
 // that Symbol is in an "internal pointers" list allowing `state[state.x]` to add a pointer to the path instead of a static value
 
-import { setUseTrap, useTrap } from ".";
+import { getStatefulInner, useTrap } from ".";
 import { DREAMLAND, STATEFUL, TOPRIMITIVE } from "../consts";
 import {
 	BasePointer,
@@ -26,7 +26,7 @@ export type StateData = {
 	_proxy: any;
 };
 
-let internalStateful: Map<symbol, StateData> = new Map();
+export let internalStateful: Map<symbol, StateData> = new Map();
 
 type StatefulObject = Record<string | symbol, any>;
 export type Stateful<T extends StatefulObject> = T & {
@@ -95,13 +95,6 @@ export let createState = <T extends StatefulObject>(obj: T): Stateful<T> => {
 	return proxy as Stateful<T>;
 };
 
-export let getStatefulInner = (state: Stateful<any>): StateData => {
-	/*@__INLINE__*/ setUseTrap(true);
-	let id = state[DREAMLAND];
-	/*@__INLINE__*/ setUseTrap(false);
-
-	return internalStateful.get(id);
-};
 export let stateListen = <T extends StatefulObject>(
 	state: Stateful<T>,
 	func: (newValue: any, prop: string | symbol) => void

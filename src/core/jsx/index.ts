@@ -6,7 +6,7 @@ import {
 	genCssUid,
 	CSS_IDENT,
 } from "./dom";
-import { css, CSS_COMPONENT, rewriteCSS } from "../css";
+import { CSS_COMPONENT, rewriteCSS } from "../css";
 import {
 	Component,
 	ComponentChild,
@@ -18,11 +18,20 @@ import {
 import { isBasePtr, isBoundPtr, maybeListen } from "../state/pointers";
 import { createState, stateProxy } from "../state/state";
 import { DREAMLAND } from "../consts";
+import { DelegateListener } from "../delegate";
 
 export let currentCssIdent: string | null = null;
-export let setCurrentCssIdent = (ident: string | null) => {
-	currentCssIdent = ident;
-};
+export let callDelegateListeners = (
+	value: any,
+	listeners: DelegateListener<any>[]
+): void =>
+	listeners.map((x) => {
+		let oldIdent = currentCssIdent;
+		currentCssIdent = x._cssIdent;
+		x._callback(value);
+		currentCssIdent = oldIdent;
+	}) as any as void;
+
 let hydrating: boolean = false;
 
 let mapChild = (

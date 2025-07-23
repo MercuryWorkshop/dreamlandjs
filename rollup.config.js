@@ -205,7 +205,6 @@ export default (args) => {
 			visualize: true,
 		}),
 		...cfg({ input: ["src/router"], output: "router" }),
-		//...cfg({ input: ["src/utils"], output: "utils" }),
 		...cfg({ input: ["src/js-runtime"], output: "js-runtime" }),
 		...cfg({ input: ["src/jsx-runtime"], output: "jsx-runtime" }),
 	]);

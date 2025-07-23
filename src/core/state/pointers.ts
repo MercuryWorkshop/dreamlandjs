@@ -1,5 +1,6 @@
+import { getStatefulInner } from ".";
 import { TOPRIMITIVE, NO_CHANGE, DREAMLAND } from "../consts";
-import { getStatefulInner, isStateful, ObjectProp, StateData } from "./state";
+import { isStateful, ObjectProp, StateData } from "./state";
 
 export const enum PointerType {
 	// state + pointer step

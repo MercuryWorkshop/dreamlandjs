@@ -1,9 +1,15 @@
-import { TOPRIMITIVE } from "../consts";
+import { DREAMLAND, TOPRIMITIVE } from "../consts";
 import { initRegularPtr, isBasePtr, Pointer } from "./pointers";
-import { createState, Stateful } from "./state";
+import { createState, internalStateful, StateData, Stateful } from "./state";
 
 export let useTrap = false;
-export let setUseTrap = (val: boolean) => (useTrap = val);
+export let getStatefulInner = (state: Stateful<any>): StateData => {
+	useTrap = true;
+	let id = state[DREAMLAND];
+	useTrap = false;
+
+	return internalStateful.get(id);
+};
 
 let usestr = (template: TemplateStringsArray, params: any[]) => {
 	let state = createState({}) as Stateful<{ _string: string }>;
