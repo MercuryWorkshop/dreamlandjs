@@ -116,12 +116,8 @@ export let Link: Component<
 	{
 		href: string;
 		class?: string;
-	},
-	{
-		root: HTMLAnchorElement;
-		children: any;
 	}
-> = function () {
+> = function (cx) {
 	this.class = this.class || "";
 
 	return (
@@ -133,10 +129,10 @@ export let Link: Component<
 				dev: {
 					if (!Router._instance) throw new Error("No router exists");
 				}
-				Router._instance.navigate(this.root.href);
+				Router._instance.navigate((cx.root as HTMLAnchorElement).href);
 			}}
 		>
-			{this.children}
+			{cx.children}
 		</a>
 	);
 };
