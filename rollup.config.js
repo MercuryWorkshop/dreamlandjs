@@ -111,7 +111,7 @@ const cfg = ({
 	}
 	plugins.push(
 		strip({
-			include: ["**/*.ts"],
+			include: ["**/*.ts", "**/*.tsx"],
 			functions: [],
 			labels: stripLabels,
 		})
@@ -135,7 +135,10 @@ const cfg = ({
 			defineConfig({
 				input:
 					"dist/types/" +
-					input.substring("src/".length).replace(".ts", ".d.ts"),
+					input
+						.substring("src/".length)
+						.replace(".tsx", ".ts")
+						.replace(".ts", ".d.ts"),
 				output: [{ file: `dist/${output}.d.ts`, format: "es" }],
 				plugins: [dts()],
 				external: ["dreamland/core"],
@@ -204,7 +207,7 @@ export default (args) => {
 			output: "ssr.client",
 			visualize: true,
 		}),
-		...cfg({ input: ["src/router"], output: "router" }),
+		...cfg({ input: ["src/router", "index.tsx"], output: "router" }),
 		...cfg({ input: ["src/js-runtime"], output: "js-runtime" }),
 		...cfg({ input: ["src/jsx-runtime"], output: "jsx-runtime" }),
 	]);
