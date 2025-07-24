@@ -184,22 +184,24 @@ function _jsx(
 		el = init.call(state, cx);
 		currentCssIdent = oldIdent;
 
-		(el as DLElement<any>).$ = cx;
+		if (el instanceof node) {
+			(el as DLElement<any>).$ = cx;
 
-		el.classList.add(CSS_COMPONENT);
+			el.classList.add(CSS_COMPONENT);
 
-		cx.root = el;
+			cx.root = el;
 
-		if (cssInfo)
-			for (let [varid, func] of cssInfo._vars) {
-				let id = `--${varid}`;
-				let style = el.style;
+			if (cssInfo)
+				for (let [varid, func] of cssInfo._vars) {
+					let id = `--${varid}`;
+					let style = el.style;
 
-				maybeListen(func(cx.state), (val: any) => {
-					if (val === undefined) style.removeProperty(id);
-					else style.setProperty(id, val);
-				});
-			}
+					maybeListen(func(cx.state), (val: any) => {
+						if (val === undefined) style.removeProperty(id);
+						else style.setProperty(id, val);
+					});
+				}
+		}
 
 		cx.mount?.();
 	} else {
