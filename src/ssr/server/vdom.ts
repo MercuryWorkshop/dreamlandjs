@@ -87,9 +87,9 @@ export class Element extends Node {
 
 	addEventListener() {}
 
-	setAttribute(key: string, value: string) {
+	setAttribute(key: string, value: any) {
 		if (key === "class") this.classList.push(...value.split(" "));
-		this.attributes.set(key, value);
+		this.attributes.set(key, "" + value);
 	}
 
 	set $(value: any) {

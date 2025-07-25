@@ -112,12 +112,10 @@ export let Route: Component<{
 	} satisfies RouteInternal as any;
 };
 
-export let Link: Component<
-	{
-		href: string;
-		class?: string;
-	}
-> = function (cx) {
+export let Link: Component<{
+	href: string;
+	class?: string;
+}> = function (cx) {
 	this.class = this.class || "";
 
 	return (

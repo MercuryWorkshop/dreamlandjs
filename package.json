@@ -20,9 +20,13 @@
 			"default": "./dist/core.js",
 			"types": "./dist/core.d.ts"
 		},
-		"./utils": {
-			"default": "./dist/utils.js",
-			"types": "./dist/utils.d.ts"
+		"./jsx-runtime": {
+			"default": "./dist/jsx-runtime.js",
+			"types": "./dist/jsx-runtime.d.ts"
+		},
+		"./jsx-dev-runtime": {
+			"default": "./dist/jsx-runtime.js",
+			"types": "./dist/jsx-runtime.d.ts"
 		},
 		"./ssr/server": {
 			"default": "./dist/ssr.server.js",
@@ -32,17 +36,13 @@
 			"default": "./dist/ssr.client.js",
 			"types": "./dist/ssr.client.d.ts"
 		},
-		"./jsx-runtime": {
-			"default": "./dist/jsx-runtime.js",
-			"types": "./dist/jsx-runtime.d.ts"
-		},
-		"./jsx-dev-runtime": {
-			"default": "./dist/jsx-runtime.js",
-			"types": "./dist/jsx-runtime.d.ts"
-		},
 		"./router": {
 			"default": "./dist/router.js",
 			"types": "./dist/router.d.ts"
+		},
+		"./motion": {
+			"default": "./dist/motion.js",
+			"types": "./dist/motion.d.ts"
 		}
 	},
 	"devDependencies": {

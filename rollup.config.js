@@ -172,6 +172,8 @@ export default (args) => {
 			],
 			visualize: true,
 		}),
+		...cfg({ input: ["src/js-runtime"], output: "js-runtime" }),
+		...cfg({ input: ["src/jsx-runtime"], output: "jsx-runtime" }),
 		...cfg({
 			input: ["src/ssr", "server/index.ts"],
 			output: "ssr.server",
@@ -208,7 +210,6 @@ export default (args) => {
 			visualize: true,
 		}),
 		...cfg({ input: ["src/router", "index.tsx"], output: "router" }),
-		...cfg({ input: ["src/js-runtime"], output: "js-runtime" }),
-		...cfg({ input: ["src/jsx-runtime"], output: "jsx-runtime" }),
+		...cfg({ input: ["src/motion"], output: "motion" }),
 	]);
 };
