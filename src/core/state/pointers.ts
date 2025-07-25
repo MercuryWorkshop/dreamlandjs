@@ -139,7 +139,7 @@ export let maybeListen = <T>(
 	bound?: () => void
 ) => {
 	if (isBasePtr(val)) val.listen(func);
-	if (isBoundPtr(val)) bound();
+	if (isBoundPtr(val) && bound) bound();
 	func(unwrapValue(val));
 };
 
