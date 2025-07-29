@@ -1,5 +1,5 @@
 import { DREAMLAND, TOPRIMITIVE } from "../consts";
-import { initRegularPtr, isBasePtr, Pointer } from "./pointers";
+import { initRegularPtr, isBasePtr, BasePointer, Pointer } from "./pointers";
 import { createState, internalStateful, StateData, Stateful } from "./state";
 
 export let useTrap = false;
@@ -20,9 +20,11 @@ let usestr = (template: TemplateStringsArray, params: any[]) => {
 			let val = params[i];
 			let id = val[TOPRIMITIVE]();
 
-			if (initRegularPtr(id)) {
-				let prop = new Pointer(id);
+			let prop: BasePointer<any>;
+			if (isBasePtr(val)) prop = val;
+			else if (initRegularPtr(id)) prop = new Pointer(id);
 
+			if (prop) {
 				let i = flattened.length;
 				prop.listen((val) => {
 					flattened[i] = val;
@@ -43,13 +45,14 @@ let usestr = (template: TemplateStringsArray, params: any[]) => {
 export let defineUse = () =>
 	Object.defineProperty(globalThis, "use", {
 		get() {
+			let last = useTrap;
 			useTrap = true;
 
 			return (
 				magicPtr: { [Symbol.toPrimitive]: () => symbol } | TemplateStringsArray,
 				...params: any[]
 			) => {
-				useTrap = false;
+				useTrap = last;
 
 				usestr: {
 					if (magicPtr instanceof Array && "raw" in magicPtr)

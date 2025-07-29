@@ -185,6 +185,11 @@ function _jsx(
 		currentCssIdent = oldIdent;
 
 		if (el instanceof node) {
+			dev: {
+				if ((el as DLElement<any>).$ && cssInfo)
+					throw new Error("Wrapper components cannot have CSS");
+			}
+
 			(el as DLElement<any>).$ = cx;
 
 			el.classList.add(CSS_COMPONENT);
@@ -208,10 +213,13 @@ function _jsx(
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
 		let xmlns = props?.xmlns;
-		el = DOCUMENT[CREATE_ELEMENT + (xmlns ? "NS" : "")](xmlns || init, init);
+		el = DOCUMENT[CREATE_ELEMENT + (xmlns ? "NS" : "")](
+			xmlns || init,
+			xmlns && init
+		);
 
 		let setAttr = (param: string, val: any) => {
-			if (val === undefined) el.removeAttribute(param);
+			if (val === undefined || val === false) el.removeAttribute(param);
 			else el.setAttribute(param, val);
 		};
 

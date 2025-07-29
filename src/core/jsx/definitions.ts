@@ -44,7 +44,7 @@ type IntrinsicProps<ElementType extends Element> = {
 	this?: BoundPointer<ElementType | Element | null | undefined>;
 	children?: any;
 	[key: `class:${string}`]: BasePointer<boolean>;
-	[key: `on:${string}`]: (e: Event) => void;
+	[key: `on:${string}`]: (e: any) => void;
 	[key: string]: any;
 };
 
