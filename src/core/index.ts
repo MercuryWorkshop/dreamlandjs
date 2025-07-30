@@ -1,3 +1,4 @@
+import { addDREAMLAND } from "./jsx";
 import { defineUse } from "./state";
 import "./state";
 
@@ -5,6 +6,10 @@ export { BasePointer, BoundPointer, Pointer } from "./state/pointers";
 export { Stateful, createState, stateListen, stateProxy } from "./state/state";
 
 export { createStore, saveAllStores } from "./store";
+
+export { createDelegate, Delegate } from "./delegate";
+
+export { css } from "./css";
 
 export {
 	DLElement,
@@ -20,7 +25,5 @@ export { setDomImpl, getDomImpl, DomImpl } from "./jsx/dom";
 
 export { DREAMLAND, NO_CHANGE } from "./consts";
 
-export { css } from "./css";
-export { createDelegate, Delegate } from "./delegate";
-
 defineUse();
+addDREAMLAND();

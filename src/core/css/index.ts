@@ -12,15 +12,15 @@ export type CssInit = {
 	_funcs: ((state: any) => any)[];
 };
 
-export function css<T extends Component<any, any, any>>(
+export let css = <T extends Component<any, any, any>>(
 	_strings: TemplateStringsArray,
 	..._funcs: ((state: ThisParameterType<T>) => any)[]
-): CssInit {
+): CssInit => {
 	return {
 		_strings,
 		_funcs,
 	};
-}
+};
 
 // added to every component's root, determines start of scoped css scope
 export let CSS_COMPONENT = "dlc";

@@ -19,7 +19,7 @@ export type ComponentContext<T> = {
 
 	children: ComponentChild[];
 
-	id: string;
+	id?: string;
 
 	mount?: () => void;
 };

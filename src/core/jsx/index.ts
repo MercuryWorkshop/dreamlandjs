@@ -316,4 +316,5 @@ function _h(
 
 export let h = _h;
 export let jsx = _jsx;
-jsx[DREAMLAND] = (status: boolean) => (hydrating = status);
+export let addDREAMLAND = () =>
+	(jsx[DREAMLAND] = (status: boolean) => (hydrating = status));

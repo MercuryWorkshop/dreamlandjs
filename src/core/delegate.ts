@@ -16,9 +16,9 @@ export let createDelegate = <T>(): Delegate<T> => {
 	let delegate = ((value: T) =>
 		callDelegateListeners(value, listeners)) as Delegate<T>;
 
-	delegate.listen = (callback: (value: T) => void) => {
+	delegate.listen = (_callback: (value: T) => void) => {
 		listeners.push({
-			_callback: callback,
+			_callback,
 			_cssIdent: currentCssIdent,
 		});
 	};
