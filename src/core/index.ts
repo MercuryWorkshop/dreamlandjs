@@ -20,7 +20,7 @@ export {
 	DLElementNameToElement,
 	JSX,
 } from "./jsx/definitions";
-export { h, jsx } from "./jsx";
+export { h, jsx, Fragment } from "./jsx";
 export { setDomImpl, getDomImpl, DomImpl } from "./jsx/dom";
 
 export { DREAMLAND, NO_CHANGE } from "./consts";

@@ -32,6 +32,10 @@
 			"default": "./dist/ssr.server.js",
 			"types": "./dist/ssr.server.d.ts"
 		},
+		"./ssr/hybrid": {
+			"default": "./dist/ssr.hybrid.js",
+			"types": "./dist/ssr.hybrid.d.ts"
+		},
 		"./ssr/client": {
 			"default": "./dist/ssr.client.js",
 			"types": "./dist/ssr.client.d.ts"

@@ -5,6 +5,7 @@ import {
 	new_Text,
 	genCssUid,
 	CSS_IDENT,
+	ssrTransform,
 } from "./dom";
 import { CSS_COMPONENT, rewriteCSS } from "../css";
 import {
@@ -128,6 +129,9 @@ function _jsx(
 
 	if (typeof init === "function") {
 		let state = createState({});
+
+		ssrTransform(init);
+
 		for (let attr in props) {
 			let val = props[attr];
 
@@ -183,6 +187,7 @@ function _jsx(
 		currentCssIdent = cssInfo?._id;
 		el = init.call(state, cx);
 		currentCssIdent = oldIdent;
+		cx.root = el;
 
 		if (el instanceof node) {
 			dev: {
@@ -193,8 +198,6 @@ function _jsx(
 			(el as DLElement<any>).$ = cx;
 
 			el.classList.add(CSS_COMPONENT);
-
-			cx.root = el;
 
 			if (cssInfo)
 				for (let [varid, func] of cssInfo._vars) {
@@ -208,6 +211,8 @@ function _jsx(
 				}
 		}
 
+		ssrTransform(init, cx);
+
 		cx.mount?.();
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
@@ -215,7 +220,9 @@ function _jsx(
 		let xmlns = props?.xmlns;
 		el = DOCUMENT[CREATE_ELEMENT + (xmlns ? "NS" : "")](
 			xmlns || init,
-			xmlns && init
+			xmlns && init,
+			props,
+			children
 		);
 
 		let setAttr = (param: string, val: any) => {
@@ -318,3 +325,5 @@ export let h = _h;
 export let jsx = _jsx;
 export let addDREAMLAND = () =>
 	(jsx[DREAMLAND] = (status: boolean) => (hydrating = status));
+
+export let Fragment = (cx: ComponentContext<any>) => cx.children;

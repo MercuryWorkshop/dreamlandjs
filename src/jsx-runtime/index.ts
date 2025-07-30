@@ -1,3 +1,3 @@
-import { JSX, jsx } from "dreamland/core";
+import { JSX, jsx, Fragment } from "dreamland/core";
 
-export { jsx as jsx, jsx as jsxs, jsx as jsxDEV, JSX };
+export { jsx as jsx, jsx as jsxs, jsx as jsxDEV, JSX, Fragment };

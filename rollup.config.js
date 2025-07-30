@@ -209,6 +209,11 @@ export default (args) => {
 			output: "ssr.client",
 			visualize: true,
 		}),
+		...cfg({
+			input: ["src/ssr", "hybrid/index.ts"],
+			output: "ssr.hybrid",
+			visualize: true,
+		}),
 		...cfg({ input: ["src/router", "index.tsx"], output: "router" }),
 		...cfg({ input: ["src/motion"], output: "motion" }),
 	]);

@@ -41,13 +41,14 @@ export let hydrate = (
 
 	let get = () => getInternal(++idx);
 
+	let old = getDomImpl();
 	let vdom = [
 		{
 			createElement: get,
 			createElementNS: get,
 			head: document.head,
 		},
-		Node,
+		old[1],
 		(text) => {
 			idx++;
 			return new Text(text);
@@ -57,9 +58,8 @@ export let hydrate = (
 		},
 		() =>
 			[...getInternal(idx + 1).classList].find((x) => x.startsWith("dlcss-")),
+		old[5],
 	] as const satisfies DomImpl;
-
-	let old = getDomImpl();
 	setDomImpl(vdom);
 	jsx[DREAMLAND](true);
 	let root = component();

@@ -194,5 +194,6 @@ export let newVDom = (old: DomImpl) => {
 		(text?: string) => push(new Text(text || "")),
 		(text?: string) => push(new Comment(text || "")),
 		old[4],
+		old[5],
 	] as const satisfies DomImpl;
 };
