@@ -1,3 +1,4 @@
+export let SYMBOL = Symbol;
 export let [
 	// dl
 	DREAMLAND,
@@ -13,7 +14,7 @@ export let [
 	UNIVERSAL_TOKEN,
 	ATTRIBUTE_TOKEN,
 	TYPE_TOKEN,
-] = Array.from(Array(12), Symbol);
-export let TOPRIMITIVE = Symbol.toPrimitive;
+] = Array.from(Array(12), SYMBOL);
+export let TOPRIMITIVE = SYMBOL.toPrimitive;
 export let ASSIGN = Object.assign;
 export let GLOBAL = globalThis;

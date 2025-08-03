@@ -1,3 +1,5 @@
+export const SYMBOL: typeof Symbol;
+
 export const DREAMLAND: unique symbol;
 export const STATEFUL: unique symbol;
 export const NO_CHANGE: unique symbol;

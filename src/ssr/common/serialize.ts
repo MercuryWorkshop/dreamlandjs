@@ -1,4 +1,4 @@
-import { BasePointer, DREAMLAND, NO_CHANGE } from "dreamland/core";
+import { Pointer, DREAMLAND, NO_CHANGE } from "dreamland/core";
 import {
 	INTERNAL_TYPE,
 	INTERNAL_TYPE_MAP,
@@ -23,11 +23,11 @@ type SerializedPtr = {
 	p: ExportedPointer;
 };
 
-let exportPtr = (ptr: BasePointer<any>) => {
+let exportPtr = (ptr: Pointer<any>) => {
 	let zipped = ptr[DREAMLAND]();
 	return zipped ? zipped.map(exportPtr) : { v: ptr.value };
 };
-let hydratePtr = (ptr: BasePointer<any>, data: ExportedPointer) => {
+let hydratePtr = (ptr: Pointer<any>, data: ExportedPointer) => {
 	if (data instanceof Array) {
 		ptr[DREAMLAND]()!.forEach((x, i) => hydratePtr(x, data[i]));
 	} else {
@@ -50,7 +50,7 @@ export let serializeState: (state: any) => string = (
 
 		if (key === "") throw new Error("you suck");
 
-		if (value instanceof BasePointer) {
+		if (value instanceof Pointer) {
 			return <SerializedPtr>{
 				[INTERNAL_TYPE]: INTERNAL_TYPE_PTR,
 				p: exportPtr(value),

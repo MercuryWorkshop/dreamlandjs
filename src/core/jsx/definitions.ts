@@ -1,5 +1,5 @@
 import { CssInit } from "../css";
-import { BasePointer, BoundPointer } from "../state/pointers";
+import { Pointer } from "../state/pointers";
 import { Stateful } from "../state/state";
 
 export type ComponentChild =
@@ -10,7 +10,7 @@ export type ComponentChild =
 	| null
 	| undefined
 	| ComponentChild[]
-	| BasePointer<ComponentChild>;
+	| Pointer<ComponentChild>;
 
 export type ComponentContext<T> = {
 	state: Stateful<T>;
@@ -25,7 +25,7 @@ export type ComponentContext<T> = {
 };
 
 type MappedProps<Props> = {
-	[Key in keyof Props]: Props[Key] | BasePointer<Props[Key]>;
+	[Key in keyof Props]: Props[Key] | Pointer<Props[Key]>;
 };
 export type Component<Props = {}, Private = {}, Public = {}> = {
 	(
@@ -41,9 +41,9 @@ export type ComponentInstance<T extends Component<any, any, any>> =
 export type DLElement<T> = HTMLElement & { $: ComponentContext<T> };
 
 type IntrinsicProps<ElementType extends Element> = {
-	this?: BoundPointer<ElementType | Element | null | undefined>;
+	this?: Pointer<ElementType | Element | null | undefined>;
 	children?: any;
-	[key: `class:${string}`]: BasePointer<boolean>;
+	[key: `class:${string}`]: Pointer<boolean>;
 	[key: `on:${string}`]: (e: any) => void;
 	[key: string]: any;
 };

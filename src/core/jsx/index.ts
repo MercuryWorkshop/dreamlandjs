@@ -16,7 +16,7 @@ import {
 	DLElement,
 	DLElementNameToElement,
 } from "./definitions";
-import { isBasePtr, isBoundPtr, maybeListen } from "../state/pointers";
+import { isBasePtr, maybeListen } from "../state/pointers";
 import { createState, stateProxy } from "../state/state";
 import { DREAMLAND } from "../consts";
 import { DelegateListener } from "../delegate";
@@ -238,11 +238,6 @@ function _jsx(
 		for (let attr in props) {
 			let val = props[attr];
 			if (attr === "this") {
-				dev: {
-					if (!isBoundPtr(val)) {
-						throw new Error("this prop value must be a bound pointer");
-					}
-				}
 				val.value = el;
 			} else if (attr === "value" || attr === "checked") {
 				maybeListen(

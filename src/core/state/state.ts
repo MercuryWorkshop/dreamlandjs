@@ -6,11 +6,9 @@
 // that Symbol is in an "internal pointers" list allowing `state[state.x]` to add a pointer to the path instead of a static value
 
 import { getStatefulInner, useTrap } from ".";
-import { DREAMLAND, STATEFUL, TOPRIMITIVE } from "../consts";
+import { DREAMLAND, STATEFUL, SYMBOL, TOPRIMITIVE } from "../consts";
 import {
-	BasePointer,
 	initRegularPtr,
-	isBoundPtr,
 	Pointer,
 	PointerData,
 	PointerStep,
@@ -49,7 +47,7 @@ export let createState = <T extends StatefulObject>(obj: T): Stateful<T> => {
 	let data: Omit<StateData, "_proxy"> = {
 		_listeners: [],
 		_target: obj,
-		_id: Symbol(),
+		_id: SYMBOL(),
 	};
 	let state = data as StateData;
 	internalStateful.set(state._id, state);
@@ -61,7 +59,7 @@ export let createState = <T extends StatefulObject>(obj: T): Stateful<T> => {
 				let ptr: PointerData = registerPointer({
 					_type: PointerType.Regular,
 					_state: state,
-					_id: Symbol(),
+					_id: SYMBOL(),
 					_path: [mapStateStep(prop)],
 					_listeners: [],
 				});
@@ -104,7 +102,7 @@ export let stateListen = <T extends StatefulObject>(
 export let stateProxy = <T extends StatefulObject, Key extends string | symbol>(
 	state: Stateful<T>,
 	key: Key,
-	ptr: BasePointer<T[Key]>
+	ptr: Pointer<T[Key]>
 ) => {
 	let inner = getStatefulInner(state);
 	inner._target[key] = ptr.value;
@@ -121,7 +119,7 @@ export let stateProxy = <T extends StatefulObject, Key extends string | symbol>(
 			setting = false;
 			return;
 		}
-		if (isBoundPtr(ptr)) ptr.value = state[prop];
+		ptr.value = state[prop];
 	});
 };
 

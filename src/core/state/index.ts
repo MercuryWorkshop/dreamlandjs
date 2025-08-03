@@ -1,5 +1,5 @@
 import { DREAMLAND, TOPRIMITIVE } from "../consts";
-import { initRegularPtr, isBasePtr, BasePointer, Pointer } from "./pointers";
+import { initRegularPtr, isBasePtr, Pointer } from "./pointers";
 import { createState, internalStateful, StateData, Stateful } from "./state";
 
 export let useTrap = false;
@@ -20,7 +20,7 @@ let usestr = (template: TemplateStringsArray, params: any[]) => {
 			let val = params[i];
 			let id = val[TOPRIMITIVE]();
 
-			let prop: BasePointer<any>;
+			let prop: Pointer<any>;
 			if (isBasePtr(val)) prop = val;
 			else if (initRegularPtr(id)) prop = new Pointer(id);
 

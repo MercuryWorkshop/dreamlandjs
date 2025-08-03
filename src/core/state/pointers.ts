@@ -1,5 +1,5 @@
 import { getStatefulInner } from ".";
-import { TOPRIMITIVE, NO_CHANGE, DREAMLAND } from "../consts";
+import { TOPRIMITIVE, NO_CHANGE, DREAMLAND, SYMBOL } from "../consts";
 import { isStateful, ObjectProp, StateData } from "./state";
 
 export const enum PointerType {
@@ -22,7 +22,7 @@ export type PointerData = {
 	  }
 	| {
 			_type: PointerType.Zipped;
-			_ptrs: BasePointer<any>[];
+			_ptrs: Pointer<any>[];
 	  }
 	| {
 			_type: PointerType.Mapped;
@@ -124,11 +124,8 @@ export let initRegularPtr = (id: symbol): boolean => {
 	return true;
 };
 
-export let isBasePtr = (val: any): val is BasePointer<any> => {
-	return val instanceof BasePointer;
-};
-export let isBoundPtr = (val: any): val is BoundPointer<any> => {
-	return isBasePtr(val) && val.bound;
+export let isBasePtr = (val: any): val is Pointer<any> => {
+	return val instanceof Pointer;
 };
 
 export let unwrapValue = <T>(val: Pointer<T> | T): T =>
@@ -136,21 +133,21 @@ export let unwrapValue = <T>(val: Pointer<T> | T): T =>
 export let maybeListen = <T>(
 	val: Pointer<T> | T,
 	func: (val: T) => void,
-	bound?: () => void
+	pointer?: () => void
 ) => {
-	if (isBasePtr(val)) val.listen(func);
-	if (isBoundPtr(val) && bound) bound();
+	if (isBasePtr(val)) {
+		pointer?.();
+		val.listen(func);
+	}
 	func(unwrapValue(val));
 };
 
-export abstract class BasePointer<T> {
+export class Pointer<T> {
 	// @internal
 	_ptr: PointerData;
 
 	// @internal
 	_cssIdent?: string;
-
-	abstract readonly bound: boolean;
 
 	// @internal
 	constructor(sym: symbol) {
@@ -165,8 +162,11 @@ export abstract class BasePointer<T> {
 	get value(): T {
 		return getPtrValue(this._ptr);
 	}
+	set value(val: T) {
+		setPtrValue(this._ptr, val);
+	}
 
-	[DREAMLAND](): BasePointer<any>[] | null {
+	[DREAMLAND](): Pointer<any>[] | null {
 		let ptr = this._ptr;
 		if (ptr._type == PointerType.Zipped) {
 			return ptr._ptrs;
@@ -188,7 +188,7 @@ export abstract class BasePointer<T> {
 	): symbol {
 		let ptr: PointerData = registerPointer({
 			_type: PointerType.Mapped,
-			_id: Symbol(),
+			_id: SYMBOL(),
 			_listeners: [],
 
 			_map: mapping,
@@ -205,21 +205,19 @@ export abstract class BasePointer<T> {
 		this._ptr._listeners.push(() => func(this.value));
 	}
 
-	zip<Ptrs extends ReadonlyArray<BasePointer<any>>>(
+	zip<Ptrs extends ReadonlyArray<Pointer<any>>>(
 		...pointers: Ptrs
 	): Pointer<
 		[
 			T,
 			...{
-				[Idx in keyof Ptrs]: Ptrs[Idx] extends BasePointer<infer Val>
-					? Val
-					: never;
+				[Idx in keyof Ptrs]: Ptrs[Idx] extends Pointer<infer Val> ? Val : never;
 			},
 		]
 	> {
 		let ptr: PointerData = registerPointer({
 			_type: PointerType.Zipped,
-			_id: Symbol(),
+			_id: SYMBOL(),
 			_listeners: [],
 			_ptrs: [new Pointer(this._ptr._id), ...pointers],
 		});
@@ -242,52 +240,19 @@ export abstract class BasePointer<T> {
 			return typeof real === "function" ? (real as (val: T) => any)(val) : real;
 		});
 	}
-	map<U>(mapping: (val: T) => U): Pointer<U> {
-		return new Pointer(this._map(mapping));
+	map<U>(func: (val: T) => U): Pointer<U>;
+	map<U>(func: (val: T) => U, reverse: (val: U) => T): Pointer<U>;
+	map<U>(func: (val: T) => U, reverse?: (val: U) => T) {
+		return new Pointer(this._map(func, reverse));
 	}
 	mapEach<U, R>(
-		this: BasePointer<ArrayLike<U>>,
+		this: Pointer<ArrayLike<U>>,
 		func: (val: U, i: number) => R
 	): Pointer<R[]> {
 		return this.map((x) => Array.from(x).map(func));
 	}
-}
-
-export class Pointer<T> extends BasePointer<T> {
-	readonly bound: false = false;
-
-	bind(): BoundPointer<T> {
-		if (this._ptr._type != PointerType.Zipped) {
-			return new BoundPointer(this._ptr._id);
-		} else {
-			dev: {
-				throw "Illegal invocation";
-			}
-		}
-	}
 
 	clone(): Pointer<T> {
 		return new Pointer(this._ptr._id);
-	}
-}
-export class BoundPointer<T> extends BasePointer<T> {
-	readonly bound: true = true;
-
-	get value(): T {
-		return super.value;
-	}
-	set value(val: T) {
-		setPtrValue(this._ptr, val);
-	}
-
-	clone(): BoundPointer<T> {
-		return new BoundPointer(this._ptr._id);
-	}
-
-	map<U>(func: (val: T) => U): Pointer<U>;
-	map<U>(func: (val: T) => U, reverse: (val: U) => T): BoundPointer<U>;
-	map<U>(func: (val: T) => U, reverse?: (val: U) => T) {
-		let id = this._map(func, reverse);
-		return reverse ? new BoundPointer(id) : new Pointer(id);
 	}
 }
