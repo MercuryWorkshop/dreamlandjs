@@ -249,7 +249,7 @@ function _jsx(
 					() => {
 						el.addEventListener(
 							"change",
-							() => (val.value = (el as any).value)
+							() => (val.value = (el as any)[attr])
 						);
 					}
 				);
