@@ -14,6 +14,7 @@ import {
 	PointerStep,
 	PointerType,
 	registerPointer,
+    setPtrValue,
 } from "./pointers";
 
 export type ObjectProp = string | symbol;
@@ -119,7 +120,10 @@ export let stateProxy = <T extends StatefulObject, Key extends string | symbol>(
 			setting = false;
 			return;
 		}
-		ptr.value = state[prop];
+		if (!setPtrValue(ptr._ptr, state[prop])) {
+			setting = true;
+			(state as any)[prop] = ptr.value;
+		}
 	});
 };
 

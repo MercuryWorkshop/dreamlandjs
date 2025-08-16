@@ -49,15 +49,17 @@ let getPtrValue = (ptr: PointerData): any => {
 	}
 	return obj;
 };
-let setPtrValue = (ptr: PointerData, value: any) => {
+export let setPtrValue = (ptr: PointerData, value: any): boolean => {
 	if (ptr._type == PointerType.Regular) {
 		let path = ptr._path;
 		followPath(ptr._state._proxy, path.slice(0, -1))[unwrapValue(path.at(-1))] =
 			value;
+		return true;
 	} else if (ptr._type == PointerType.Mapped && ptr._reverse) {
 		let val = ptr._reverse(value);
-		if (val !== NO_CHANGE) setPtrValue(ptr._ptr, val);
+		if (val !== NO_CHANGE) return setPtrValue(ptr._ptr, val);
 	}
+	return false;
 };
 
 let callAllListeners = (ptr: PointerData) => {
@@ -174,7 +176,7 @@ export class Pointer<T> {
 		return null;
 	}
 	[NO_CHANGE](val: any) {
-		setPtrValue(this._ptr, val);
+		return setPtrValue(this._ptr, val);
 	}
 
 	[TOPRIMITIVE]() {
