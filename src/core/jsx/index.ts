@@ -278,7 +278,9 @@ function _jsx(
 				});
 			} else if (attr == "style" && typeof val == "object" && !isBasePtr(val)) {
 				for (let k in val) {
-					maybeListen(val[k], (v: any) => (el.style[k] = v));
+					maybeListen(val[k], (v: any) => {
+						el.style.setProperty(k, v);
+					});
 				}
 			} else {
 				maybeListen(val, (val) => setAttr(attr, val));

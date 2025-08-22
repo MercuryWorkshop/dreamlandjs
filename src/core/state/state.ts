@@ -14,7 +14,7 @@ import {
 	PointerStep,
 	PointerType,
 	registerPointer,
-    setPtrValue,
+	setPtrValue,
 } from "./pointers";
 
 export type ObjectProp = string | symbol;
