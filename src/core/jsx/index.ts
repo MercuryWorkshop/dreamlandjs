@@ -163,9 +163,14 @@ function _jsx(
 					for (let i = 0; i < style._strings.length; i++) {
 						cssString += style._strings[i];
 						if (i + 1 < style._strings.length) {
-							let varid = genCssUid();
-							cssString += `var(--${varid})`;
-							cssInfo._vars.push([varid, style._funcs[i]]);
+							let func = style._funcs[i];
+							if (typeof func === "string") {
+								cssString += func;
+							} else {
+								let varid = genCssUid();
+								cssString += `var(--${varid})`;
+								cssInfo._vars.push([varid, style._funcs[i]]);
+							}
 						}
 					}
 
