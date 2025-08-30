@@ -157,28 +157,28 @@ function _jsx(
 			let styleEl = DOCUMENT[CREATE_ELEMENT]("style");
 			if (!cssInfo) {
 				cssInfo = { _id: genCssUid(), _vars: [] };
-				if (!hydrating) {
-					let cssString = "";
+				let cssString = "";
 
-					for (let i = 0; i < style._strings.length; i++) {
-						cssString += style._strings[i];
-						if (i + 1 < style._strings.length) {
-							let func = style._funcs[i];
-							if (typeof func === "string") {
-								cssString += func;
-							} else {
-								let varid = genCssUid();
-								cssString += `var(--${varid})`;
-								cssInfo._vars.push([varid, style._funcs[i]]);
-							}
+				for (let i = 0; i < style._strings.length; i++) {
+					cssString += style._strings[i];
+					if (i + 1 < style._strings.length) {
+						let func = style._funcs[i];
+						if (typeof func === "string") {
+							cssString += func;
+						} else {
+							let varid = genCssUid();
+							cssString += `var(--${varid})`;
+							cssInfo._vars.push([varid, style._funcs[i]]);
 						}
 					}
+				}
 
-					styleEl["dl-" + CSS_COMPONENT] = init.name;
+				styleEl.setAttribute("dl-" + CSS_COMPONENT, init.name);
+				if (!hydrating) {
 					DOCUMENT.head.append(styleEl);
 					rewriteCSS(styleEl, cssString, cssInfo._id);
-					componentCssInfo.set(init, cssInfo);
 				}
+				componentCssInfo.set(init, cssInfo);
 			}
 		}
 

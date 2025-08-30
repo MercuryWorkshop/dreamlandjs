@@ -13,6 +13,7 @@ import renderToString from "dom-serializer";
 import { SSR_ID } from "../common/consts";
 
 export class Node {
+	_id: number;
 	nodeType: number;
 
 	parent: Node;
@@ -205,8 +206,9 @@ export class Text extends Node {
 export let newVDom = (old: DomImpl) => {
 	let elArr: Node[] = [];
 	let push = (el: Node) => {
-		let i = elArr.push(el);
-		if (el instanceof Element) el.setAttribute(SSR_ID, "" + (i - 1));
+		let i = elArr.push(el) - 1;
+		el._id = i;
+		if (el instanceof Element) el.setAttribute(SSR_ID, "" + i);
 		return el;
 	};
 

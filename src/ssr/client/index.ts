@@ -9,13 +9,14 @@ import {
 } from "dreamland/core";
 import { SSR_DATA, SSR_ID } from "../common/consts";
 import { hydrateState } from "../common/serialize";
-import { SsrData } from "../common/types";
+import { SsrData, SsrObject } from "../common/types";
 
 let SSR_ID_SYM = Symbol();
 
 export let hydrate = (
 	component: () => HTMLElement,
 	ssr: HTMLElement,
+	head: HTMLElement,
 	dataEl: HTMLElement
 ) => {
 	dev: {
@@ -30,27 +31,22 @@ export let hydrate = (
 	let data: SsrData = JSON.parse(textarea.value);
 
 	let els = [];
-	let commentArr = [];
-
-	let walk = (node: Node) => {
-		if (node.nodeType == 8) {
-			commentArr.push([+(node as Comment).data.split(" ")[0], node as Comment]);
-		}
-		node.childNodes.forEach(walk);
-	};
-	walk(ssr);
-	let comments = new Map(commentArr);
 
 	let rootIdx = +ssr.getAttribute(SSR_ID);
 	let idx = -1;
-	let getInternal = (idx: number) => {
-		let ret = rootIdx == idx ? ssr : ssr.querySelector(`[${SSR_ID}="${idx}"]`);
-		if (ret) {
+	let getInternal = (idx: number, push = true) => {
+		let selector = `[${SSR_ID}="${idx}"]`;
+		let ret = rootIdx == idx ? ssr : (ssr.querySelector(selector) || head.querySelector(selector));
+		if (ret && push) {
 			ret[SSR_ID_SYM] = idx;
 			els.push(ret);
 		}
 		return ret;
 	};
+	let getRelative = () => {
+		let [parent, offset] = data.n[++idx] as [number, number];
+		return getInternal(parent, false).childNodes[offset];
+	}
 
 	let get = () => getInternal(++idx);
 
@@ -62,15 +58,10 @@ export let hydrate = (
 			head: document.head,
 		},
 		old[1],
-		(text) => {
-			idx++;
-			return new Text(text);
-		},
-		(comment) => {
-			return comments.get(++idx);
-		},
+		getRelative,
+		getRelative,
 		() => {
-			return data.i[idx];
+			return data.i[idx + 1];
 		},
 		old[5],
 	] as const satisfies DomImpl;
@@ -82,8 +73,8 @@ export let hydrate = (
 	setDomImpl(old);
 
 	for (let component of els.filter((x) => x.$) as DLElement<any>[]) {
-		let state = data.s[component[SSR_ID_SYM]];
-		hydrateState(data, state, component.$.state);
+		let state = data.n[component[SSR_ID_SYM]];
+		hydrateState(data, state as SsrObject, component.$.state);
 	}
 
 	return root;
