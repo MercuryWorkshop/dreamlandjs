@@ -3,28 +3,13 @@ import { getDomImpl, jsx, NO_CHANGE, setDomImpl } from "dreamland/core";
 import { Comment, Element, newVDom } from "./vdom";
 
 import { serializeState } from "../common/serialize";
-import {
-	SSR,
-	SSR_COMPONENT_STATE,
-	SSR_ID,
-	SSR_STATE_ATTR,
-} from "../common/consts";
+import { SSR, SSR_DATA } from "../common/consts";
+import { SsrData, SsrSerializedState } from "../common/types";
 
 export interface RenderedComponent {
 	head: DomElement[];
-	state: DomElement;
+	data: DomElement;
 	component: DomElement;
-}
-
-function ssrData(key: string, value: string, data: string) {
-	return new DomElement(
-		"script",
-		{
-			type: "application/json",
-			[key]: value,
-		},
-		[new DomText(data)]
-	);
 }
 
 export function render(component: () => any): RenderedComponent {
@@ -36,22 +21,17 @@ export function render(component: () => any): RenderedComponent {
 	let root = component() as Element;
 	setDomImpl(old);
 
-	let componentState: DomElement[] = [];
+	let componentState: SsrSerializedState[] = [];
 
-	for (let [i, dom] of vdom[0].arr.map((x, i) => [i, x] as const)) {
+	for (let [i, dom] of vdom[0].elArr.map((x, i) => [i, x] as const)) {
 		if (dom instanceof Element) {
 			if (dom.component) {
 				let state = serializeState(
 					dom.component.state,
 					(any) => any instanceof vdom[1]
 				);
-				if (state.length > 2) {
-					componentState.push(
-						ssrData(SSR_COMPONENT_STATE, dom.component.id, state)
-					);
-				}
+				componentState.push(state);
 			}
-			dom.setAttribute(SSR_ID, "" + i);
 		}
 		if (dom instanceof Comment) {
 			dom.data = `${i} ${SSR} ${dom.data}`;
@@ -60,15 +40,18 @@ export function render(component: () => any): RenderedComponent {
 
 	let head = vdom[0].head.childNodes.map((x) => x.toStandard()) as DomElement[];
 
-	let state = new DomElement(
-		"dl",
-		{ [SSR_STATE_ATTR]: ":3", style: "display:none;" },
-		[...componentState]
-	);
+	let data: SsrData = {
+		s: componentState,
+		i: vdom[0].identArr,
+	};
 
 	return {
 		head,
-		state,
+		data: new DomElement(
+			"script",
+			{ type: "application/json", [SSR_DATA]: ":3" },
+			[new DomText(JSON.stringify(data))]
+		),
 		component: root.toStandard(),
 	};
 }

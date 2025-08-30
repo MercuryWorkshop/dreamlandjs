@@ -241,6 +241,8 @@ function _jsx(
 			if (!hydrating) ret.map((x) => el.appendChild(x));
 		}
 
+		let classList = el.classList;
+
 		for (let attr in props) {
 			let val = props[attr];
 			if (attr === "this") {
@@ -260,7 +262,6 @@ function _jsx(
 					}
 				);
 			} else if (attr === "class") {
-				let classList = el.classList;
 				let old = [];
 
 				maybeListen(val, (val: string) => {
@@ -273,13 +274,12 @@ function _jsx(
 				el.addEventListener(attr.substring(3), (e) => val(e));
 			} else if (attr.startsWith("class:")) {
 				let name = attr.substring(6);
-				let cls = el.classList;
 
 				maybeListen(val, (val: boolean) => {
 					if (val) {
-						cls.add(name);
+						classList.add(name);
 					} else {
-						cls.remove(name);
+						classList.remove(name);
 					}
 				});
 			} else if (attr.startsWith("attr:")) {
@@ -298,7 +298,8 @@ function _jsx(
 			}
 		}
 
-		if (currentCssIdent) el.classList.add(currentCssIdent);
+		if (currentCssIdent && ![...classList].find((x) => x.startsWith(CSS_IDENT)))
+			classList.add(currentCssIdent);
 
 		// all children would need to also be created with the correct namespace if we were doing this properly
 		// this is annoying and expensive bundle size wise, so it's easier to just force a reparse

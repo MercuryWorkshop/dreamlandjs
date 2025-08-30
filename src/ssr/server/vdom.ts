@@ -10,6 +10,7 @@ import {
 } from "domhandler";
 import { parseDocument } from "htmlparser2";
 import renderToString from "dom-serializer";
+import { SSR_ID } from "../common/consts";
 
 export class Node {
 	nodeType: number;
@@ -54,7 +55,7 @@ class ClassList extends Array {
 	remove(...classes: string[]) {
 		for (let cls of classes) {
 			let idx = this.findIndex((x) => x === cls);
-			this.splice(idx, 1);
+			if (idx !== -1) this.splice(idx, 1);
 		}
 	}
 
@@ -87,7 +88,7 @@ export class Element extends Node {
 		this.namespace = namespace;
 	}
 
-	addEventListener() { }
+	addEventListener() {}
 
 	setAttribute(key: string, value: any) {
 		if (key === "class") this.classList.push(...value.split(" "));
@@ -103,11 +104,13 @@ export class Element extends Node {
 	}
 
 	get innerHTML() {
-		return renderToString(this.childNodes.map(x => x.toStandard()));
+		return renderToString(this.childNodes.map((x) => x.toStandard()));
 	}
 	set innerHTML(value: string) {
 		let parsed = parseDocument(value);
-		this.childNodes = parsed.childNodes.map(node => fromDomhandler(node, this));
+		this.childNodes = parsed.childNodes.map((node) =>
+			fromDomhandler(node, this)
+		);
 	}
 
 	toStandard(): DomElement {
@@ -131,21 +134,21 @@ export class Element extends Node {
 
 function fromDomhandler(node: DomNode, parent: Node): Node {
 	let newNode: Node;
-	if (node.type === 'text') {
-		newNode = new Text((node as DomText).data)
-	} else if (node.type === 'comment') {
-		newNode = new Comment((node as DomComment).data)
-	} else if (node.type === 'tag') {
-		const element = new Element((node as DomElement).name)
+	if (node.type === "text") {
+		newNode = new Text((node as DomText).data);
+	} else if (node.type === "comment") {
+		newNode = new Comment((node as DomComment).data);
+	} else if (node.type === "tag") {
+		const element = new Element((node as DomElement).name);
 		for (const key in (node as DomElement).attribs) {
-			element.setAttribute(key, (node as DomElement).attribs[key])
+			element.setAttribute(key, (node as DomElement).attribs[key]);
 		}
 		for (const child of (node as DomElement).childNodes) {
-			element.appendChild(fromDomhandler(child, element))
+			element.appendChild(fromDomhandler(child, element));
 		}
-		newNode = element
+		newNode = element;
 	} else {
-		newNode = new Node()
+		newNode = new Node();
 	}
 	newNode.parent = parent;
 	return newNode;
@@ -202,9 +205,13 @@ export class Text extends Node {
 export let newVDom = (old: DomImpl) => {
 	let elArr: Node[] = [];
 	let push = (el: Node) => {
-		elArr.push(el);
+		let i = elArr.push(el);
+		if (el instanceof Element) el.setAttribute(SSR_ID, "" + (i - 1));
 		return el;
 	};
+
+	let identArr: Record<number, string> = {};
+
 	return [
 		{
 			createElement(type: string) {
@@ -214,13 +221,19 @@ export let newVDom = (old: DomImpl) => {
 				return push(new Element(type, ns));
 			},
 
-			arr: elArr,
+			elArr,
+			identArr,
+
 			head: new Element("head"),
 		},
 		Node,
 		(text?: string) => push(new Text(text || "")),
 		(text?: string) => push(new Comment(text || "")),
-		old[4],
-		() => { }, // enables "ssr mode"
+		() => {
+			let ret = old[4]();
+			identArr[elArr.length] = ret;
+			return ret;
+		},
+		() => {}, // enables "ssr mode"
 	] as const satisfies DomImpl;
 };

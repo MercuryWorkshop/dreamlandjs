@@ -1,5 +1,5 @@
 import type { Plugin, PluginOption, UserConfig } from "vite";
-import renderToString from "dom-serializer";
+import renderToString, { DomSerializerOptions } from "dom-serializer";
 
 import { promises as fs } from "node:fs";
 import { resolve } from "node:path";
@@ -38,9 +38,13 @@ let _devSsr = (options: DevSsrPluginOptions): PluginOption => ({
 				let { render } = await server.ssrLoadModule("dreamland/ssr/server");
 				let entry = await server.ssrLoadModule(options.entry);
 
+				let cfg: DomSerializerOptions = {
+					encodeEntities: "utf8",
+					decodeEntities: false,
+				};
 				let dom = render(entry.default);
-				let head = renderToString(dom.head);
-				let body = renderToString([dom.state, dom.component]);
+				let head = renderToString([dom.data, ...dom.head], cfg);
+				let body = renderToString(dom.component, cfg);
 
 				let app = html
 					.replace(`<!--ssr-head-->`, head)
