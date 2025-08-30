@@ -2,9 +2,9 @@ import { Element as DomElement, Text as DomText } from "domhandler";
 import { getDomImpl, jsx, NO_CHANGE, setDomImpl } from "dreamland/core";
 import { Comment, Element, newVDom } from "./vdom";
 
-import { serializeState } from "../common/serialize";
 import { SSR, SSR_DATA } from "../common/consts";
-import { SsrData, SsrSerializedState } from "../common/types";
+import { SsrData } from "../common/types";
+import { serializeState } from "../common/serialize";
 
 export interface RenderedComponent {
 	head: DomElement[];
@@ -21,16 +21,17 @@ export function render(component: () => any): RenderedComponent {
 	let root = component() as Element;
 	setDomImpl(old);
 
-	let componentState: SsrSerializedState[] = [];
+	let data: SsrData = {
+		k: [],
+		v: [],
+		s: {},
+		i: vdom[0].identArr,
+	};
 
 	for (let [i, dom] of vdom[0].elArr.map((x, i) => [i, x] as const)) {
 		if (dom instanceof Element) {
 			if (dom.component) {
-				let state = serializeState(
-					dom.component.state,
-					(any) => any instanceof vdom[1]
-				);
-				componentState.push(state);
+				data.s[i] = serializeState(data, dom.component.state, (x) => x instanceof vdom[1]);
 			}
 		}
 		if (dom instanceof Comment) {
@@ -39,11 +40,6 @@ export function render(component: () => any): RenderedComponent {
 	}
 
 	let head = vdom[0].head.childNodes.map((x) => x.toStandard()) as DomElement[];
-
-	let data: SsrData = {
-		s: componentState,
-		i: vdom[0].identArr,
-	};
 
 	return {
 		head,

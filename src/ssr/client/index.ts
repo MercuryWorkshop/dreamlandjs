@@ -82,8 +82,8 @@ export let hydrate = (
 	setDomImpl(old);
 
 	for (let component of els.filter((x) => x.$) as DLElement<any>[]) {
-		let state = data[component[SSR_ID_SYM]];
-		hydrateState(state || {}, component.$.state);
+		let state = data.s[component[SSR_ID_SYM]];
+		hydrateState(data, state, component.$.state);
 	}
 
 	return root;
