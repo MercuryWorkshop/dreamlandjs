@@ -47,7 +47,10 @@ export let rewriteCSS = (style: HTMLStyleElement, css: string, tag: string) => {
 			if (token._type == PSEUDO_CLASS_TOKEN && token.arg) {
 				let global = token.nm == "global";
 
-				let rewritten = rewriteSelector(tokenize(token.arg), global || inGlobal);
+				let rewritten = rewriteSelector(
+					tokenize(token.arg),
+					global || inGlobal
+				);
 				if (global) {
 					idx = i;
 					cnt = 1;

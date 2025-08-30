@@ -216,5 +216,6 @@ export default (args) => {
 		}),
 		...cfg({ input: ["src/router", "index.tsx"], output: "router" }),
 		...cfg({ input: ["src/motion"], output: "motion" }),
+		...cfg({ input: ["src/vite"], output: "vite" }),
 	]);
 };
