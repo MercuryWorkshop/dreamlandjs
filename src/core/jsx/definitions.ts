@@ -21,7 +21,10 @@ export type ComponentContext<T> = {
 
 	id?: string;
 
+	// Run only on client
 	mount?: () => void;
+	// Run on client and server
+	init?: () => void;
 };
 
 type MappedProps<Props> = {

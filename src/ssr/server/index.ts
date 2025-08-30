@@ -1,5 +1,5 @@
 import { Element as DomElement, Text as DomText } from "domhandler";
-import { getDomImpl, setDomImpl } from "dreamland/core";
+import { getDomImpl, jsx, NO_CHANGE, setDomImpl } from "dreamland/core";
 import { Comment, Element, newVDom } from "./vdom";
 
 import { serializeState } from "../common/serialize";
@@ -12,6 +12,7 @@ import {
 
 export interface RenderedComponent {
 	head: DomElement[];
+	state: DomElement;
 	component: DomElement;
 }
 
@@ -31,6 +32,7 @@ export function render(component: () => any): RenderedComponent {
 	let vdom = newVDom(old);
 
 	setDomImpl(vdom);
+	jsx[NO_CHANGE]();
 	let root = component() as Element;
 	setDomImpl(old);
 
@@ -39,7 +41,10 @@ export function render(component: () => any): RenderedComponent {
 	for (let [i, dom] of vdom[0].arr.map((x, i) => [i, x] as const)) {
 		if (dom instanceof Element) {
 			if (dom.component) {
-				let state = serializeState(dom.component.state);
+				let state = serializeState(
+					dom.component.state,
+					(any) => any instanceof vdom[1]
+				);
 				if (state.length > 2) {
 					componentState.push(
 						ssrData(SSR_COMPONENT_STATE, dom.component.id, state)
@@ -55,14 +60,15 @@ export function render(component: () => any): RenderedComponent {
 
 	let head = vdom[0].head.childNodes.map((x) => x.toStandard()) as DomElement[];
 
-	head.push(
-		new DomElement("div", { [SSR_STATE_ATTR]: ":3", style: "display:none;" }, [
-			...componentState,
-		])
+	let state = new DomElement(
+		"dl",
+		{ [SSR_STATE_ATTR]: ":3", style: "display:none;" },
+		[...componentState]
 	);
 
 	return {
 		head,
+		state,
 		component: root.toStandard(),
 	};
 }

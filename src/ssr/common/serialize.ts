@@ -38,10 +38,10 @@ let hydratePtr = (ptr: Pointer<any>, data: ExportedPointer) => {
 let OBJECT = Object;
 
 // used on serverside only
-export let serializeState: (state: any) => string = (
+export let serializeState: (
 	state: any,
-	first = false
-): string => {
+	isNode: (val: any) => boolean
+) => string = (state, isNode, first = false) => {
 	return JSON.stringify(state, (key, value) => {
 		if (!first) {
 			first = true;
@@ -50,6 +50,7 @@ export let serializeState: (state: any) => string = (
 
 		if (key === "") throw new Error("you suck");
 
+		if (isNode(value)) return;
 		if (value instanceof Pointer) {
 			return <SerializedPtr>{
 				[INTERNAL_TYPE]: INTERNAL_TYPE_PTR,

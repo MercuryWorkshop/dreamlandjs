@@ -9,8 +9,10 @@ export let node: typeof Node = GLOBAL.Node;
 export let new_Text = (text?: string) => new Text(text);
 export let new_Comment = (text?: string) => new Comment(text);
 export let genCssUid = () => CSS_IDENT + genuid();
-export let ssrTransform: (init: Function, cx?: ComponentContext<any>) => void =
-	((_: any) => {}) as any;
+export let ssrTransform: (
+	init: Function,
+	cx?: ComponentContext<any>
+) => void | undefined;
 
 export type DomImpl = [
 	any,
@@ -18,7 +20,10 @@ export type DomImpl = [
 	(text?: string) => any,
 	(text?: string) => any,
 	() => string,
-	(init: Component<any, any, any>, cx?: ComponentContext<any>) => void,
+	(
+		init: Component<any, any, any>,
+		cx?: ComponentContext<any>
+	) => void | undefined,
 ];
 
 export let setDomImpl = (dom: DomImpl) => {

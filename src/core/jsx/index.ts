@@ -18,7 +18,7 @@ import {
 } from "./definitions";
 import { isBasePtr, maybeListen } from "../state/pointers";
 import { createState, stateProxy } from "../state/state";
-import { DREAMLAND } from "../consts";
+import { DREAMLAND, NO_CHANGE } from "../consts";
 import { DelegateListener } from "../delegate";
 
 export let currentCssIdent: string | null = null;
@@ -130,7 +130,7 @@ function _jsx(
 	if (typeof init === "function") {
 		let state = createState({});
 
-		ssrTransform(init);
+		ssrTransform?.(init);
 
 		for (let attr in props) {
 			let val = props[attr];
@@ -216,9 +216,10 @@ function _jsx(
 				}
 		}
 
-		ssrTransform(init, cx);
+		ssrTransform?.(init, cx);
 
-		cx.mount?.();
+		cx.init?.();
+		if (!ssrTransform) cx.mount?.();
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
@@ -281,6 +282,11 @@ function _jsx(
 						cls.remove(name);
 					}
 				});
+			} else if (attr.startsWith("attr:")) {
+				let key = attr.substring(5);
+				maybeListen(val, (val: boolean) => {
+					el[key] = val;
+				});
 			} else if (attr == "style" && typeof val == "object" && !isBasePtr(val)) {
 				for (let k in val) {
 					maybeListen(val[k], (v: any) => {
@@ -325,7 +331,9 @@ function _h(
 
 export let h = _h;
 export let jsx = _jsx;
-export let addDREAMLAND = () =>
-	(jsx[DREAMLAND] = (status: boolean) => (hydrating = status));
+export let addDREAMLAND = () => {
+	jsx[DREAMLAND] = (status: boolean) => (hydrating = status);
+	jsx[NO_CHANGE] = () => (componentCssInfo = new Map());
+};
 
 export let Fragment = (cx: ComponentContext<any>) => cx.children;

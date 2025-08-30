@@ -4,6 +4,7 @@ import {
 	DREAMLAND,
 	getDomImpl,
 	jsx,
+	NO_CHANGE,
 	setDomImpl,
 } from "dreamland/core";
 import { SSR_COMPONENT_STATE, SSR_ID, SSR_STATE_ATTR } from "../common/consts";
@@ -56,11 +57,14 @@ export let hydrate = (
 		(comment) => {
 			return comments.get(++idx);
 		},
-		() =>
-			[...getInternal(idx + 1).classList].find((x) => x.startsWith("dlcss-")),
+		() => {
+			console.log(idx, getInternal(idx), getInternal(idx + 1));
+			return [...getInternal(idx + 1).classList].find((x) => x.startsWith("dlcss-"))
+		},
 		old[5],
 	] as const satisfies DomImpl;
 	setDomImpl(vdom);
+	jsx[NO_CHANGE]();
 	jsx[DREAMLAND](true);
 	let root = component();
 	jsx[DREAMLAND](false);
