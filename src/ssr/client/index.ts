@@ -36,7 +36,10 @@ export let hydrate = (
 	let idx = -1;
 	let getInternal = (idx: number, push = true) => {
 		let selector = `[${SSR_ID}="${idx}"]`;
-		let ret = rootIdx == idx ? ssr : (ssr.querySelector(selector) || head.querySelector(selector));
+		let ret =
+			rootIdx == idx
+				? ssr
+				: ssr.querySelector(selector) || head.querySelector(selector);
 		if (ret && push) {
 			ret[SSR_ID_SYM] = idx;
 			els.push(ret);
@@ -46,7 +49,7 @@ export let hydrate = (
 	let getRelative = () => {
 		let [parent, offset] = data.n[++idx] as [number, number];
 		return getInternal(parent, false).childNodes[offset];
-	}
+	};
 
 	let get = () => getInternal(++idx);
 

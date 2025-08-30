@@ -31,10 +31,17 @@ export function render(component: () => any): RenderedComponent {
 	for (let [i, el] of vdom[0].elArr.map((x, i) => [i, x] as const)) {
 		let node: Node;
 		if (el instanceof Element && el.component) {
-			node = serializeState(data, el.component.state, (x) => x instanceof vdom[1]);
+			node = serializeState(
+				data,
+				el.component.state,
+				(x) => x instanceof vdom[1]
+			);
 		}
 		if (el instanceof Comment || el instanceof Text) {
-			node = [el.parent._id, el.parent.childNodes.findIndex(x => x._id === el._id)];
+			node = [
+				el.parent._id,
+				el.parent.childNodes.findIndex((x) => x._id === el._id),
+			];
 		}
 		data.n[i] = node;
 	}

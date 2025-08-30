@@ -1,19 +1,21 @@
 import { Pointer, DREAMLAND, NO_CHANGE } from "dreamland/core";
-import { SsrData, SsrObject, SsrPointer, SsrValue, } from "./types";
+import { SsrData, SsrObject, SsrPointer, SsrValue } from "./types";
 import { serialize } from "v8";
 
 let OBJECT = Object;
 let Json = JSON;
 let STRINGIFY = Json.stringify;
 
-export let serializeState = (data: SsrData, object: object, isNode: (x: any) => boolean): SsrObject => {
+export let serializeState = (
+	data: SsrData,
+	object: object,
+	isNode: (x: any) => boolean
+): SsrObject => {
 	let push = (arr: string[], val: string): number => {
 		let idx = arr.indexOf(val);
-		if (idx != -1)
-			return idx;
-		else
-			return arr.push(val) - 1;
-	}
+		if (idx != -1) return idx;
+		else return arr.push(val) - 1;
+	};
 
 	let exportPtr = (ptr: Pointer<any>) => {
 		let zipped = ptr[DREAMLAND]();
@@ -27,19 +29,17 @@ export let serializeState = (data: SsrData, object: object, isNode: (x: any) => 
 			let entries = OBJECT.fromEntries(val.entries());
 			return { t: "m", v: _serialize(entries) };
 		} else if (val instanceof Set) {
-			let vals = [...val.values()].map(x => _val(x));
-			return { t: "s", v: vals }
+			let vals = [...val.values()].map((x) => _val(x));
+			return { t: "s", v: vals };
 		} else {
 			// TODO this is ugly and leads to unnecessary escaping
 			let stringified = STRINGIFY(val);
 			if (!stringified) return;
 
-			if (stringified.startsWith("{"))
-				return { t: "o", v: _serialize(val) };
-			else
-				return push(data.v, STRINGIFY(val));
+			if (stringified.startsWith("{")) return { t: "o", v: _serialize(val) };
+			else return push(data.v, STRINGIFY(val));
 		}
-	}
+	};
 
 	let _serialize = (object: object): SsrObject => {
 		let out: SsrObject = [];
@@ -47,11 +47,10 @@ export let serializeState = (data: SsrData, object: object, isNode: (x: any) => 
 			let v = object[k];
 			let serialized = !isNode(v) && _val(v);
 
-			if (serialized)
-				out.push([push(data.k, k), serialized]);
+			if (serialized) out.push([push(data.k, k), serialized]);
 		}
 		return out;
-	}
+	};
 
 	return _serialize(object);
 };
@@ -73,7 +72,7 @@ export let hydrateState = (data: SsrData, state: SsrObject, target: any) => {
 			hydratePtr(target as Pointer<any>, val.v);
 			return ptr ? NO_CHANGE : target;
 		} else if (val.t == "s") {
-			return new Set(val.v.map(x => _val(x, null)));
+			return new Set(val.v.map((x) => _val(x, null)));
 		} else if (val.t == "m") {
 			let t = {};
 			_hydrate(val.v, t);
@@ -82,14 +81,14 @@ export let hydrateState = (data: SsrData, state: SsrObject, target: any) => {
 			_hydrate(val.v, target);
 			return target;
 		}
-	}
+	};
 
 	let _hydrate = (state: SsrObject, target: any) => {
 		for (let [_k, v] of state) {
 			let k = data.k[_k];
 			target[k] = _val(v, target[k]);
 		}
-	}
+	};
 
 	_hydrate(state, target);
-}
+};

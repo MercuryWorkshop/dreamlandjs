@@ -176,7 +176,6 @@ export class Pointer<T> {
 		return null;
 	}
 
-
 	[TOPRIMITIVE]() {
 		return this._ptr._id;
 	}
