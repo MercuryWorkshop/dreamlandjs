@@ -17,40 +17,40 @@
 	},
 	"exports": {
 		"./core": {
-			"default": "./dist/core.js",
-			"types": "./dist/core.d.ts"
+			"types": "./dist/core.d.ts",
+			"default": "./dist/core.js"
 		},
 		"./jsx-runtime": {
-			"default": "./dist/jsx-runtime.js",
-			"types": "./dist/jsx-runtime.d.ts"
+			"types": "./dist/jsx-runtime.d.ts",
+			"default": "./dist/jsx-runtime.js"
 		},
 		"./jsx-dev-runtime": {
-			"default": "./dist/jsx-runtime.js",
-			"types": "./dist/jsx-runtime.d.ts"
+			"types": "./dist/jsx-runtime.d.ts",
+			"default": "./dist/jsx-runtime.js"
 		},
 		"./ssr/server": {
-			"default": "./dist/ssr.server.js",
-			"types": "./dist/ssr.server.d.ts"
+			"types": "./dist/ssr.server.d.ts",
+			"default": "./dist/ssr.server.js"
 		},
 		"./ssr/hybrid": {
-			"default": "./dist/ssr.hybrid.js",
-			"types": "./dist/ssr.hybrid.d.ts"
+			"types": "./dist/ssr.hybrid.d.ts",
+			"default": "./dist/ssr.hybrid.js"
 		},
 		"./ssr/client": {
-			"default": "./dist/ssr.client.js",
-			"types": "./dist/ssr.client.d.ts"
+			"types": "./dist/ssr.client.d.ts",
+			"default": "./dist/ssr.client.js"
 		},
 		"./router": {
-			"default": "./dist/router.js",
-			"types": "./dist/router.d.ts"
+			"types": "./dist/router.d.ts",
+			"default": "./dist/router.js"
 		},
 		"./motion": {
-			"default": "./dist/motion.js",
-			"types": "./dist/motion.d.ts"
+			"types": "./dist/motion.d.ts",
+			"default": "./dist/motion.js"
 		},
 		"./vite": {
-			"default": "./dist/vite.js",
-			"types": "./dist/vite.d.ts"
+			"types": "./dist/vite.d.ts",
+			"default": "./dist/vite.js"
 		}
 	},
 	"devDependencies": {

@@ -35,14 +35,13 @@ let _devSsr = (options: DevSsrPluginOptions): PluginOption => ({
 				);
 				let html = await server.transformIndexHtml(req.url, template);
 
-				let { render } = await server.ssrLoadModule("dreamland/ssr/server");
 				let entry = await server.ssrLoadModule(options.entry);
 
 				let cfg: DomSerializerOptions = {
 					encodeEntities: "utf8",
 					decodeEntities: false,
 				};
-				let dom = render(entry.default);
+				let dom = entry.default();
 				let head = renderToString([dom.data, ...dom.head], cfg);
 				let body = renderToString(dom.component, cfg);
 
