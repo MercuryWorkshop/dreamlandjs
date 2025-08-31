@@ -1,8 +1,8 @@
 import { defineConfig } from "vite";
 import { devSsr } from "dreamland/vite";
 
-import { readFile } from 'fs/promises';
-import { gzipSync, brotliCompressSync } from 'zlib';
+import { readFile } from "fs/promises";
+import { gzipSync, brotliCompressSync } from "zlib";
 
 const bundle = await readFile("node_modules/dreamland/dist/core.js");
 const uncompressed = bundle.byteLength;
@@ -17,6 +17,6 @@ export default defineConfig({
 	plugins: [
 		devSsr({
 			entry: "/src/main-server.ts",
-		})
+		}),
 	],
 });

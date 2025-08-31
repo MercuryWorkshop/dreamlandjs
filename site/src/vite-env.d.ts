@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ViteTypeOptions {
-	strictImportMetaEnv: unknown
+	strictImportMetaEnv: unknown;
 }
 
 interface ImportMetaEnv {
@@ -11,5 +11,5 @@ interface ImportMetaEnv {
 }
 
 interface ImportMeta {
-	readonly env: ImportMetaEnv
+	readonly env: ImportMetaEnv;
 }

@@ -2,7 +2,7 @@ import { css, type Component } from "dreamland/core";
 
 import logo from "./logo/uwu.svg";
 
-let MainPage: Component = function() {
+let MainPage: Component = function () {
 	return (
 		<div id="app">
 			<div class="hero">
@@ -15,13 +15,15 @@ let MainPage: Component = function() {
 			<div class="content">
 				<h2>Write components without the overhead</h2>
 				<p>
-					dreamland has <b>no virtual DOM</b> and is <b>extremely small</b>, at{' '}
-					{import.meta.env.VITE_ENV_BUNDLE_SIZE}kb minified ({import.meta.env.VITE_ENV_GZIP_SIZE}kb gzipped, {import.meta.env.VITE_ENV_BROTLI_SIZE}kb brotli'd).
+					dreamland has <b>no virtual DOM</b> and is <b>extremely small</b>, at{" "}
+					{import.meta.env.VITE_ENV_BUNDLE_SIZE}kb minified (
+					{import.meta.env.VITE_ENV_GZIP_SIZE}kb gzipped,{" "}
+					{import.meta.env.VITE_ENV_BROTLI_SIZE}kb brotli'd).
 				</p>
 			</div>
 		</div>
-	)
-}
+	);
+};
 MainPage.style = css`
 	:scope {
 		display: flex;
