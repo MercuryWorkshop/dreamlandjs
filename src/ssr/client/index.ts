@@ -8,10 +8,8 @@ import {
 	setDomImpl,
 } from "dreamland/core";
 import { SSR_DATA, SSR_ID } from "../common/consts";
-import { hydrateState } from "../common/serialize";
+import { hydrateState, Json } from "../common/serialize";
 import { SsrData, SsrObject } from "../common/types";
-
-let SSR_ID_SYM = Symbol();
 
 export let hydrate = (
 	component: () => HTMLElement,
@@ -22,33 +20,29 @@ export let hydrate = (
 	dev: {
 		if (dataEl.getAttribute(SSR_DATA) !== ":3") throw "invalid ssr root";
 	}
-	let dataText = dataEl.innerText;
-
 	// decode entities
 	let textarea = jsx("textarea", {}) as HTMLTextAreaElement;
-	textarea.innerHTML = dataText;
+	textarea.innerHTML = dataEl.innerText;
+	let data: SsrData = Json.parse(textarea.value);
 
-	let data: SsrData = JSON.parse(textarea.value);
-
-	let els = [];
+	let els: [number, DLElement<any>][] = [];
 
 	let rootIdx = +ssr.getAttribute(SSR_ID);
 	let idx = -1;
-	let getInternal = (idx: number, push = true) => {
+	let getInternal = (idx: number) => {
 		let selector = `[${SSR_ID}="${idx}"]`;
 		let ret =
 			rootIdx == idx
 				? ssr
 				: ssr.querySelector(selector) || head.querySelector(selector);
-		if (ret && push) {
-			ret[SSR_ID_SYM] = idx;
-			els.push(ret);
+		if ((ret as DLElement<any>).$) {
+			els.push([idx, ret as DLElement<any>]);
 		}
 		return ret;
 	};
 	let getRelative = () => {
 		let [parent, offset] = data.n[++idx] as [number, number];
-		return getInternal(parent, false).childNodes[offset];
+		return getInternal(parent).childNodes[offset];
 	};
 
 	let get = () => getInternal(++idx);
@@ -75,8 +69,8 @@ export let hydrate = (
 	jsx[DREAMLAND](false);
 	setDomImpl(old);
 
-	for (let component of els.filter((x) => x.$) as DLElement<any>[]) {
-		let state = data.n[component[SSR_ID_SYM]];
+	for (let [i, component] of els.filter((x) => x[1].$)) {
+		let state = data.n[i];
 		hydrateState(data, state as SsrObject, component.$.state);
 	}
 

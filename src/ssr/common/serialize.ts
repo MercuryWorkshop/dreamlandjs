@@ -2,8 +2,7 @@ import { Pointer, DREAMLAND, NO_CHANGE } from "dreamland/core";
 import { SsrData, SsrObject, SsrPointer, SsrValue } from "./types";
 import { serialize } from "v8";
 
-let OBJECT = Object;
-let Json = JSON;
+export let Json = JSON;
 let STRINGIFY = Json.stringify;
 
 export let serializeState = (
@@ -26,7 +25,7 @@ export let serializeState = (
 		if (val instanceof Pointer) {
 			return { t: "p", v: exportPtr(val) };
 		} else if (val instanceof Map) {
-			let entries = OBJECT.fromEntries(val.entries());
+			let entries = Object.fromEntries(val.entries());
 			return { t: "m", v: _serialize(entries) };
 		} else if (val instanceof Set) {
 			let vals = [...val.values()].map((x) => _val(x));
@@ -65,18 +64,18 @@ export let hydrateState = (data: SsrData, state: SsrObject, target: any) => {
 	};
 
 	// TODO this is ugly
-	let _val = (val: SsrValue, target: any, ptr = false): any => {
+	let _val = (val: SsrValue, target?: any, ptr?: boolean): any => {
 		if (typeof val == "number") {
 			return Json.parse(data.v[val]);
 		} else if (val.t == "p") {
 			hydratePtr(target as Pointer<any>, val.v);
 			return ptr ? NO_CHANGE : target;
 		} else if (val.t == "s") {
-			return new Set(val.v.map((x) => _val(x, null)));
+			return new Set(val.v.map((x) => _val(x)));
 		} else if (val.t == "m") {
 			let t = {};
 			_hydrate(val.v, t);
-			return new Map(OBJECT.entries(t));
+			return new Map(Object.entries(t));
 		} else if (val.t == "o") {
 			_hydrate(val.v, target);
 			return target;
