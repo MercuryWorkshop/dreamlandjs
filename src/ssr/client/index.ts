@@ -4,39 +4,45 @@ import {
 	DREAMLAND,
 	getDomImpl,
 	jsx,
+	NO_CHANGE,
 	setDomImpl,
 } from "dreamland/core";
-import { SSR_COMPONENT_STATE, SSR_ID, SSR_STATE_ATTR } from "../common/consts";
-import { hydrateState } from "../common/serialize";
+import { SSR_DATA, SSR_ID } from "../common/consts";
+import { hydrateState, Json } from "../common/serialize";
+import { SsrData, SsrObject } from "../common/types";
 
 export let hydrate = (
 	component: () => HTMLElement,
 	ssr: HTMLElement,
-	dataRoot: HTMLElement
+	head: HTMLElement,
+	dataEl: HTMLElement
 ) => {
 	dev: {
-		if (dataRoot.getAttribute(SSR_STATE_ATTR) !== ":3")
-			throw "invalid ssr root";
+		if (dataEl.getAttribute(SSR_DATA) !== ":3") throw "invalid ssr root";
 	}
+	// decode entities
+	let textarea = jsx("textarea", {}) as HTMLTextAreaElement;
+	textarea.innerHTML = dataEl.innerText;
+	let data: SsrData = Json.parse(textarea.value);
 
-	let els = [];
-	let commentArr = [];
-
-	let walk = (node: Node) => {
-		if (node.nodeType == 8) {
-			commentArr.push([+(node as Comment).data.split(" ")[0], node as Comment]);
-		}
-		node.childNodes.forEach(walk);
-	};
-	walk(ssr);
-	let comments = new Map(commentArr);
+	let els: [number, DLElement<any>][] = [];
 
 	let rootIdx = +ssr.getAttribute(SSR_ID);
 	let idx = -1;
 	let getInternal = (idx: number) => {
-		let ret = rootIdx == idx ? ssr : ssr.querySelector(`[${SSR_ID}="${idx}"]`);
-		if (ret) els.push(ret);
+		let selector = `[${SSR_ID}="${idx}"]`;
+		let ret =
+			rootIdx == idx
+				? ssr
+				: ssr.querySelector(selector) || head.querySelector(selector);
+		if ((ret as DLElement<any>).$) {
+			els.push([idx, ret as DLElement<any>]);
+		}
 		return ret;
+	};
+	let getRelative = () => {
+		let [parent, offset] = data.n[++idx] as [number, number];
+		return getInternal(parent).childNodes[offset];
 	};
 
 	let get = () => getInternal(++idx);
@@ -49,33 +55,23 @@ export let hydrate = (
 			head: document.head,
 		},
 		old[1],
-		(text) => {
-			idx++;
-			return new Text(text);
+		getRelative,
+		getRelative,
+		() => {
+			return data.i[idx + 1];
 		},
-		(comment) => {
-			return comments.get(++idx);
-		},
-		() =>
-			[...getInternal(idx + 1).classList].find((x) => x.startsWith("dlcss-")),
 		old[5],
 	] as const satisfies DomImpl;
 	setDomImpl(vdom);
+	jsx[NO_CHANGE]();
 	jsx[DREAMLAND](true);
 	let root = component();
 	jsx[DREAMLAND](false);
 	setDomImpl(old);
 
-	let componentState = new Map(
-		[...dataRoot.children].flatMap((x) => {
-			let component = x.getAttribute(SSR_COMPONENT_STATE);
-			return component ? [[component, JSON.parse(x.innerHTML)]] : [];
-		})
-	);
-
-	for (let component of els.filter((x) => x.$) as DLElement<any>[]) {
-		let state = componentState.get(component.$.id);
-		hydrateState(state || {}, component.$.state);
+	for (let [i, component] of els.filter((x) => x[1].$)) {
+		let state = data.n[i];
+		hydrateState(data, state as SsrObject, component.$.state);
 	}
 
 	return root;

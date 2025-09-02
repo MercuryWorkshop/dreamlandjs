@@ -1,4 +1,4 @@
-import { ASSIGN } from "./consts";
+import { ASSIGN, GLOBAL } from "./consts";
 import { getStatefulInner } from "./state";
 import { createState, isStateful, Stateful, stateListen } from "./state/state";
 
@@ -13,7 +13,7 @@ type StoreAsyncBacking = {
 	write: (ident: string, data: string) => Promise<void>;
 };
 
-let LOCALSTORAGE = localStorage;
+let LOCALSTORAGE = GLOBAL.localStorage || {};
 let INTERNAL = "__dls_ty";
 
 function _createStore<T extends Object>(

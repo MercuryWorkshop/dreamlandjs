@@ -1,91 +1,93 @@
 import { Pointer, DREAMLAND, NO_CHANGE } from "dreamland/core";
-import {
-	INTERNAL_TYPE,
-	INTERNAL_TYPE_MAP,
-	INTERNAL_TYPE_PTR,
-	INTERNAL_TYPE_SET,
-} from "./consts";
+import { SsrData, SsrObject, SsrPointer, SsrValue } from "./types";
+import { serialize } from "v8";
 
-type SerializedMap = {
-	[INTERNAL_TYPE]: typeof INTERNAL_TYPE_MAP;
-	d: Record<any, any>;
-};
+export let Json = JSON;
+let STRINGIFY = Json.stringify;
 
-type SerializedSet = {
-	[INTERNAL_TYPE]: typeof INTERNAL_TYPE_SET;
-	d: any[];
-};
+export let serializeState = (
+	data: SsrData,
+	object: object,
+	isNode: (x: any) => boolean
+): SsrObject => {
+	let push = (arr: string[], val: string): number => {
+		let idx = arr.indexOf(val);
+		if (idx != -1) return idx;
+		else return arr.push(val) - 1;
+	};
 
-type ExportedPointer = ExportedPointer[] | { v: any };
+	let exportPtr = (ptr: Pointer<any>) => {
+		let zipped = ptr[DREAMLAND]();
+		return zipped ? zipped.map(exportPtr) : { v: _val(ptr.value) };
+	};
 
-type SerializedPtr = {
-	[INTERNAL_TYPE]: typeof INTERNAL_TYPE_PTR;
-	p: ExportedPointer;
-};
-
-let exportPtr = (ptr: Pointer<any>) => {
-	let zipped = ptr[DREAMLAND]();
-	return zipped ? zipped.map(exportPtr) : { v: ptr.value };
-};
-let hydratePtr = (ptr: Pointer<any>, data: ExportedPointer) => {
-	if (data instanceof Array) {
-		ptr[DREAMLAND]()!.forEach((x, i) => hydratePtr(x, data[i]));
-	} else {
-		ptr[NO_CHANGE](data.v);
-	}
-};
-
-let OBJECT = Object;
-
-// used on serverside only
-export let serializeState: (state: any) => string = (
-	state: any,
-	first = false
-): string => {
-	return JSON.stringify(state, (key, value) => {
-		if (!first) {
-			first = true;
-			return value;
-		}
-
-		if (key === "") throw new Error("you suck");
-
-		if (value instanceof Pointer) {
-			return <SerializedPtr>{
-				[INTERNAL_TYPE]: INTERNAL_TYPE_PTR,
-				p: exportPtr(value),
-			};
-		}
-		if (value instanceof Map) {
-			return <SerializedMap>{
-				[INTERNAL_TYPE]: INTERNAL_TYPE_MAP,
-				d: OBJECT.fromEntries(value.entries()),
-			};
-		}
-		if (value instanceof Set) {
-			return <SerializedSet>{
-				[INTERNAL_TYPE]: INTERNAL_TYPE_SET,
-				d: [...value],
-			};
-		}
-
-		return value;
-	});
-};
-
-export let hydrateState = (state: any, target: any) => {
-	for (let [k, v] of OBJECT.entries(state)) {
-		let internal = v?.[INTERNAL_TYPE];
-		if (internal === INTERNAL_TYPE_PTR) {
-			hydratePtr(target[k], (v as SerializedPtr).p);
-		} else if (internal === INTERNAL_TYPE_MAP) {
-			target[k] = new Map(OBJECT.entries(v));
-		} else if (internal === INTERNAL_TYPE_SET) {
-			target[k] = new Set(v as any[]);
-		} else if (v instanceof OBJECT) {
-			hydrateState(v, (target[k] ||= {}));
+	let _val = (val: any): SsrValue | undefined => {
+		if (val instanceof Pointer) {
+			return { t: "p", v: exportPtr(val) };
+		} else if (val instanceof Map) {
+			let entries = Object.fromEntries(val.entries());
+			return { t: "m", v: _serialize(entries) };
+		} else if (val instanceof Set) {
+			let vals = [...val.values()].map((x) => _val(x));
+			return { t: "s", v: vals };
 		} else {
-			target[k] = v;
+			// TODO this is ugly and leads to unnecessary escaping
+			let stringified = STRINGIFY(val);
+			if (!stringified) return;
+
+			if (stringified.startsWith("{")) return { t: "o", v: _serialize(val) };
+			else return push(data.v, STRINGIFY(val));
 		}
-	}
+	};
+
+	let _serialize = (object: object): SsrObject => {
+		let out: SsrObject = [];
+		for (let k in object) {
+			let v = object[k];
+			let serialized = !isNode(v) && _val(v);
+
+			if (serialized) out.push([push(data.k, k), serialized]);
+		}
+		return out;
+	};
+
+	return _serialize(object);
+};
+
+export let hydrateState = (data: SsrData, state: SsrObject, target: any) => {
+	let hydratePtr = (ptr: Pointer<any>, data: SsrPointer) => {
+		if (data instanceof Array) {
+			ptr[DREAMLAND]()!.forEach((x, i) => hydratePtr(x, data[i]));
+		} else {
+			ptr.value = _val(data.v, ptr.value, true);
+		}
+	};
+
+	// TODO this is ugly
+	let _val = (val: SsrValue, target?: any, ptr?: boolean): any => {
+		if (typeof val == "number") {
+			return Json.parse(data.v[val]);
+		} else if (val.t == "p") {
+			hydratePtr(target as Pointer<any>, val.v);
+			return ptr ? NO_CHANGE : target;
+		} else if (val.t == "s") {
+			return new Set(val.v.map((x) => _val(x)));
+		} else if (val.t == "m") {
+			let t = {};
+			_hydrate(val.v, t);
+			return new Map(Object.entries(t));
+		} else if (val.t == "o") {
+			_hydrate(val.v, target);
+			return target;
+		}
+	};
+
+	let _hydrate = (state: SsrObject, target: any) => {
+		for (let [_k, v] of state) {
+			let k = data.k[_k];
+			target[k] = _val(v, target[k]);
+		}
+	};
+
+	_hydrate(state, target);
 };

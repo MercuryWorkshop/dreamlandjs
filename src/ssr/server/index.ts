@@ -1,29 +1,15 @@
 import { Element as DomElement, Text as DomText } from "domhandler";
-import { getDomImpl, setDomImpl } from "dreamland/core";
-import { Comment, Element, newVDom } from "./vdom";
+import { getDomImpl, jsx, NO_CHANGE, setDomImpl } from "dreamland/core";
+import { Comment, Text, Element, newVDom } from "./vdom";
 
+import { SSR_DATA } from "../common/consts";
+import { Node, SsrData } from "../common/types";
 import { serializeState } from "../common/serialize";
-import {
-	SSR,
-	SSR_COMPONENT_STATE,
-	SSR_ID,
-	SSR_STATE_ATTR,
-} from "../common/consts";
 
 export interface RenderedComponent {
 	head: DomElement[];
+	data: DomElement;
 	component: DomElement;
-}
-
-function ssrData(key: string, value: string, data: string) {
-	return new DomElement(
-		"script",
-		{
-			type: "application/json",
-			[key]: value,
-		},
-		[new DomText(data)]
-	);
 }
 
 export function render(component: () => any): RenderedComponent {
@@ -31,38 +17,44 @@ export function render(component: () => any): RenderedComponent {
 	let vdom = newVDom(old);
 
 	setDomImpl(vdom);
+	jsx[NO_CHANGE]();
 	let root = component() as Element;
 	setDomImpl(old);
 
-	let componentState: DomElement[] = [];
+	let data: SsrData = {
+		k: [],
+		v: [],
+		n: {},
+		i: vdom[0].identArr,
+	};
 
-	for (let [i, dom] of vdom[0].arr.map((x, i) => [i, x] as const)) {
-		if (dom instanceof Element) {
-			if (dom.component) {
-				let state = serializeState(dom.component.state);
-				if (state.length > 2) {
-					componentState.push(
-						ssrData(SSR_COMPONENT_STATE, dom.component.id, state)
-					);
-				}
-			}
-			dom.setAttribute(SSR_ID, "" + i);
+	for (let [i, el] of vdom[0].elArr.map((x, i) => [i, x] as const)) {
+		let node: Node;
+		if (el instanceof Element && el.component) {
+			node = serializeState(
+				data,
+				el.component.state,
+				(x) => x instanceof vdom[1]
+			);
 		}
-		if (dom instanceof Comment) {
-			dom.data = `${i} ${SSR} ${dom.data}`;
+		if (el instanceof Comment || el instanceof Text) {
+			node = [
+				el.parent._id,
+				el.parent.childNodes.findIndex((x) => x._id === el._id),
+			];
 		}
+		data.n[i] = node;
 	}
 
 	let head = vdom[0].head.childNodes.map((x) => x.toStandard()) as DomElement[];
 
-	head.push(
-		new DomElement("div", { [SSR_STATE_ATTR]: ":3", style: "display:none;" }, [
-			...componentState,
-		])
-	);
-
 	return {
 		head,
+		data: new DomElement(
+			"script",
+			{ type: "application/json", [SSR_DATA]: ":3" },
+			[new DomText(JSON.stringify(data))]
+		),
 		component: root.toStandard(),
 	};
 }

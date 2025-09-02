@@ -75,6 +75,7 @@ export let defineUse = () =>
 					: magicPtr;
 			};
 		},
+		configurable: true,
 	});
 
 declare global {

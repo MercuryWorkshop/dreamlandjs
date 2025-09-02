@@ -126,7 +126,7 @@ const cfg = ({
 				common(entry[0], visualize && output, unsafeTerser),
 				...plugins,
 			],
-			external: ["dreamland/core"],
+			external: ["dreamland/core", "dreamland/ssr/server"],
 			onwarn,
 		}),
 	];
@@ -141,7 +141,7 @@ const cfg = ({
 						.replace(".ts", ".d.ts"),
 				output: [{ file: `dist/${output}.d.ts`, format: "es" }],
 				plugins: [dts()],
-				external: ["dreamland/core"],
+				external: ["dreamland/core", "dreamland/ssr/server"],
 				onwarn,
 			})
 		);
@@ -216,5 +216,6 @@ export default (args) => {
 		}),
 		...cfg({ input: ["src/router", "index.tsx"], output: "router" }),
 		...cfg({ input: ["src/motion"], output: "motion" }),
+		...cfg({ input: ["src/vite"], output: "vite" }),
 	]);
 };

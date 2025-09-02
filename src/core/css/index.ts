@@ -9,12 +9,12 @@ import { stringify, Token, tokenize } from "./selectorParser";
 
 export type CssInit = {
 	_strings: TemplateStringsArray;
-	_funcs: ((state: any) => any)[];
+	_funcs: ((state: any) => any | string)[];
 };
 
 export let css = <T extends Component<any, any, any>>(
 	_strings: TemplateStringsArray,
-	..._funcs: ((state: ThisParameterType<T>) => any)[]
+	..._funcs: ((state: ThisParameterType<T>) => any | string)[]
 ): CssInit => {
 	return {
 		_strings,
@@ -47,7 +47,10 @@ export let rewriteCSS = (style: HTMLStyleElement, css: string, tag: string) => {
 			if (token._type == PSEUDO_CLASS_TOKEN && token.arg) {
 				let global = token.nm == "global";
 
-				let rewritten = rewriteSelector(tokenize(token.arg), global);
+				let rewritten = rewriteSelector(
+					tokenize(token.arg),
+					global || inGlobal
+				);
 				if (global) {
 					idx = i;
 					cnt = 1;

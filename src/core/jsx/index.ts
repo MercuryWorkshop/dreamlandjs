@@ -18,7 +18,7 @@ import {
 } from "./definitions";
 import { isBasePtr, maybeListen } from "../state/pointers";
 import { createState, stateProxy } from "../state/state";
-import { DREAMLAND } from "../consts";
+import { DREAMLAND, NO_CHANGE } from "../consts";
 import { DelegateListener } from "../delegate";
 
 export let currentCssIdent: string | null = null;
@@ -137,7 +137,7 @@ function _jsx(
 	if (typeof init === "function") {
 		let state = createState({});
 
-		ssrTransform(init);
+		ssrTransform?.(init);
 
 		for (let attr in props) {
 			let val = props[attr];
@@ -164,23 +164,28 @@ function _jsx(
 			let styleEl = DOCUMENT[CREATE_ELEMENT]("style");
 			if (!cssInfo) {
 				cssInfo = { _id: genCssUid(), _vars: [] };
-				if (!hydrating) {
-					let cssString = "";
+				let cssString = "";
 
-					for (let i = 0; i < style._strings.length; i++) {
-						cssString += style._strings[i];
-						if (i + 1 < style._strings.length) {
+				for (let i = 0; i < style._strings.length; i++) {
+					cssString += style._strings[i];
+					if (i + 1 < style._strings.length) {
+						let func = style._funcs[i];
+						if (typeof func === "string") {
+							cssString += func;
+						} else {
 							let varid = genCssUid();
 							cssString += `var(--${varid})`;
 							cssInfo._vars.push([varid, style._funcs[i]]);
 						}
 					}
+				}
 
-					styleEl["dl-" + CSS_COMPONENT] = init.name;
+				styleEl.setAttribute("dl-" + CSS_COMPONENT, init.name);
+				if (!hydrating) {
 					DOCUMENT.head.append(styleEl);
 					rewriteCSS(styleEl, cssString, cssInfo._id);
-					componentCssInfo.set(init, cssInfo);
 				}
+				componentCssInfo.set(init, cssInfo);
 			}
 		}
 
@@ -218,9 +223,10 @@ function _jsx(
 				}
 		}
 
-		ssrTransform(init, cx);
+		ssrTransform?.(init, cx);
 
-		cx.mount?.();
+		cx.init?.();
+		if (!ssrTransform) cx.mount?.();
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
@@ -242,6 +248,8 @@ function _jsx(
 			if (!hydrating) ret.map((x) => el.appendChild(x));
 		}
 
+		let classList = el.classList;
+
 		for (let attr in props) {
 			let val = props[attr];
 			if (attr === "this") {
@@ -261,7 +269,6 @@ function _jsx(
 					}
 				);
 			} else if (attr === "class") {
-				let classList = el.classList;
 				let old = [];
 
 				maybeListen(val, (val: string) => {
@@ -274,25 +281,32 @@ function _jsx(
 				el.addEventListener(attr.substring(3), (e) => val(e));
 			} else if (attr.startsWith("class:")) {
 				let name = attr.substring(6);
-				let cls = el.classList;
 
 				maybeListen(val, (val: boolean) => {
 					if (val) {
-						cls.add(name);
+						classList.add(name);
 					} else {
-						cls.remove(name);
+						classList.remove(name);
 					}
+				});
+			} else if (attr.startsWith("attr:")) {
+				let key = attr.substring(5);
+				maybeListen(val, (val: boolean) => {
+					el[key] = val;
 				});
 			} else if (attr == "style" && typeof val == "object" && !isBasePtr(val)) {
 				for (let k in val) {
-					maybeListen(val[k], (v: any) => (el.style[k] = v));
+					maybeListen(val[k], (v: any) => {
+						el.style.setProperty(k, v);
+					});
 				}
 			} else {
 				maybeListen(val, (val) => setAttr(attr, val));
 			}
 		}
 
-		if (currentCssIdent) el.classList.add(currentCssIdent);
+		if (currentCssIdent && ![...classList].find((x) => x.startsWith(CSS_IDENT)))
+			classList.add(currentCssIdent);
 
 		// all children would need to also be created with the correct namespace if we were doing this properly
 		// this is annoying and expensive bundle size wise, so it's easier to just force a reparse
@@ -325,7 +339,9 @@ function _h(
 
 export let h = _h;
 export let jsx = _jsx;
-export let addDREAMLAND = () =>
-	(jsx[DREAMLAND] = (status: boolean) => (hydrating = status));
+export let addDREAMLAND = () => {
+	jsx[DREAMLAND] = (status: boolean) => (hydrating = status);
+	jsx[NO_CHANGE] = () => (componentCssInfo = new Map());
+};
 
 export let Fragment = (cx: ComponentContext<any>) => cx.children;

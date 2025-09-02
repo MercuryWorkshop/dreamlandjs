@@ -1,0 +1,19 @@
+{
+	"name": "site",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build:client": "tsc && vite build --ssrManifest .vite/ssr-manifest.json --outDir dist/static",
+		"build:server": "tsc && vite build --ssr src/main-server.ts --outDir dist/server",
+		"build": "pnpm run build:client && pnpm run build:server && node prerender.js"
+	},
+	"devDependencies": {
+		"typescript": "~5.8.3",
+		"vite": "^7.1.2"
+	},
+	"dependencies": {
+		"dreamland": "link:.."
+	}
+}

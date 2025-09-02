@@ -8,8 +8,12 @@ import {
 	Text as DomText,
 	AnyNode as DomNode,
 } from "domhandler";
+import { parseDocument } from "htmlparser2";
+import renderToString from "dom-serializer";
+import { SSR_ID } from "../common/consts";
 
 export class Node {
+	_id: number;
 	nodeType: number;
 
 	parent: Node;
@@ -52,7 +56,7 @@ class ClassList extends Array {
 	remove(...classes: string[]) {
 		for (let cls of classes) {
 			let idx = this.findIndex((x) => x === cls);
-			this.splice(idx, 1);
+			if (idx !== -1) this.splice(idx, 1);
 		}
 	}
 
@@ -76,7 +80,7 @@ export class Element extends Node {
 
 	component?: ComponentContext<any> = null;
 
-	style = {};
+	style = new CSSOM.CSSStyleDeclaration();
 
 	constructor(type: string, namespace?: string) {
 		super();
@@ -91,23 +95,28 @@ export class Element extends Node {
 		if (key === "class") this.classList.push(...value.split(" "));
 		this.attributes.set(key, "" + value);
 	}
+	removeAttribute(key: string) {
+		if (key === "class") this.classList = new ClassList();
+		this.attributes.delete(key);
+	}
 
 	set $(value: any) {
 		this.component = value;
 	}
 
+	get innerHTML() {
+		return renderToString(this.childNodes.map((x) => x.toStandard()));
+	}
+	set innerHTML(value: string) {
+		let parsed = parseDocument(value);
+		this.childNodes = parsed.childNodes.map((node) =>
+			fromDomhandler(node, this)
+		);
+	}
+
 	toStandard(): DomElement {
-		let styles = Object.entries(this.style);
-		if (styles.length) {
-			this.attributes.set(
-				"style",
-				styles
-					.map(([k, v]) => {
-						const kebab = k.replace(/([A-Z])/g, "-$1").toLowerCase();
-						return `${kebab}: ${v};`;
-					})
-					.join(" ")
-			);
+		if (this.style.cssText) {
+			this.attributes.set("style", this.style.cssText);
 		}
 
 		let el = new DomElement(this.type, {
@@ -122,6 +131,28 @@ export class Element extends Node {
 		});
 		return el;
 	}
+}
+
+function fromDomhandler(node: DomNode, parent: Node): Node {
+	let newNode: Node;
+	if (node.type === "text") {
+		newNode = new Text((node as DomText).data);
+	} else if (node.type === "comment") {
+		newNode = new Comment((node as DomComment).data);
+	} else if (node.type === "tag") {
+		const element = new Element((node as DomElement).name);
+		for (const key in (node as DomElement).attribs) {
+			element.setAttribute(key, (node as DomElement).attribs[key]);
+		}
+		for (const child of (node as DomElement).childNodes) {
+			element.appendChild(fromDomhandler(child, element));
+		}
+		newNode = element;
+	} else {
+		newNode = new Node();
+	}
+	newNode.parent = parent;
+	return newNode;
 }
 
 export class Style extends Element {
@@ -175,9 +206,14 @@ export class Text extends Node {
 export let newVDom = (old: DomImpl) => {
 	let elArr: Node[] = [];
 	let push = (el: Node) => {
-		elArr.push(el);
+		let i = elArr.push(el) - 1;
+		el._id = i;
+		if (el instanceof Element) el.setAttribute(SSR_ID, "" + i);
 		return el;
 	};
+
+	let identArr: Record<number, string> = {};
+
 	return [
 		{
 			createElement(type: string) {
@@ -187,13 +223,19 @@ export let newVDom = (old: DomImpl) => {
 				return push(new Element(type, ns));
 			},
 
-			arr: elArr,
+			elArr,
+			identArr,
+
 			head: new Element("head"),
 		},
 		Node,
 		(text?: string) => push(new Text(text || "")),
 		(text?: string) => push(new Comment(text || "")),
-		old[4],
-		old[5],
+		() => {
+			let ret = old[4]();
+			identArr[elArr.length] = ret;
+			return ret;
+		},
+		() => {}, // enables "ssr mode"
 	] as const satisfies DomImpl;
 };
