@@ -51,6 +51,13 @@ let mapChild = (
 			let mapped: Node[] = mapChild(val, parent, cssIdent, child._cssIdent);
 
 			if (!hydrating && current) {
+				if (
+					mapped.length === current.length &&
+					current.every((value, index) => value === mapped[index])
+				) {
+					return;
+				}
+
 				current.map((x) => parent.removeChild(x));
 				let anchor: Node = start;
 				for (let child of mapped) {
