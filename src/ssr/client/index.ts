@@ -35,7 +35,7 @@ export let hydrate = (
 			rootIdx == idx
 				? ssr
 				: ssr.querySelector(selector) || head.querySelector(selector);
-		if ((ret as DLElement<any>).$) {
+		if ((ret as DLElement<any>)?.$) {
 			els.push([idx, ret as DLElement<any>]);
 		}
 		return ret;
@@ -45,18 +45,16 @@ export let hydrate = (
 		return getInternal(parent).childNodes[offset];
 	};
 
-	let get = () => getInternal(++idx);
-
 	let old = getDomImpl();
 	let vdom = [
 		{
-			createElement: get,
-			createElementNS: get,
-			head: document.head,
+			createElement: (x: any) => getInternal(++idx) || old[0].createElement(x),
+			createElementNS: (x: any, y: any) => getInternal(++idx) || old[0].createElement(x, y),
+			head: old[0].head,
 		},
 		old[1],
-		getRelative,
-		getRelative,
+		(x) => getRelative() || old[2](x),
+		(x) => getRelative() || old[3](x),
 		() => {
 			return data.i[idx + 1];
 		},
