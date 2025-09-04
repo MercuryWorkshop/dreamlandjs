@@ -46,7 +46,7 @@ export let serializeState = (
 			let v = object[k];
 			let serialized = !isNode(v) && _val(v);
 
-			if (serialized) out.push([push(data.k, k), serialized]);
+			if (typeof serialized != "undefined") out.push([push(data.k, k), serialized]);
 		}
 		return out;
 	};

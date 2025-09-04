@@ -242,8 +242,8 @@ export let newVDom = (old: DomImpl) => {
 			head: new Element("head"),
 		},
 		Node,
-		(text?: string) => push(new Text(text || "")),
-		(text?: string) => push(new Comment(text || "")),
+		(text?: any) => push(new Text("" + text)),
+		(text?: any) => push(new Comment("" + text)),
 		() => {
 			let ret = old[4]();
 			identArr[elArr.length] = ret;
