@@ -2,19 +2,28 @@ import { dirname, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { renderSsr } from "dreamland/vite";
-import { rm, writeFile } from "node:fs/promises";
+import { cp, rm, writeFile } from "node:fs/promises";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const resolve = (p) => resolvePath(__dirname, p);
 
 const entry = await import(resolve("dist/server/main-server.js"));
 
-const rendered = await renderSsr(
-	resolve("dist/static/index.html"),
-	entry.default
-);
-console.log(
-	`prerendered: / ${(new TextEncoder().encode(rendered).byteLength / 1024).toFixed(2)}kb`
-);
-await writeFile(resolve("dist/static/index.html"), rendered);
-rm(resolve("dist/static/.vite"), { recursive: true });
+entry.default("/");
+const paths = entry.router.ssgables();
+
+let template = resolve("dist/static/.vite/template.html");
+await cp(resolve("dist/static/index.html"), template);
+
+for (const [route, path] of paths) {
+	const rendered = await renderSsr(
+		template,
+		() => entry.default(route)
+	);
+	console.log(
+		`prerendered: ${route}\t${(new TextEncoder().encode(rendered).byteLength / 1024).toFixed(2)}kb`
+	);
+	await writeFile(resolve("dist/static/" + path), rendered);
+}
+
+await rm(resolve("dist/static/.vite"), { recursive: true });

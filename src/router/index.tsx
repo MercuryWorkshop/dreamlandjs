@@ -4,11 +4,11 @@ export type RouteParams = Record<string, string>;
 
 export type ShowElement =
 	| DLElement<{
-			outlet: HTMLElement | null | undefined;
-			"on:routeshown"?: (path: string) => void;
+		outlet: HTMLElement | null | undefined;
+		"on:routeshown"?: (path: string) => void;
 
-			[index: string]: any;
-	  }>
+		[index: string]: any;
+	}>
 	| HTMLElement;
 export type ShowTarget =
 	| ShowElement
@@ -104,7 +104,7 @@ export let Route: Component<{
 	path?: string;
 	show?: ShowTarget;
 	children?: ComponentChild;
-}> = function (cx) {
+}> = function(cx) {
 	return {
 		_path: this.path,
 		_show: this.show,
@@ -115,7 +115,7 @@ export let Route: Component<{
 export let Link: Component<{
 	href: string;
 	class?: string;
-}> = function (cx) {
+}> = function(cx) {
 	this.class = this.class || "";
 
 	return (
@@ -155,13 +155,15 @@ export class Router {
 		Router._instance = this;
 	}
 
-	mount(root: HTMLElement) {
+	mount(root: HTMLElement, suppress?: boolean) {
 		this._el = root;
-		this.route();
-
-		addEventListener("popstate", () => {
+		if (!suppress) {
 			this.route();
-		});
+
+			addEventListener("popstate", () => {
+				this.route();
+			});
+		}
 	}
 
 	navigate(path: string): boolean {
@@ -170,13 +172,28 @@ export class Router {
 		return ret;
 	}
 
-	route(path: string = location.pathname): boolean {
+	ssgables(): [string, string][] {
+		let traverse = (path: string, route: RouteInternal): [string, string][] => {
+			if (route._path) {
+				path += "/" + route._path;
+			}
+
+			if (route._children.length) {
+				return route._children.map(x => traverse(path, x)).flat();
+			} else if (!route._path || !route._path.startsWith(":")) {
+				return [[path || "/", route._path ? path + ".html" : path + "/index.html"]];
+			}
+		}
+		return traverse("", this._routes);
+	}
+
+	route(path: string = location.pathname, origin: string = location.origin): boolean {
 		dev: {
 			if (!this._el)
 				throw new Error("Attempted to route without mounting the router");
 		}
 
-		let realPath = new URL(path, location.origin).pathname;
+		let realPath = new URL(path, origin).pathname;
 		let segments = realPath.split("/").slice(1);
 
 		let el: HTMLElement | null = this._route(

@@ -1,69 +1,34 @@
-import { css, type Component } from "dreamland/core";
+import type { Component } from "dreamland/core";
+import { Route, Router } from "dreamland/router";
+import { MainPage } from "./pages/main";
+import { Test } from "./pages/test";
 
-import logo from "./logo/uwu.svg";
+export let router: Router;
+let url: string | undefined;
 
-let MainPage: Component = function () {
-	return (
-		<div id="app">
-			<div class="hero">
-				<img src={logo} alt="dreamland logo" />
-				<div class="slogan">A utilitarian web framework</div>
-				<div class="links">
-					<a href="https://github.com/MercuryWorkshop/dreamlandjs">GitHub</a>
-				</div>
-			</div>
-			<div class="content">
-				<h2>Write components without the overhead</h2>
-				<p>
-					dreamland has <b>no virtual DOM</b> and is <b>extremely small</b>, at{" "}
-					{import.meta.env.VITE_ENV_BUNDLE_SIZE}kb minified (
-					{import.meta.env.VITE_ENV_GZIP_SIZE}kb gzipped,{" "}
-					{import.meta.env.VITE_ENV_BROTLI_SIZE}kb brotli'd).
-				</p>
-			</div>
-		</div>
+let App: Component = function(cx) {
+	router = new Router(
+		<Route>
+			<Route show={<MainPage />} />
+			<Route path="test" show={<Test />} />
+		</Route>
 	);
-};
-MainPage.style = css`
-	:scope {
-		display: flex;
+
+	cx.init = () => {
+		if (import.meta.env.SSR) {
+			router.mount(cx.root.firstChild! as HTMLElement, true);
+			router.route(url, "http://127.0.0.1:5173");
+		} else {
+			router.mount(cx.root.firstChild! as HTMLElement);
+		}
 	}
 
-	.hero {
-		max-width: 30rem;
-		flex: 1;
+	return (
+		<div id="app"><placeholder /></div>
+	)
+}
 
-		display: flex;
-		text-align: center;
-		gap: 1rem;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-
-		padding: 1rem;
-	}
-	.hero img {
-		margin: 0 1rem;
-	}
-	.slogan {
-		font-size: 1.75rem;
-		font-weight: 600;
-	}
-
-	.links a {
-		font-size: 1.25rem;
-		text-decoration: none;
-	}
-
-	.content {
-		flex: 2;
-		min-height: 0;
-		overflow-y: scroll;
-
-		background: var(--bg-2);
-
-		padding: 0 1rem;
-	}
-`;
-
-export default () => <MainPage />;
+export default (path?: string) => {
+	url = path;
+	return <App />;
+}

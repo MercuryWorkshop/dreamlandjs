@@ -43,6 +43,10 @@ export class Node {
 	toStandard(): DomNode {
 		return null!;
 	}
+
+	get firstChild() {
+		return this.childNodes[0];
+	}
 }
 
 class ClassList extends Array {
@@ -89,7 +93,7 @@ export class Element extends Node {
 		this.namespace = namespace;
 	}
 
-	addEventListener() {}
+	addEventListener() { }
 
 	setAttribute(key: string, value: any) {
 		if (key === "class") this.classList.push(...value.split(" "));
@@ -98,6 +102,15 @@ export class Element extends Node {
 	removeAttribute(key: string) {
 		if (key === "class") this.classList = new ClassList();
 		this.attributes.delete(key);
+	}
+
+	replaceWith(el: Element) {
+		let idx = this.parent.childNodes.findIndex(x => x === this);
+		this.parent.childNodes[idx] = el;
+	}
+
+	get $() {
+		return this.component;
 	}
 
 	set $(value: any) {
@@ -236,6 +249,6 @@ export let newVDom = (old: DomImpl) => {
 			identArr[elArr.length] = ret;
 			return ret;
 		},
-		() => {}, // enables "ssr mode"
+		() => { }, // enables "ssr mode"
 	] as const satisfies DomImpl;
 };
