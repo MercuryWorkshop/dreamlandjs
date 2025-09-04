@@ -54,7 +54,7 @@ let _devSsr = (options: DevSsrPluginOptions): PluginOption => ({
 				let entry = await server.ssrLoadModule(options.entry);
 				let html = await renderSsr(
 					resolve(server.config.root, options.index || "index.html"),
-					entry.default,
+					() => entry.default(req.url),
 					(x) => server.transformIndexHtml(req.url, x)
 				);
 
