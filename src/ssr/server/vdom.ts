@@ -93,7 +93,7 @@ export class Element extends Node {
 		this.namespace = namespace;
 	}
 
-	addEventListener() { }
+	addEventListener() {}
 
 	setAttribute(key: string, value: any) {
 		if (key === "class") this.classList.push(...value.split(" "));
@@ -105,7 +105,7 @@ export class Element extends Node {
 	}
 
 	replaceWith(el: Element) {
-		let idx = this.parent.childNodes.findIndex(x => x === this);
+		let idx = this.parent.childNodes.findIndex((x) => x === this);
 		this.parent.childNodes[idx] = el;
 	}
 
@@ -249,6 +249,6 @@ export let newVDom = (old: DomImpl) => {
 			identArr[elArr.length] = ret;
 			return ret;
 		},
-		() => { }, // enables "ssr mode"
+		() => {}, // enables "ssr mode"
 	] as const satisfies DomImpl;
 };

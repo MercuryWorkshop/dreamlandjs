@@ -6,12 +6,14 @@ import { Test } from "./pages/test";
 export let router: Router;
 let url: string | undefined;
 
-let App: Component = function(cx) {
+let App: Component = function (cx) {
 	router = new Router(
-		<Route>
-			<Route show={<MainPage />} />
-			<Route path="test" show={<Test />} />
-		</Route>
+		(
+			<Route>
+				<Route show={<MainPage />} />
+				<Route path="test" show={<Test />} />
+			</Route>
+		)
 	);
 
 	cx.init = () => {
@@ -21,14 +23,16 @@ let App: Component = function(cx) {
 		} else {
 			router.mount(cx.root.firstChild! as HTMLElement);
 		}
-	}
+	};
 
 	return (
-		<div id="app"><placeholder /></div>
-	)
-}
+		<div id="app">
+			<placeholder />
+		</div>
+	);
+};
 
 export default (path?: string) => {
 	url = path;
 	return <App />;
-}
+};

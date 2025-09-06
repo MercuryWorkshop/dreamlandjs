@@ -9,12 +9,12 @@ import { stringify, Token, tokenize } from "./selectorParser";
 
 export type CssInit = {
 	_strings: TemplateStringsArray;
-	_funcs: ((state: any) => any | string)[];
+	_funcs: (((state: any) => any) | string)[];
 };
 
 export let css = <T extends Component<any, any, any>>(
 	_strings: TemplateStringsArray,
-	..._funcs: ((state: ThisParameterType<T>) => any | string)[]
+	..._funcs: (((state: ThisParameterType<T>) => any) | string)[]
 ): CssInit => {
 	return {
 		_strings,

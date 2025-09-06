@@ -4,11 +4,11 @@ export type RouteParams = Record<string, string>;
 
 export type ShowElement =
 	| DLElement<{
-		outlet: HTMLElement | null | undefined;
-		"on:routeshown"?: (path: string) => void;
+			outlet: HTMLElement | null | undefined;
+			"on:routeshown"?: (path: string) => void;
 
-		[index: string]: any;
-	}>
+			[index: string]: any;
+	  }>
 	| HTMLElement;
 export type ShowTarget =
 	| ShowElement
@@ -104,7 +104,7 @@ export let Route: Component<{
 	path?: string;
 	show?: ShowTarget;
 	children?: ComponentChild;
-}> = function(cx) {
+}> = function (cx) {
 	return {
 		_path: this.path,
 		_show: this.show,
@@ -115,7 +115,7 @@ export let Route: Component<{
 export let Link: Component<{
 	href: string;
 	class?: string;
-}> = function(cx) {
+}> = function (cx) {
 	this.class = this.class || "";
 
 	return (
@@ -179,15 +179,20 @@ export class Router {
 			}
 
 			if (route._children.length) {
-				return route._children.map(x => traverse(path, x)).flat();
+				return route._children.map((x) => traverse(path, x)).flat();
 			} else if (!route._path || !route._path.startsWith(":")) {
-				return [[path || "/", route._path ? path + ".html" : path + "/index.html"]];
+				return [
+					[path || "/", route._path ? path + ".html" : path + "/index.html"],
+				];
 			}
-		}
+		};
 		return traverse("", this._routes);
 	}
 
-	route(path: string = location.pathname, origin: string = location.origin): boolean {
+	route(
+		path: string = location.pathname,
+		origin: string = location.origin
+	): boolean {
 		dev: {
 			if (!this._el)
 				throw new Error("Attempted to route without mounting the router");
@@ -239,7 +244,10 @@ export class Router {
 				.splice(0, routePath.length)
 				.every((x, i) => matchRoute(x, routePath[i], params))
 		) {
-			if (!segments.length || (segments[0] === "" && indexRoute)) {
+			if (
+				(!segments.length || (segments[0] === "" && indexRoute)) &&
+				route._show
+			) {
 				// route matches fully
 				let el = getShow(route, true, path, params);
 

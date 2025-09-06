@@ -16,10 +16,7 @@ let template = resolve("dist/static/.vite/template.html");
 await cp(resolve("dist/static/index.html"), template);
 
 for (const [route, path] of paths) {
-	const rendered = await renderSsr(
-		template,
-		() => entry.default(route)
-	);
+	const rendered = await renderSsr(template, () => entry.default(route));
 	console.log(
 		`prerendered: ${route}\t${(new TextEncoder().encode(rendered).byteLength / 1024).toFixed(2)}kb`
 	);

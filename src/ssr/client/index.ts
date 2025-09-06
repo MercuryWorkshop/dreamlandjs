@@ -42,14 +42,15 @@ export let hydrate = (
 	};
 	let getRelative = () => {
 		let [parent, offset] = data.n[++idx] as [number, number];
-		return getInternal(parent).childNodes[offset];
+		return getInternal(parent)?.childNodes?.[offset];
 	};
 
 	let old = getDomImpl();
 	let vdom = [
 		{
 			createElement: (x: any) => getInternal(++idx) || old[0].createElement(x),
-			createElementNS: (x: any, y: any) => getInternal(++idx) || old[0].createElement(x, y),
+			createElementNS: (x: any, y: any) =>
+				getInternal(++idx) || old[0].createElementNS(x, y),
 			head: old[0].head,
 		},
 		old[1],

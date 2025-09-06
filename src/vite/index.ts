@@ -38,6 +38,7 @@ export let renderSsr = async (
 export type DevSsrPluginOptions = {
 	entry: string;
 	index?: string;
+	transform?: (html: string) => string;
 };
 let _devSsr = (options: DevSsrPluginOptions): PluginOption => ({
 	name: "dreamland/vite/dev-ssr",
@@ -55,7 +56,11 @@ let _devSsr = (options: DevSsrPluginOptions): PluginOption => ({
 				let html = await renderSsr(
 					resolve(server.config.root, options.index || "index.html"),
 					() => entry.default(req.url),
-					(x) => server.transformIndexHtml(req.url, x)
+					(x) =>
+						server.transformIndexHtml(
+							req.url,
+							(options.transform || ((x) => x))(x)
+						)
 				);
 
 				res.statusCode = 200;

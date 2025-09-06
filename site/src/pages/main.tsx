@@ -2,7 +2,7 @@ import { css, type Component } from "dreamland/core";
 
 import logo from "../logo/uwu.svg";
 
-export let MainPage: Component = function() {
+export let MainPage: Component = function () {
 	return (
 		<div>
 			<div class="hero">
@@ -67,4 +67,3 @@ MainPage.style = css`
 		padding: 0 1rem;
 	}
 `;
-

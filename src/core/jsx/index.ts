@@ -175,7 +175,7 @@ function _jsx(
 						} else {
 							let varid = genCssUid();
 							cssString += `var(--${varid})`;
-							cssInfo._vars.push([varid, style._funcs[i]]);
+							cssInfo._vars.push([varid, func]);
 						}
 					}
 				}
