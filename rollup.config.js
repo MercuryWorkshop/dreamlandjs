@@ -54,6 +54,7 @@ const common = (include, output, unsafe) => {
 			},
 			format: {
 				wrap_func_args: false,
+				comments: /^@/
 			},
 			module: true,
 			ie8: false,
