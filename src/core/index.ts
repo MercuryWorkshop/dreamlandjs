@@ -16,6 +16,7 @@ export {
 	Component,
 	ComponentChild,
 	ComponentContext,
+	ComponentState,
 	ComponentInstance,
 	DLElementNameToElement,
 	JSX,

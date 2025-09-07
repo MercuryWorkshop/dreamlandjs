@@ -1,14 +1,14 @@
-import { DLElement, Component, ComponentChild, h } from "dreamland/core";
+import { DLElement, Component, ComponentChild, h, Fragment, ComponentState } from "dreamland/core";
 
 export type RouteParams = Record<string, string>;
 
 export type ShowElement =
 	| DLElement<{
-			outlet: HTMLElement | null | undefined;
-			"on:routeshown"?: (path: string) => void;
+		outlet: HTMLElement | null | undefined;
+		"on:routeshown"?: (path: string) => void;
 
-			[index: string]: any;
-	  }>
+		[index: string]: any;
+	}>
 	| HTMLElement;
 export type ShowTarget =
 	| ShowElement
@@ -100,11 +100,72 @@ let matchRoute = (
 	}
 };
 
+let _route = (
+	route: RouteInternal,
+	path: string,
+	segments: string[],
+	params: RouteParams
+): ShowElement | null => {
+	let routePath: string[] = [];
+	let indexRoute = false;
+	if (route._path) {
+		// has a path
+		routePath = route._path.split("/");
+	} else if (route._children.length) {
+		// will always match
+	} else {
+		// index route
+		indexRoute = true;
+	}
+
+	if (
+		!routePath.length ||
+		segments
+			.splice(0, routePath.length)
+			.every((x, i) => matchRoute(x, routePath[i], params))
+	) {
+		if (
+			(!segments.length || (segments[0] === "" && indexRoute)) &&
+			route._show
+		) {
+			// route matches fully
+			let el = getShow(route, true, path, params);
+
+			populateComponent(el, false, path, params);
+
+			return el;
+		} else {
+			// matched, continue searching for children
+			let paramsCopy = { ...params };
+
+			let el: ShowElement | undefined;
+
+			for (let child of route._children || []) {
+				el = _route(child, path, [...segments], params);
+				if (el) break;
+			}
+
+			if (el) {
+				let show = getShow(route, false, path, paramsCopy);
+
+				if (show) {
+					populateComponent(show, true, path, params, el);
+					return show;
+				}
+
+				return el;
+			}
+		}
+	}
+
+	return null;
+}
+
 export let Route: Component<{
 	path?: string;
 	show?: ShowTarget;
 	children?: ComponentChild;
-}> = function (cx) {
+}> = function(cx) {
 	return {
 		_path: this.path,
 		_show: this.show,
@@ -115,19 +176,19 @@ export let Route: Component<{
 export let Link: Component<{
 	href: string;
 	class?: string;
-}> = function (cx) {
+}> = function(cx) {
 	this.class = this.class || "";
 
 	return (
 		<a
-			href={this.href}
+			href={use(this.href)}
 			class={use(this.class)}
 			on:click={(e: MouseEvent) => {
 				e.preventDefault();
 				dev: {
-					if (!Router._instance) throw new Error("No router exists");
+					if (!router) throw new Error("No router exists");
 				}
-				Router._instance.navigate((cx.root as HTMLAnchorElement).href);
+				router.navigate(this.href);
 			}}
 		>
 			{cx.children}
@@ -135,44 +196,54 @@ export let Link: Component<{
 	);
 };
 
-export class Router {
+export let router: ComponentState<typeof Router>;
+export let Router: Component<{
+	children: HTMLElement | HTMLElement[]
+}, {
 	// @internal
-	_el?: HTMLElement;
-	// @internal
-	_routes: RouteInternal;
+	_el: HTMLElement | null,
+}, {
+	route: (path?: string, origin?: string) => boolean,
+	navigate: (path: string) => boolean,
+	ssgables: () => [string, string][]
+}> = function(cx) {
+	dev: {
+		if (router) throw new Error("A router was already created");
+	}
+	router = this;
 
-	// @internal
-	static _instance: Router | null;
-
-	constructor(route: HTMLElement) {
-		dev: {
-			if (route instanceof HTMLElement) throw new Error("invalid route");
-			if (Router._instance) throw new Error("A router was already created");
-			validateRoute(route);
-		}
-
-		this._routes = route;
-		Router._instance = this;
+	let routes = { _children: cx.children as any as RouteInternal[] };
+	dev: {
+		validateRoute(routes);
 	}
 
-	mount(root: HTMLElement, suppress?: boolean) {
-		this._el = root;
-		if (!suppress) {
-			this.route();
+	this.route = (
+		path: string = location.pathname,
+		origin: string = location.origin
+	): boolean => {
+		let realPath = new URL(path, origin).pathname;
+		if (realPath.endsWith(".html"))
+			realPath = realPath.slice(0, realPath.length - 5);
+		let segments = realPath.split("/").slice(1);
 
-			addEventListener("popstate", () => {
-				this.route();
-			});
-		}
+		let el: HTMLElement | null = _route(
+			routes,
+			realPath,
+			[...segments],
+			{}
+		);
+
+		this._el = el;
+
+		return !!el;
 	}
-
-	navigate(path: string): boolean {
+	this.navigate = (path) => {
 		let ret = this.route(path);
 		if (ret) history.pushState(null, "", path);
 		return ret;
 	}
 
-	ssgables(): [string, string][] {
+	this.ssgables = () => {
 		let traverse = (path: string, route: RouteInternal): [string, string][] => {
 			if (route._path) {
 				path += "/" + route._path;
@@ -186,98 +257,16 @@ export class Router {
 				];
 			}
 		};
-		return traverse("", this._routes);
+		return traverse("", routes);
 	}
 
-	route(
-		path: string = location.pathname,
-		origin: string = location.origin
-	): boolean {
-		dev: {
-			if (!this._el)
-				throw new Error("Attempted to route without mounting the router");
-		}
+	cx.mount = () => {
+		this.route();
 
-		let realPath = new URL(path, origin).pathname;
-		let segments = realPath.split("/").slice(1);
-
-		let el: HTMLElement | null = this._route(
-			this._routes,
-			realPath,
-			[...segments],
-			{}
-		);
-
-		if (el) {
-			if (el !== this._el) {
-				this._el.replaceWith(el);
-				this._el = el;
-			}
-			// otherwise it was just some outlet change
-		}
-
-		return !!el;
+		addEventListener("popstate", () => {
+			this.route();
+		});
 	}
 
-	// @internal
-	_route(
-		route: RouteInternal,
-		path: string,
-		segments: string[],
-		params: RouteParams
-	): ShowElement | null {
-		let routePath: string[] = [];
-		let indexRoute = false;
-		if (route._path) {
-			// has a path
-			routePath = route._path.split("/");
-		} else if (route._children.length) {
-			// will always match
-		} else {
-			// index route
-			indexRoute = true;
-		}
-
-		if (
-			!routePath.length ||
-			segments
-				.splice(0, routePath.length)
-				.every((x, i) => matchRoute(x, routePath[i], params))
-		) {
-			if (
-				(!segments.length || (segments[0] === "" && indexRoute)) &&
-				route._show
-			) {
-				// route matches fully
-				let el = getShow(route, true, path, params);
-
-				populateComponent(el, false, path, params);
-
-				return el;
-			} else {
-				// matched, continue searching for children
-				let paramsCopy = { ...params };
-
-				let el: ShowElement | undefined;
-
-				for (let child of route._children || []) {
-					el = this._route(child, path, [...segments], params);
-					if (el) break;
-				}
-
-				if (el) {
-					let show = getShow(route, false, path, paramsCopy);
-
-					if (show) {
-						populateComponent(show, true, path, params, el);
-						return show;
-					}
-
-					return el;
-				}
-			}
-		}
-
-		return null;
-	}
+	return <>{use(this._el)}</>;
 }

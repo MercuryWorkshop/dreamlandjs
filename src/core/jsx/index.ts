@@ -344,4 +344,4 @@ export let addDREAMLAND = () => {
 	jsx[NO_CHANGE] = () => (componentCssInfo = new Map());
 };
 
-export let Fragment = (cx: ComponentContext<any>) => cx.children;
+export let Fragment = (cx: any) => cx.children;
