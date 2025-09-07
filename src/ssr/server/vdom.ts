@@ -29,7 +29,7 @@ export class Node {
 	}
 
 	removeChild(node: Node) {
-		this.childNodes.filter((x) => x !== node);
+		this.childNodes = this.childNodes.filter((x) => x !== node);
 	}
 
 	insertBefore(node: Node, anchor: Node) {

@@ -50,7 +50,7 @@ let mapChild = (
 		maybeListen(child, (val: ComponentChild) => {
 			let mapped: Node[] = mapChild(val, parent, cssIdent, child._cssIdent);
 
-			if (!hydrating && current) {
+			if (current) {
 				if (
 					mapped.length === current.length &&
 					current.every((value, index) => value === mapped[index])
