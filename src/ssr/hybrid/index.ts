@@ -52,17 +52,7 @@ export let mountOne = (
 		old[2],
 		old[3],
 		old[4],
-		(init, cx) => {
-			if (init === component) {
-				if (cx) {
-					cx.root = root;
-				} else if (init.style) {
-					dev: {
-						throw new Error("Hybrid SSR controllers do not support CSS");
-					}
-				}
-			}
-		},
+		old[5],
 	] satisfies DomImpl;
 	setDomImpl(vdom);
 	let x = h(component, {});

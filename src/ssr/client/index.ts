@@ -4,10 +4,9 @@ import {
 	DREAMLAND,
 	getDomImpl,
 	jsx,
-	NO_CHANGE,
 	setDomImpl,
 } from "dreamland/core";
-import { SSR_DATA, SSR_ID } from "../common/consts";
+import { SSR, SSR_DATA, SSR_ID } from "../common/consts";
 import { hydrateState, Json } from "../common/serialize";
 import { SsrData, SsrObject } from "../common/types";
 
@@ -41,9 +40,16 @@ export let hydrate = (
 		return ret;
 	};
 	let getRelative = () => {
-		let [parent, offset] = data.n[++idx] as [number, number];
+		let info = data.n[++idx];
+		if (!info) return;
+
+		let [parent, offset] = info as [number, number];
 		return getInternal(parent)?.childNodes?.[offset];
 	};
+
+	for (let [parent, offset, len] of data.t) {
+		(getInternal(parent).childNodes[offset] as Text).splitText(len);
+	}
 
 	let old = getDomImpl();
 	let vdom = [
@@ -59,13 +65,11 @@ export let hydrate = (
 		() => {
 			return data.i[idx + 1];
 		},
-		old[5],
+		(x) => x.hasAttribute(SSR_ID),
 	] as const satisfies DomImpl;
 	setDomImpl(vdom);
-	jsx[NO_CHANGE]();
-	jsx[DREAMLAND](true);
+	jsx[DREAMLAND]();
 	let root = component();
-	jsx[DREAMLAND](false);
 	setDomImpl(old);
 
 	for (let [i, component] of els.filter((x) => x[1].$)) {

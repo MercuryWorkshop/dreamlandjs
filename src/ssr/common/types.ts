@@ -30,4 +30,5 @@ export interface SsrData {
 	v /* values */ : string[];
 	n /* nodes */ : Record<number, Node>;
 	i /* idents */ : Record<number, string>;
+	t /* textFixups */ : [number, number, number][];
 }

@@ -4,7 +4,6 @@ import type { RenderedComponent } from "dreamland/ssr/server";
 
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import htm from "htm";
 
 export let jsxPlugin = (): Plugin => ({
 	name: "dreamland/vite/jsx",
@@ -16,12 +15,10 @@ export let jsxPlugin = (): Plugin => ({
 });
 
 export let renderSsr = async (
-	path: string,
+	html: string,
 	render: () => RenderedComponent,
 	transform?: (html: string) => Promise<string> | string
 ): Promise<string> => {
-	let html = await readFile(path, "utf8");
-
 	if (transform) html = await transform(html);
 
 	let cfg: DomSerializerOptions = {
@@ -37,40 +34,26 @@ export let renderSsr = async (
 
 export type DevSsrPluginOptions = {
 	entry: string;
-	index?: string;
 	transform?: (html: string) => string;
 };
 let _devSsr = (options: DevSsrPluginOptions): PluginOption => ({
 	name: "dreamland/vite/dev-ssr",
-	configureServer(server) {
-		server.middlewares.use(async (req, res, next) => {
-			if (req.url.includes(".")) {
-				return next();
-			}
-			if (req.headers.accept && !req.headers.accept.includes("text/html")) {
-				return next();
-			}
+	apply: "serve",
+	async transformIndexHtml(input, ctx) {
+		let server = ctx.server!;
+		try {
+			let entry = await server.ssrLoadModule(options.entry);
+			let html = await renderSsr(
+				input,
+				() => entry.default(ctx.originalUrl!),
+				options.transform
+			);
 
-			try {
-				let entry = await server.ssrLoadModule(options.entry);
-				let html = await renderSsr(
-					resolve(server.config.root, options.index || "index.html"),
-					() => entry.default(req.url),
-					(x) =>
-						server.transformIndexHtml(
-							req.url,
-							(options.transform || ((x) => x))(x)
-						)
-				);
-
-				res.statusCode = 200;
-				res.setHeader("Content-Type", "text/html");
-				res.end(html);
-			} catch (e) {
-				server.ssrFixStacktrace(e);
-				next(e);
-			}
-		});
+			return html;
+		} catch (e) {
+			server.ssrFixStacktrace(e);
+			throw e;
+		}
 	},
 });
 // vite types are broken

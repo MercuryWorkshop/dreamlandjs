@@ -29,6 +29,7 @@ export class Node {
 	}
 
 	removeChild(node: Node) {
+		node.parent = undefined;
 		this.childNodes = this.childNodes.filter((x) => x !== node);
 	}
 
@@ -249,6 +250,6 @@ export let newVDom = (old: DomImpl) => {
 			identArr[elArr.length] = ret;
 			return ret;
 		},
-		() => {}, // enables "ssr mode"
+		undefined, // enables "ssr mode"
 	] as const satisfies DomImpl;
 };

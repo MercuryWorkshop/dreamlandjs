@@ -1,14 +1,21 @@
-import { DLElement, Component, ComponentChild, h, Fragment, ComponentState } from "dreamland/core";
+import {
+	DLElement,
+	Component,
+	ComponentChild,
+	h,
+	Fragment,
+	ComponentState,
+} from "dreamland/core";
 
 export type RouteParams = Record<string, string>;
 
 export type ShowElement =
 	| DLElement<{
-		outlet: HTMLElement | null | undefined;
-		"on:routeshown"?: (path: string) => void;
+			outlet: HTMLElement | null | undefined;
+			"on:routeshown"?: (path: string) => void;
 
-		[index: string]: any;
-	}>
+			[index: string]: any;
+	  }>
 	| HTMLElement;
 export type ShowTarget =
 	| ShowElement
@@ -159,13 +166,13 @@ let _route = (
 	}
 
 	return null;
-}
+};
 
 export let Route: Component<{
 	path?: string;
 	show?: ShowTarget;
 	children?: ComponentChild;
-}> = function(cx) {
+}> = function (cx) {
 	return {
 		_path: this.path,
 		_show: this.show,
@@ -176,7 +183,7 @@ export let Route: Component<{
 export let Link: Component<{
 	href: string;
 	class?: string;
-}> = function(cx) {
+}> = function (cx) {
 	this.class = this.class || "";
 
 	return (
@@ -197,16 +204,20 @@ export let Link: Component<{
 };
 
 export let router: ComponentState<typeof Router>;
-export let Router: Component<{
-	children: HTMLElement | HTMLElement[]
-}, {
-	// @internal
-	_el: HTMLElement | null,
-}, {
-	route: (path?: string, origin?: string) => boolean,
-	navigate: (path: string) => boolean,
-	ssgables: () => [string, string][]
-}> = function(cx) {
+export let Router: Component<
+	{
+		children: HTMLElement | HTMLElement[];
+	},
+	{
+		// @internal
+		_el: HTMLElement | null;
+	},
+	{
+		route: (path?: string, origin?: string) => boolean;
+		navigate: (path: string) => boolean;
+		ssgables: () => [string, string][];
+	}
+> = function (cx) {
 	dev: {
 		if (router) throw new Error("A router was already created");
 	}
@@ -226,22 +237,17 @@ export let Router: Component<{
 			realPath = realPath.slice(0, realPath.length - 5);
 		let segments = realPath.split("/").slice(1);
 
-		let el: HTMLElement | null = _route(
-			routes,
-			realPath,
-			[...segments],
-			{}
-		);
+		let el: HTMLElement | null = _route(routes, realPath, [...segments], {});
 
 		this._el = el;
 
 		return !!el;
-	}
+	};
 	this.navigate = (path) => {
 		let ret = this.route(path);
 		if (ret) history.pushState(null, "", path);
 		return ret;
-	}
+	};
 
 	this.ssgables = () => {
 		let traverse = (path: string, route: RouteInternal): [string, string][] => {
@@ -258,15 +264,13 @@ export let Router: Component<{
 			}
 		};
 		return traverse("", routes);
-	}
+	};
 
 	cx.mount = () => {
-		this.route();
-
 		addEventListener("popstate", () => {
 			this.route();
 		});
-	}
+	};
 
 	return <>{use(this._el)}</>;
-}
+};

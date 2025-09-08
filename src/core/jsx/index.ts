@@ -5,7 +5,7 @@ import {
 	new_Text,
 	genCssUid,
 	CSS_IDENT,
-	ssrTransform,
+	hydrating,
 } from "./dom";
 import { CSS_COMPONENT, rewriteCSS } from "../css";
 import {
@@ -33,8 +33,6 @@ export let callDelegateListeners = (
 		currentCssIdent = oldIdent;
 	}) as any as void;
 
-let hydrating: boolean = false;
-
 let mapChild = (
 	child: ComponentChild,
 	parent: Node,
@@ -50,7 +48,8 @@ let mapChild = (
 		maybeListen(child, (val: ComponentChild) => {
 			let mapped: Node[] = mapChild(val, parent, cssIdent, child._cssIdent);
 
-			if (current) {
+			// pretty sure it's not possible to put a pointer child in not a htmlelement
+			if (!hydrating?.(parent as HTMLElement) && current) {
 				if (
 					mapped.length === current.length &&
 					current.every((value, index) => value === mapped[index])
@@ -68,7 +67,11 @@ let mapChild = (
 			current = mapped;
 		});
 
-		return [start, ...current, new_Comment("]")];
+		return [
+			start,
+			...(hydrating?.(parent as HTMLElement) ? [] : current),
+			new_Comment("]"),
+		];
 	} else if (child instanceof node) {
 		let list: DOMTokenList;
 		let apply = (child: any) => {
@@ -137,8 +140,6 @@ function _jsx(
 	if (typeof init === "function") {
 		let state = createState({});
 
-		ssrTransform?.(init);
-
 		for (let attr in props) {
 			let val = props[attr];
 
@@ -181,7 +182,7 @@ function _jsx(
 				}
 
 				styleEl.setAttribute("dl-" + CSS_COMPONENT, init.name);
-				if (!hydrating) {
+				if (!hydrating?.(styleEl)) {
 					DOCUMENT.head.append(styleEl);
 					rewriteCSS(styleEl, cssString, cssInfo._id);
 				}
@@ -223,10 +224,8 @@ function _jsx(
 				}
 		}
 
-		ssrTransform?.(init, cx);
-
 		cx.init?.();
-		if (!ssrTransform) cx.mount?.();
+		if (hydrating) cx.mount?.();
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
@@ -239,13 +238,17 @@ function _jsx(
 		);
 
 		let setAttr = (param: string, val: any) => {
+			if (hydrating?.(el)) return;
+
 			if (val === undefined || val === false) el.removeAttribute(param);
 			else el.setAttribute(param, val);
 		};
 
 		for (let child of children) {
 			let ret = mapChild(child, el, currentCssIdent);
-			if (!hydrating) ret.map((x) => el.appendChild(x));
+			ret.map((x) => {
+				if (x.parentNode !== el) el.appendChild(x);
+			});
 		}
 
 		let classList = el.classList;
@@ -292,7 +295,7 @@ function _jsx(
 			} else if (attr.startsWith("attr:")) {
 				let key = attr.substring(5);
 				maybeListen(val, (val: boolean) => {
-					el[key] = val;
+					if (!hydrating?.(el)) el[key] = val;
 				});
 			} else if (attr == "style" && typeof val == "object" && !isBasePtr(val)) {
 				for (let k in val) {
@@ -340,8 +343,7 @@ function _h(
 export let h = _h;
 export let jsx = _jsx;
 export let addDREAMLAND = () => {
-	jsx[DREAMLAND] = (status: boolean) => (hydrating = status);
-	jsx[NO_CHANGE] = () => (componentCssInfo = new Map());
+	jsx[DREAMLAND] = () => (componentCssInfo = new Map());
 };
 
 export let Fragment = (cx: any) => cx.children;

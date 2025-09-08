@@ -39,10 +39,14 @@ export type Component<Props = {}, Private = {}, Public = {}> = {
 };
 type ComponentStateObj<T extends Component<any, any, any>> =
 	T extends Component<infer Props, infer Private, infer Public>
-	? Props & Private & Public
-	: never;
-export type ComponentState<T extends Component<any, any, any>> = Stateful<ComponentStateObj<T>>;
-export type ComponentInstance<T extends Component<any, any, any>> = DLElement<ComponentStateObj<T>>;
+		? Props & Private & Public
+		: never;
+export type ComponentState<T extends Component<any, any, any>> = Stateful<
+	ComponentStateObj<T>
+>;
+export type ComponentInstance<T extends Component<any, any, any>> = DLElement<
+	ComponentStateObj<T>
+>;
 export type DLElement<T> = HTMLElement & { $: ComponentContext<T> };
 
 type IntrinsicProps<ElementType extends Element> = {

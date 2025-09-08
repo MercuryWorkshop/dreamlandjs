@@ -12,7 +12,7 @@ export type CssInit = {
 	_funcs: (((state: any) => any) | string)[];
 };
 
-export let css = /*@__NO_SIDE_EFFECTS__*/<T extends Component<any, any, any>>(
+export let css = /*@__NO_SIDE_EFFECTS__*/ <T extends Component<any, any, any>>(
 	_strings: TemplateStringsArray,
 	..._funcs: (((state: ThisParameterType<T>) => any) | string)[]
 ): CssInit => {
