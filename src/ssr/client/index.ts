@@ -62,9 +62,7 @@ export let hydrate = (
 		old[1],
 		(x) => getRelative() || old[2](x),
 		(x) => getRelative() || old[3](x),
-		() => {
-			return data.i[idx + 1];
-		},
+		() => data.i[idx + 1] || old[4](),
 		(x) => x.hasAttribute(SSR_ID),
 	] as const satisfies DomImpl;
 	setDomImpl(vdom);

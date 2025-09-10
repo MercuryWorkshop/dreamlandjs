@@ -2,7 +2,7 @@ import { Element as DomElement, Text as DomText } from "domhandler";
 import { DREAMLAND, getDomImpl, jsx, setDomImpl } from "dreamland/core";
 import { Node as VdomNode, Comment, Text, Element, newVDom } from "./vdom";
 
-import { SSR_DATA } from "../common/consts";
+import { CSS_IDENT, SSR_DATA } from "../common/consts";
 import { Node, SsrData } from "../common/types";
 import { serializeState } from "../common/serialize";
 
@@ -22,9 +22,15 @@ export function render(component: () => any): RenderedComponent {
 	setDomImpl(old);
 
 	let domIds = [];
+	let domIdents = new Set();
 	let walk = (el: VdomNode) => {
+		domIds.push(el._id);
+		if (el instanceof Element && el.component) {
+			if (el.component.id)
+			domIdents.add(el.component.id);
+		}
+
 		for (let node of el.childNodes) {
-			domIds.push(node._id);
 			walk(node);
 		}
 	}
@@ -34,7 +40,7 @@ export function render(component: () => any): RenderedComponent {
 		k: [],
 		v: [],
 		n: {},
-		i: Object.fromEntries([...vdom[0].identArr.entries()].filter(x => domIds.includes(x[0]))),
+		i: Object.fromEntries([...vdom[0].identArr.entries()].filter(([_, i]) => domIdents.has(i))),
 		t: [],
 	};
 
@@ -83,7 +89,14 @@ export function render(component: () => any): RenderedComponent {
 		}
 	}
 
-	let head = vdom[0].head.childNodes.map((x) => x.toStandard()) as DomElement[];
+	let head = vdom[0].head.childNodes.filter(x => {
+		if (x instanceof Element) {
+			let cssId = x.attributes.get(CSS_IDENT + "id");
+			return domIdents.has(cssId);
+		}
+
+		return false;
+	}).map((x) => x.toStandard()) as DomElement[];
 
 	return {
 		head,

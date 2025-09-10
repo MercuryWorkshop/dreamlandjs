@@ -18,7 +18,7 @@ import {
 } from "./definitions";
 import { isBasePtr, maybeListen } from "../state/pointers";
 import { createState, stateProxy } from "../state/state";
-import { DREAMLAND, NO_CHANGE } from "../consts";
+import { DREAMLAND } from "../consts";
 import { DelegateListener } from "../delegate";
 
 export let currentCssIdent: string | null = null;
@@ -181,8 +181,10 @@ function _jsx(
 					}
 				}
 
-				styleEl.setAttribute("dl-" + CSS_COMPONENT, init.name);
 				if (!hydrating?.(styleEl)) {
+					styleEl.setAttribute(CSS_COMPONENT, init.name);
+					styleEl.setAttribute(CSS_IDENT + "id", cssInfo._id);
+
 					DOCUMENT.head.append(styleEl);
 					rewriteCSS(styleEl, cssString, cssInfo._id);
 				}
