@@ -67,6 +67,8 @@ function _getShow(
 }
 let getShow = _getShow;
 
+let isComponent = (x: any): x is DLElement<any> => x.$;
+
 let populateComponent = (
 	el: ShowElement,
 	required: boolean,
@@ -74,7 +76,7 @@ let populateComponent = (
 	params: RouteParams,
 	outlet?: HTMLElement
 ) => {
-	if ("$" in el) {
+	if (isComponent(el)) {
 		// has an outlet
 		let state = el.$.state;
 

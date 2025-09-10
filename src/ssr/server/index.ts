@@ -21,15 +21,24 @@ export function render(component: () => any): RenderedComponent {
 	let root = component() as Element;
 	setDomImpl(old);
 
+	let domIds = [];
+	let walk = (el: VdomNode) => {
+		for (let node of el.childNodes) {
+			domIds.push(node._id);
+			walk(node);
+		}
+	}
+	walk(root);
+
 	let data: SsrData = {
 		k: [],
 		v: [],
 		n: {},
-		i: vdom[0].identArr,
+		i: Object.fromEntries([...vdom[0].identArr.entries()].filter(x => domIds.includes(x[0]))),
 		t: [],
 	};
 
-	for (let [i, el] of vdom[0].elArr.map((x, i) => [i, x] as const)) {
+	for (let el of vdom[0].elArr.filter(x => domIds.includes(x._id))) {
 		let node: Node;
 		if (el instanceof Element && el.component) {
 			node = serializeState(
@@ -44,7 +53,7 @@ export function render(component: () => any): RenderedComponent {
 				el.parent.childNodes.findIndex((x) => x._id === el._id),
 			];
 		}
-		data.n[i] = node;
+		data.n[el._id] = node;
 	}
 
 	let groups: VdomNode[][] = vdom[0].elArr.reduce((acc, x) => {
@@ -64,11 +73,12 @@ export function render(component: () => any): RenderedComponent {
 	for (let group of groups) {
 		if (group[0] instanceof Text && group[0].parent && group.length > 1) {
 			for (let item of group as Text[]) {
-				data.t.push([
-					item.parent._id,
-					item.parent.childNodes.findIndex((x) => x._id === item._id),
-					item.data.length,
-				]);
+				if (domIds.includes(item._id))
+					data.t.push([
+						item.parent._id,
+						item.parent.childNodes.findIndex((x) => x._id === item._id),
+						item.data.length,
+					]);
 			}
 		}
 	}

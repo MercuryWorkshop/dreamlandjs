@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import { devSsr } from "dreamland/vite";
+import { compile } from "@mdx-js/mdx";
 
 import { readFile } from "fs/promises";
 import { gzipSync, brotliCompressSync } from "zlib";
@@ -18,5 +19,33 @@ export default defineConfig({
 		devSsr({
 			entry: "/src/main-server.ts",
 		}),
+		{
+			name: "mdx-dreamland",
+			enforce: "pre",
+			async load(id) {
+				if (id.endsWith(".mdx")) {
+					const content = await readFile(id, "utf-8");
+					const compiled = await compile(content, {
+						outputFormat: "program",
+						jsxImportSource: "dreamland",
+					});
+					return {
+						code: `
+							${compiled.toString().replace("export default", "export")}
+
+							export default function Page() {
+								const {wrapper: MDXLayout} = this.components || ({});
+								return (
+									MDXLayout 
+										? _jsx(MDXLayout, { children: [_createMdxContent(this)], ...this })
+										: _jsx(_Fragment, { children: [_createMdxContent(this)], ...this })
+								)
+							}
+						`,
+						loader: "jsx",
+					};
+				}
+			},
+		},
 	],
 });

@@ -83,7 +83,7 @@ export class Element extends Node {
 	attributes: Map<string, string> = new Map();
 	classList = new ClassList();
 
-	component?: ComponentContext<any> = null;
+	component: ComponentContext<any> | undefined;
 
 	style = new CSSOM.CSSStyleDeclaration();
 
@@ -226,7 +226,7 @@ export let newVDom = (old: DomImpl) => {
 		return el;
 	};
 
-	let identArr: Record<number, string> = {};
+	let identArr: Map<number, string> = new Map();
 
 	return [
 		{
@@ -247,7 +247,7 @@ export let newVDom = (old: DomImpl) => {
 		(text?: any) => push(new Comment("" + text)),
 		() => {
 			let ret = old[4]();
-			identArr[elArr.length] = ret;
+			identArr.set(elArr.length, ret);
 			return ret;
 		},
 		undefined, // enables "ssr mode"
