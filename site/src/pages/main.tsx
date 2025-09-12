@@ -1,25 +1,35 @@
-import { css, type Component } from "dreamland/core";
+import { css, type Component, type ComponentChild } from "dreamland/core";
+
+// @ts-expect-error
+import Main from "./main.mdx";
 
 import logo from "../logo/uwu.svg";
 
-export let MainPage: Component = function () {
+let Link: Component<{ href: string, children: ComponentChild }> = function(cx) {
+	return (
+		<a href={this.href} target="_blank">{cx.children}</a>
+	)
+}
+
+export let MainPage: Component = function() {
 	return (
 		<div>
 			<div class="hero">
 				<img src={logo} alt="dreamland logo" />
-				<div class="slogan">A utilitarian web framework</div>
+				<div>
+					<div class="slogan">A utilitarian web framework</div>
+					<div>by <Link href="https://mercurywork.shop/">Mercury Workshop</Link></div>
+				</div>
 				<div class="links">
-					<a href="https://github.com/MercuryWorkshop/dreamlandjs">GitHub</a>
+					<Link href="https://npmjs.com/package/dreamland">npm</Link>
+					<Link href="https://github.com/MercuryWorkshop/dreamlandjs">GitHub</Link>
+					<Link href="https://discord.gg/GKKF3CmHPA">Discord</Link>
 				</div>
 			</div>
 			<div class="content">
-				<h2>Write components without the overhead</h2>
-				<p>
-					dreamland has <b>no virtual DOM</b> and is <b>extremely small</b>, at{" "}
-					{import.meta.env.VITE_ENV_BUNDLE_SIZE}kb minified (
-					{import.meta.env.VITE_ENV_GZIP_SIZE}kb gzipped,{" "}
-					{import.meta.env.VITE_ENV_BROTLI_SIZE}kb brotli'd).
-				</p>
+				<div>
+					<Main />
+				</div>
 			</div>
 		</div>
 	);
@@ -52,7 +62,13 @@ MainPage.style = css`
 		font-weight: 600;
 	}
 
-	.links a {
+	.links {
+		display: flex;
+		justify-content: center;
+		gap: 0.5rem;
+	}
+
+	.links :global(a) {
 		font-size: 1.25rem;
 		text-decoration: none;
 	}
@@ -62,8 +78,12 @@ MainPage.style = css`
 		min-height: 0;
 		overflow-y: scroll;
 
-		background: var(--bg-2);
-
 		padding: 0 1rem;
+
+		background: var(--bg-2);
+	}
+
+	.content > div {
+		max-width: 60rem;
 	}
 `;

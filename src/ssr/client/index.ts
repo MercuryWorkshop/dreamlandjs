@@ -9,6 +9,7 @@ import {
 import { SSR, SSR_DATA, SSR_ID } from "../common/consts";
 import { hydrateState, Json } from "../common/serialize";
 import { SsrData, SsrObject } from "../common/types";
+import { off } from "process";
 
 export let hydrate = (
 	component: () => HTMLElement,
@@ -48,7 +49,9 @@ export let hydrate = (
 	};
 
 	for (let [parent, offset, len] of data.t) {
-		(getInternal(parent).childNodes[offset] as Text).splitText(len);
+		let text = getInternal(parent).childNodes[offset] as Text;
+		if (text.length !== len)
+			text.splitText(len);
 	}
 
 	let old = getDomImpl();

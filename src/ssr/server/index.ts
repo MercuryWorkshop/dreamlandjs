@@ -27,7 +27,7 @@ export function render(component: () => any): RenderedComponent {
 		domIds.push(el._id);
 		if (el instanceof Element && el.component) {
 			if (el.component.id)
-			domIdents.add(el.component.id);
+				domIdents.add(el.component.id);
 		}
 
 		for (let node of el.childNodes) {
@@ -62,7 +62,7 @@ export function render(component: () => any): RenderedComponent {
 		data.n[el._id] = node;
 	}
 
-	let groups: VdomNode[][] = vdom[0].elArr.reduce((acc, x) => {
+	let groups: Text[][] = vdom[0].elArr.reduce((acc, x) => {
 		let lastGroup = acc.at(-1);
 		let last: VdomNode = lastGroup?.at(-1);
 		let lastIdx = last?.parent?.childNodes?.findIndex(
@@ -74,17 +74,18 @@ export function render(component: () => any): RenderedComponent {
 			lastIdx + 1 === currentIdx
 			? (lastGroup.push(x), acc)
 			: [...acc, [x]];
-	}, []);
+	}, []).filter(x => x[0] instanceof Text);
 
 	for (let group of groups) {
-		if (group[0] instanceof Text && group[0].parent && group.length > 1) {
+		if (group[0].parent && group.length > 1) {
 			for (let item of group as Text[]) {
-				if (domIds.includes(item._id))
+				if (domIds.includes(item._id)) {
 					data.t.push([
 						item.parent._id,
 						item.parent.childNodes.findIndex((x) => x._id === item._id),
 						item.data.length,
 					]);
+				}
 			}
 		}
 	}

@@ -1,7 +1,6 @@
 import type { Component } from "dreamland/core";
 import { Route, router, Router } from "dreamland/router";
 import { MainPage } from "./pages/main";
-import { Test } from "./pages/test";
 import { jsx } from "dreamland/jsx-runtime";
 
 const docs = import.meta.glob("./docs/**/*.mdx", { eager: true });
@@ -21,7 +20,6 @@ let App: Component = function(cx) {
 		<div id="app">
 			<Router>
 				<Route show={<MainPage />} />
-				<Route path="test" show={<Test />} />
 				<Route path="docs">
 					{Object.entries(docs).map(([path, component]) => {
 						const name = path.replace("./docs/", "").replace(".mdx", "");

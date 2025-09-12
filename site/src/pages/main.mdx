@@ -1,0 +1,44 @@
+import { dl, ssr } from "dl:bundle";
+
+## Create UI without the overhead
+
+dreamland has **no virtual DOM** and is **extremely small**, at {dl.bundle}kb minified ({dl.gzip}kb gzipped, {dl.brotli}kb brotli'd).
+That's smaller than preact and SolidJS and can go even smaller with treeshaking. The only required part of the dreamland core bundle is the state system.
+
+The SSR client bundle only adds {ssr}kb minified, enabling **low-cost and easy-to-use prerendering** and server-side rendering.
+Utilities for CSS-in-JS and integrations with Vite SSR help make development even easier.
+In fact, this docs site uses dreamland's prerendering support and has a compile-time MDX integration.
+Feel free to check out the code on the GitHub!
+
+## Use an intuitive state management system
+
+dreamland's component state management is centered around a `use()` function creating dynamic `Pointer<T>` instances.
+Any value in a `Stateful<T>` object can be `use()`d and all pointers created for that value will automatically update when the value is assigned to, creating an experience very similar to vanilla JavaScript with only minimal magic needed.
+`Pointer<T>` has many utility functions to transform the value listened to or combine multiple pointers, making dreamland's state system a refreshing experience compared to other frameworks.
+
+```
+const Component = function() {
+	this.counter = 0;
+
+	return (
+		<div>
+			<h1>Counter!</h1>
+			<div>{use(this.counter)} clicks</div>
+			<button on:click={() => this.counter++}>Click!</button>
+		</div>
+	)
+}
+```
+
+This intuitive state management system can also easily provide persistent storage and other advanced features, as all property changes on stateful objects can be listened to.
+dreamland provides `createStore` to easily create persistent storage that can be used just like a `Stateful<T>`.
+
+## Integrate (or integrate into) external code easily
+
+The lack of a virtual DOM by default means you can write your components in TypeScript or JavaScript (optionally with `htm` to skip the JSX transform) and immediately attach them to the DOM.
+Additionally, you can quickly integrate vanilla JS libraries like Chart.js with minimal code needed.
+
+It's possible to completely swap out the DOM implementation used by dreamland to enable SSR or embed the framework elsewhere as well.
+You can render HTML externally and use dreamland as a lightweight interactivity layer like Turbo Stimulus by replacing the DOM implementation with one that hydrates into existing nodes (this is provided by `dreamland/ssr/hybrid`).
+
+
