@@ -1,0 +1,98 @@
+export let title = ["Introduction", "Reactivity"];
+
+dreamland's state system is extremely simple, but it can often take some time to get comfortable. AI messes up a lot as well, since it's so used to React-style state.
+
+Calling `use()` with a property from a stateful object will return a dynamic reference (the `Pointer<T>` class) that will listen to the property and automatically update/notify listeners as the data updates. Stateful objects can be created with `createState`:
+```tsx
+import { createState } from "dreamland/core";
+
+let state = createState({
+	counter: 0,
+});
+(self as any).state = state;
+
+document.body.appendChild(
+	<div>
+		<button on:click={() => state.counter++}>click me!</button>
+		<p>{use(state.counter)}</p>
+	</div>
+);
+```
+Whenever `state.counter` is updated, the specific nodes that depend on the value update to reflect the new value with minimal overhead.
+
+This is done by listening to pointer value changes, like so:
+```tsx
+use(state.counter).listen(val => {
+	console.log("new value! ", val);
+	// update dom...
+});
+```
+`state.counter` has already updated to the new value once the listener is called, but the new value is provided as an argument for convenience.
+
+## Transforming pointers
+
+It's important to remember that `use` returns a pointer, not the actual value.
+So, manipulating the value inside `use` will not work since the function is only executed once (see the state system internals page for more info):
+```tsx
+<div>
+	<button on:click={() => state.counter++}>click me!</button>
+	{use(this.counter % 2 == 0 ? "Even!" : "Odd") /* <-- won't work */}
+</div>
+```
+
+To transform the actual value, use `Pointer`'s `map()` instead, like you would do with an array or some other light container:
+```tsx
+<div>
+	<button on:click={() => state.counter++}>click me!</button>
+	{use(state.counter).map(x => x % 2 == 0 ? "Even!" : "Odd") /* <-- works! */}
+</div>
+```
+This will work properly across updates, flipping between even and odd when the button is clicked.
+Only the closure passed to `map` is rerun when `state.counter` changes, not anything else.
+
+If you want to allow setting the pointer's `value`, you can pass another closure to `map` to go in the opposite direction:
+```tsx
+let stringCounter = use(state.counter).map(x => "" + x, x => +x);
+stringCounter.value = "5";
+console.log(stringCounter.value); // 5
+```
+If you don't want to allow specific changes, you can import the symbol `NO_CHANGE` from `dreamland/core` and return that from the reverse `map` instead.
+
+## Advanced transformations
+
+You can combine multiple pointers' changes into one pointer with `zip`.
+If you want to combine multiple stateful values but haven't created pointers yet, you can pass multiple values to `use` as a shorthand instead.
+```tsx
+let counters = createState({
+	one: 0,
+	two: 1,
+	three: 2,
+});
+
+let sum = use(counters.one).zip(use(counters.two), use(counters.three))
+	.map(([one, two, three]) => one + two + three);
+
+let average = use(counters.one, counters.two, counters.three)
+	.map(([one, two, three]) => (one + two + three) / 3);
+```
+
+To easily toggle between values (or lazily computed values) when you have a booleanish pointer, you can use `andThen`:
+```tsx
+let settings: Stateful<{
+	darkMode: boolean,
+	state: "one" | "two" | null,
+}> = createState({
+	darkMode: true,
+	state: null,
+});
+
+let class = use(settings.darkMode).andThen("dark-mode", "light-mode");
+let state = use(settings.state).andThen(x => "state-" + x, "state-none");
+```
+
+If you have an arraylike value, you can map each element of the array instead of having to nest `map` closures by using `mapEach`:
+```tsx
+let cards: Pointer<string[]> = /* ... */;
+
+let cardEls = cards.mapEach(x => <div>card: {x}</div>);
+```

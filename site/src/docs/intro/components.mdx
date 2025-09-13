@@ -1,0 +1,109 @@
+export let title = ["Introduction", "Components"];
+
+Components are self-contained pieces of HTML and JS that you can use elsewhere in your app.
+The `this` value inside a component is automatically a `Stateful<T>`, so you can put state on `this` and have it automatically update.
+Components return HTML elements when constructed, unless you manually return a Fragment or other data.
+
+The `Component` type has 3 separate objects: `Props` which is all the JSX props passed to the componeont, `Private` which is private state, and `Public` which is public properties that aren't necessarily props. The `Stateful<T>` type for `this` in a component merges all 3 of these objects.
+
+The first argument to a component is its `ComponentContext`, which is where you can access children passed to the component, add callbacks, access the root element once constructed, or get the raw Stateful object assigned to `this`.
+
+```tsx
+let Button: Component<{ title: string, children?: ComponentChild }> = function(cx) {
+	return (
+		<div>
+			{use(this.title)}
+			<button>{cx.children}</button>
+		</div>
+	)
+}
+```
+
+## Lifecycle
+
+`ComponentContext` has two main callbacks for initialization.
+The most common one used is `mount`, which is run only on the client side once the component's HTML has been constructed (but not necessarily after it's been added to the DOM).
+The other one is `init`, which runs in the same place as `mount` but is run on both the client and server side. `cx.root`, the component's HTML root, is accessible in both `init` and `mount`. You realistically can't touch the DOM in `init` however, even though it's possible to do so, as the default server-side DOM is very minimal.
+
+```tsx
+let ChartView: Component = function (cx) {
+	cx.mount = () => {
+		// mount the chart on the client once the canvas is constructed
+		let chart = new Chart(cx.root as HTMLCanvasElement, {
+			/* ... */
+		});
+
+		// update the chart on data changes ...
+	}
+
+	return (
+		<canvas />
+	);
+};
+```
+
+If you need to easily access DOM elements in the component that aren't the root, you can pass a pointer to the special prop `this`:
+```tsx
+let ChartCard: Component<{}, { chart: HTMLCanvasElement }> = function (cx) {
+	cx.mount = () => {
+		// mount the chart on the client once the canvas is constructed
+		let chart = new Chart(this.chart as HTMLCanvasElement, {
+			/* ... */
+		});
+
+		// update the chart on data changes ...
+	}
+
+	return (
+		<div>
+			<h1>Chart</h1>
+			<canvas this={use(this.chart)} />
+		</div>
+	);
+};
+```
+
+## Dynamic props
+
+`Pointer<T>`s passed as props are automatically "proxied" to the component's `this` value.
+Effectively, any change to the pointer's value will change the property on the component's `this`, and any change to the property on the component's `this` will change the pointer's value.
+This behavior is when the true power of the state system starts to show.
+
+```tsx
+let Input: Component<{ title: string, text: string }, { hint: string }> = function() {
+	this.hint = "";
+
+	use(this.text).listen(text => {
+		if (text.length < 3) this.hint = "too short!";
+		if (text.length > 12) this.hint = "too long!";
+	});
+
+	return (
+		<div>
+			{this.title /* title won't change */}
+			<input value={use(this.text)} />
+			{use(this.hint)}
+		</div>
+	)
+}
+
+let SignUp: Component<{}, { user: string, password: string }> = function() {
+	let submit = () => {
+		// clear the inputs
+		this.user = "";
+		this.password = "";
+	}
+
+	return (
+		<div>
+			<h1>Sign Up</h1>
+			<Input title="Username: " text={use(this.user)} />
+			<Input title="Password: " text={use(this.password)} />
+			<button on:click={submit}>Submit</button>
+		</div>
+	)
+}
+```
+
+When the user types in the inputs, the changes ripple outwards from the `Input`'s `this.text`, then to the `SignUp`'s `this.user` or `this.passsword`.
+Similarly, when the inputs are cleared in `SignUp`, the `Input`'s `this.text` will automatically get cleared and then clear the text in the input.
