@@ -6,7 +6,7 @@ dreamland has **no virtual DOM** and is **extremely small**, at {dl.bundle}kb mi
 That's smaller than preact and SolidJS and can go even smaller with treeshaking. The only required part of the dreamland core bundle is the state system.
 
 The SSR client bundle only adds {ssr}kb minified, enabling **low-cost and easy-to-use prerendering** and server-side rendering.
-Utilities for CSS-in-JS and integrations with Vite SSR help make development even easier.
+Utilities for scoped component CSS, integrations with Vite SSR, and spring/tween animations help make development even easier.
 In fact, this docs site uses dreamland's prerendering support and has a compile-time MDX integration.
 Feel free to check out the code on the GitHub!
 
@@ -16,8 +16,10 @@ dreamland's component state management is centered around a `use()` function cre
 Any value in a `Stateful<T>` object can be `use()`d and all pointers created for that value will automatically update when the value is assigned to, creating an experience very similar to vanilla JavaScript with only minimal magic needed.
 `Pointer<T>` has many utility functions to transform the value listened to or combine multiple pointers, making dreamland's state system a refreshing experience compared to other frameworks.
 
-```
-const Component = function() {
+```tsx
+import { type Component } from "dreamland/core";
+
+const Counter: Component<{ counter: number }> = function() {
 	this.counter = 0;
 
 	return (

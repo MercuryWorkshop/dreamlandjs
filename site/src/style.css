@@ -37,3 +37,10 @@ a:visited {
 	color: var(--accent);
 	text-decoration: underline;
 }
+
+pre {
+	background: var(--bg-3);
+	padding: 0.5rem;
+	border-radius: 0.5rem;
+	tab-size: 4;
+}

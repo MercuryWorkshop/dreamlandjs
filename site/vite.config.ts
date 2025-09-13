@@ -2,6 +2,10 @@ import { defineConfig } from "vite";
 import { devSsr } from "dreamland/vite";
 import { compile } from "@mdx-js/mdx";
 
+import rehypeStarryNight from "rehype-starry-night";
+import { all as grammars } from "@wooorm/starry-night";
+import { visit } from 'estree-util-visit'
+
 import { readFile } from "fs/promises";
 import { gzipSync, brotliCompressSync } from "zlib";
 
@@ -43,7 +47,26 @@ export default defineConfig({
 					const compiled = await compile(content, {
 						outputFormat: "program",
 						jsxImportSource: "dreamland",
+						rehypePlugins: [[rehypeStarryNight, { grammars }]],
+						recmaPlugins: [
+							() => (tree) => visit(tree, node => {
+								// this is scuffed but works. no idea why mdx doesn't support using class
+								if (
+									node.type === 'CallExpression' &&
+									node.callee.type === "Identifier" &&
+									node.callee.name.startsWith("_jsx") &&
+									node.arguments[1]?.type === "ObjectExpression"
+								) {
+									for (let prop of node.arguments[1].properties) {
+										if (prop.type === "Property" && prop.key.type === "Identifier" && prop.key.name === "className") {
+											prop.key.name = "class";
+										}
+									}
+								}
+							}),
+						]
 					});
+
 					return {
 						code: `
 							${compiled.toString().replace("export default", "export")}

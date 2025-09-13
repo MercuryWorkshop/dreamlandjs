@@ -1,11 +1,12 @@
 import { css, type Component, type ComponentChild } from "dreamland/core";
+import { Link } from "dreamland/router";
 
 // @ts-expect-error
 import Main from "./main.mdx";
 
 import logo from "../logo/uwu.svg";
 
-let Link: Component<{ href: string, children: ComponentChild }> = function(cx) {
+let ExternalLink: Component<{ href: string, children: ComponentChild }> = function(cx) {
 	return (
 		<a href={this.href} target="_blank">{cx.children}</a>
 	)
@@ -18,12 +19,12 @@ export let MainPage: Component = function() {
 				<img src={logo} alt="dreamland logo" />
 				<div>
 					<div class="slogan">A utilitarian web framework</div>
-					<div>by <Link href="https://mercurywork.shop/">Mercury Workshop</Link></div>
+					<div>by <ExternalLink href="https://mercurywork.shop/">Mercury Workshop</ExternalLink></div>
 				</div>
 				<div class="links">
-					<Link href="https://npmjs.com/package/dreamland">npm</Link>
-					<Link href="https://github.com/MercuryWorkshop/dreamlandjs">GitHub</Link>
-					<Link href="https://discord.gg/GKKF3CmHPA">Discord</Link>
+					<ExternalLink href="https://npmjs.com/package/dreamland">npm</ExternalLink>
+					<ExternalLink href="https://github.com/MercuryWorkshop/dreamlandjs">GitHub</ExternalLink>
+					<ExternalLink href="https://discord.gg/GKKF3CmHPA">Discord</ExternalLink>
 				</div>
 			</div>
 			<div class="content">
@@ -37,11 +38,13 @@ export let MainPage: Component = function() {
 MainPage.style = css`
 	:scope {
 		width: 100%;
+		min-height: 100%;
 		height: 100%;
 		display: flex;
 	}
 
 	.hero {
+		min-width: 21rem;
 		max-width: 30rem;
 		flex: 1;
 
@@ -58,7 +61,7 @@ MainPage.style = css`
 		margin: 0 1rem;
 	}
 	.slogan {
-		font-size: 1.75rem;
+		font-size: 1.5rem;
 		font-weight: 600;
 	}
 
@@ -85,5 +88,23 @@ MainPage.style = css`
 
 	.content > div {
 		max-width: 60rem;
+	}
+
+	@media (max-width: 65rem) {
+		:scope {
+			flex-direction: column;
+			height: auto;
+			overflow-y: scroll;
+		}
+
+		.hero {
+			flex: 0;
+			width: min(100%, 30rem);
+			align-self: center;
+		}
+
+		.content {
+			overflow-y: visible;
+		}
 	}
 `;

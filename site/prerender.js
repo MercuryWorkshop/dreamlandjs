@@ -2,7 +2,7 @@ import { dirname, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { renderSsr } from "dreamland/vite";
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const resolve = (p) => resolvePath(__dirname, p);
@@ -19,7 +19,9 @@ for (const [route, path] of paths) {
 	console.log(
 		`prerendered: ${route}\t${(new TextEncoder().encode(rendered).byteLength / 1024).toFixed(2)}kb`
 	);
-	await writeFile(resolve("dist/static/" + path), rendered);
+	let resolved = resolve("dist/static/" + path);
+	await mkdir(dirname(resolved), { recursive: true });
+	await writeFile(resolved, rendered);
 }
 
 await rm(resolve("dist/static/.vite"), { recursive: true });
