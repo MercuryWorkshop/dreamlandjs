@@ -6,6 +6,7 @@ export interface DocPage {
 	groups: string[];
 	title: string;
 	component: Component<{}>;
+	order: number;
 }
 
 export interface DocGroup {
@@ -23,8 +24,9 @@ export let docs: DocPage[] = Object.entries(
 		groups: module.title,
 		title: module.title.at(-1),
 		component: module.default,
-	};
-});
+		order: module.order || 0,
+	} as const;
+}).sort((a, b) => a.order - b.order);
 
 export let groups: (DocGroup | DocPage)[] = [];
 for (let page of docs) {
