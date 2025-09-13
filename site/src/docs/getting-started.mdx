@@ -12,30 +12,34 @@ TODO - importmap testing
 ## TypeScript
 
 Install dreamland (`pnpm i dreamland`) then add this to your tsconfig:
+
 ```json
 {
 	"compilerOptions": {
 		"jsx": "react-jsx",
-		"jsxImportSource": "dreamland" 
+		"jsxImportSource": "dreamland"
 	}
 }
 ```
 
 You can also use the old JSX transform (the `h(el, props, ...children)` one) by adding this to your tsconfig instead:
+
 ```json
 {
 	"compilerOptions": {
 		"jsx": "react",
 		"jsxFactory": "h",
-		"jsxFragmentFactory": "Fragment",
+		"jsxFragmentFactory": "Fragment"
 	}
 }
 ```
+
 Note that you'll need to manually import `h` and `Fragment` from `dreamland/core` if you use this method.
 
 ## JS with bundlers (Vite, esbuild, etc)
 
 If you're using vite, just add `jsxPlugin` from `dreamland/vite` to your vite config:
+
 ```js
 import { jsxPlugin } from "dreamland/vite";
 import { defineConfig } from "vite";
@@ -46,6 +50,7 @@ export default defineConfig({
 ```
 
 This just sets the following vite esbuild config:
+
 ```js
 {
 	esbuild: {

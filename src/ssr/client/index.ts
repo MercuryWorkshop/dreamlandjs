@@ -50,8 +50,7 @@ export let hydrate = (
 
 	for (let [parent, offset, len] of data.t) {
 		let text = getInternal(parent).childNodes[offset] as Text;
-		if (text.length !== len)
-			text.splitText(len);
+		if (text.length !== len) text.splitText(len);
 	}
 
 	let old = getDomImpl();

@@ -4,7 +4,7 @@ import { compile } from "@mdx-js/mdx";
 
 import rehypeStarryNight from "rehype-starry-night";
 import { all as grammars } from "@wooorm/starry-night";
-import { visit } from 'estree-util-visit'
+import { visit } from "estree-util-visit";
 
 import { readFile } from "fs/promises";
 import { gzipSync, brotliCompressSync } from "zlib";
@@ -27,16 +27,18 @@ export default defineConfig({
 					const gzip = gzipSync(bundle).byteLength;
 					const brotli = brotliCompressSync(bundle).byteLength;
 
-					const ssr = await readFile("node_modules/dreamland/dist/ssr.client.js");
+					const ssr = await readFile(
+						"node_modules/dreamland/dist/ssr.client.js"
+					);
 
 					return {
 						code: `
 							export let dl = { bundle: "${(uncompressed / 1024).toFixed(1)}", gzip: "${(gzip / 1024).toFixed(1)}", brotli: "${(brotli / 1024).toFixed(1)}" };
 							export let ssr = "${(ssr.byteLength / 1024).toFixed(1)}";
 						`,
-					}
+					};
 				}
-			}
+			},
 		},
 		{
 			name: "mdx-dreamland",
@@ -49,22 +51,27 @@ export default defineConfig({
 						jsxImportSource: "dreamland",
 						rehypePlugins: [[rehypeStarryNight, { grammars }]],
 						recmaPlugins: [
-							() => (tree) => visit(tree, node => {
-								// this is scuffed but works. no idea why mdx doesn't support using class
-								if (
-									node.type === 'CallExpression' &&
-									node.callee.type === "Identifier" &&
-									node.callee.name.startsWith("_jsx") &&
-									node.arguments[1]?.type === "ObjectExpression"
-								) {
-									for (let prop of node.arguments[1].properties) {
-										if (prop.type === "Property" && prop.key.type === "Identifier" && prop.key.name === "className") {
-											prop.key.name = "class";
+							() => (tree) =>
+								visit(tree, (node) => {
+									// this is scuffed but works. no idea why mdx doesn't support using class
+									if (
+										node.type === "CallExpression" &&
+										node.callee.type === "Identifier" &&
+										node.callee.name.startsWith("_jsx") &&
+										node.arguments[1]?.type === "ObjectExpression"
+									) {
+										for (let prop of node.arguments[1].properties) {
+											if (
+												prop.type === "Property" &&
+												prop.key.type === "Identifier" &&
+												prop.key.name === "className"
+											) {
+												prop.key.name = "class";
+											}
 										}
 									}
-								}
-							}),
-						]
+								}),
+						],
 					});
 
 					return {

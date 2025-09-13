@@ -4,26 +4,35 @@ import { Link } from "dreamland/router";
 import { docs, groups, type DocGroup, type DocPage } from "../docs";
 import normal from "../logo/normal.svg";
 
-export let DocsLayout: Component<{ outlet?: HTMLElement }, { doc?: DocPage, }, { "on:routeshown"?: (path: string) => void }> = function(cx) {
+export let DocsLayout: Component<
+	{ outlet?: HTMLElement },
+	{ doc?: DocPage },
+	{ "on:routeshown"?: (path: string) => void }
+> = function () {
 	this["on:routeshown"] = (path: string) => {
-		let page = docs.find(x => path.replace("/docs/", "") === x.path);
+		let page = docs.find((x) => path.replace("/docs/", "") === x.path);
 		this.doc = page;
-	}
+	};
 
 	let render = (x: DocGroup | DocPage) => {
 		if (x.type === "page") {
 			return (
-				<Link href={"/docs/" + x.path} class={use(this.doc).map(y => x.path === y?.path ? "active" : "")}>{x.title}</Link>
-			)
+				<Link
+					href={"/docs/" + x.path}
+					class={use(this.doc).map((y) => (x.path === y?.path ? "active" : ""))}
+				>
+					{x.title}
+				</Link>
+			);
 		} else {
 			return (
 				<div class="group">
 					<div>{x.title}</div>
 					{x.children.map(render)}
 				</div>
-			)
+			);
 		}
-	}
+	};
 
 	return (
 		<div>
@@ -38,7 +47,9 @@ export let DocsLayout: Component<{ outlet?: HTMLElement }, { doc?: DocPage, }, {
 			</div>
 			<div class="content">
 				<div>
-					{use(this.doc).andThen((x: DocPage) => <h1>{x.title}</h1>)}
+					{use(this.doc).andThen((x: DocPage) => (
+						<h1>{x.title}</h1>
+					))}
 					{use(this.outlet)}
 				</div>
 			</div>

@@ -34,12 +34,11 @@ export let serializeState = (
 
 			return { t: "s", v: vals };
 		} else if (val instanceof Array) {
-			let vals = val.map(x => _val(x));
+			let vals = val.map((x) => _val(x));
 			if (vals.some(isUndefined)) return;
 			return { t: "a", v: vals };
 		} else if (typeof val === "object") {
 			if (isNode(val)) return;
-			console.log(val);
 			// TODO this is ugly and leads to unnecessary escaping
 			let stringified = STRINGIFY(val);
 			if (!stringified) return;
@@ -59,8 +58,7 @@ export let serializeState = (
 			let v = object[k];
 			let val = _val(v);
 
-			if (!isUndefined(val))
-				out.push([push(data.k, k), val]);
+			if (!isUndefined(val)) out.push([push(data.k, k), val]);
 		}
 		return out;
 	};
@@ -91,7 +89,7 @@ export let hydrateState = (data: SsrData, state: SsrObject, target: any) => {
 			_hydrate(val.v, t);
 			return new Map(Object.entries(t));
 		} else if (val.t == "a") {
-			return val.v.map(x => _val(x));
+			return val.v.map((x) => _val(x));
 		} else if (val.t == "o") {
 			_hydrate(val.v, target);
 			return target;

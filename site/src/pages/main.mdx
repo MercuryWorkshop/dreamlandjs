@@ -19,7 +19,7 @@ Any value in a `Stateful<T>` object can be `use()`d and all pointers created for
 ```tsx
 import { type Component } from "dreamland/core";
 
-const Counter: Component<{ counter: number }> = function() {
+const Counter: Component<{ counter: number }> = function () {
 	this.counter = 0;
 
 	return (
@@ -28,8 +28,8 @@ const Counter: Component<{ counter: number }> = function() {
 			<div>{use(this.counter)} clicks</div>
 			<button on:click={() => this.counter++}>Click!</button>
 		</div>
-	)
-}
+	);
+};
 ```
 
 This intuitive state management system can also easily provide persistent storage and other advanced features, as all property changes on stateful objects can be listened to.
@@ -42,5 +42,3 @@ Additionally, you can quickly integrate vanilla JS libraries like Chart.js with 
 
 It's possible to completely swap out the DOM implementation used by dreamland to enable SSR or embed the framework elsewhere as well.
 You can render HTML externally and use dreamland as a lightweight interactivity layer like Turbo Stimulus by replacing the DOM implementation with one that hydrates into existing nodes (this is provided by `dreamland/ssr/hybrid`).
-
-

@@ -7,7 +7,7 @@ import { DocsLayout } from "./pages/docs";
 
 let url: string | undefined;
 
-let App: Component = function(cx) {
+let App: Component = function (cx) {
 	cx.init = () => {
 		if (import.meta.env.SSR) {
 			router.route(url, "http://127.0.0.1:5173");

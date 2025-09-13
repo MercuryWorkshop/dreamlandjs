@@ -54,7 +54,7 @@ export class Node {
 	}
 
 	get nextSibling() {
-		let self = this.parent?.childNodes?.findIndex(x => x === this);
+		let self = this.parent?.childNodes?.findIndex((x) => x === this);
 		return this.parent?.childNodes[self + 1];
 	}
 }
@@ -103,7 +103,7 @@ export class Element extends Node {
 		this.namespace = namespace;
 	}
 
-	addEventListener() { }
+	addEventListener() {}
 
 	setAttribute(key: string, value: any) {
 		if (key === "class") this.classList.push(...value.split(" "));
