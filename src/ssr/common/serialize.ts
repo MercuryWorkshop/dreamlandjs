@@ -1,6 +1,5 @@
 import { Pointer, DREAMLAND, NO_CHANGE } from "dreamland/core";
 import { SsrData, SsrObject, SsrPointer, SsrValue } from "./types";
-import { serialize } from "v8";
 
 export let Json = JSON;
 let STRINGIFY = Json.stringify;
@@ -21,6 +20,8 @@ export let serializeState = (
 		return zipped ? zipped.map(exportPtr) : { v: _val(ptr.value) };
 	};
 
+	let isUndefined = (x: any): x is undefined => typeof x == "undefined";
+
 	let _val = (val: any): SsrValue | undefined => {
 		if (val instanceof Pointer) {
 			return { t: "p", v: exportPtr(val) };
@@ -29,14 +30,26 @@ export let serializeState = (
 			return { t: "m", v: _serialize(entries) };
 		} else if (val instanceof Set) {
 			let vals = [...val.values()].map((x) => _val(x));
+			if (vals.some(isUndefined)) return;
+
 			return { t: "s", v: vals };
-		} else {
+		} else if (val instanceof Array) {
+			let vals = val.map(x => _val(x));
+			if (vals.some(isUndefined)) return;
+			return { t: "a", v: vals };
+		} else if (typeof val === "object") {
+			if (isNode(val)) return;
+			console.log(val);
 			// TODO this is ugly and leads to unnecessary escaping
 			let stringified = STRINGIFY(val);
 			if (!stringified) return;
 
 			if (stringified.startsWith("{")) return { t: "o", v: _serialize(val) };
 			else return push(data.v, STRINGIFY(val));
+		} else {
+			dev: {
+				console.warn("[dreamland.js] did not serialize unknown value ", val);
+			}
 		}
 	};
 
@@ -44,10 +57,10 @@ export let serializeState = (
 		let out: SsrObject = [];
 		for (let k in object) {
 			let v = object[k];
-			let serialized = !isNode(v) && _val(v);
+			let val = _val(v);
 
-			if (typeof serialized != "undefined")
-				out.push([push(data.k, k), serialized]);
+			if (!isUndefined(val))
+				out.push([push(data.k, k), val]);
 		}
 		return out;
 	};
@@ -77,6 +90,8 @@ export let hydrateState = (data: SsrData, state: SsrObject, target: any) => {
 			let t = {};
 			_hydrate(val.v, t);
 			return new Map(Object.entries(t));
+		} else if (val.t == "a") {
+			return val.v.map(x => _val(x));
 		} else if (val.t == "o") {
 			_hydrate(val.v, target);
 			return target;

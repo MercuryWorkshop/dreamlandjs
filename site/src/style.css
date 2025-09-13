@@ -11,6 +11,8 @@ body,
 	--bg-1: #0b0a0b;
 	--bg-2: #141214;
 	--bg-3: #211e21;
+	--border: #555555;
+    --border-2: #333333;
 	--text: #ffffff;
 	--accent: #ca3eed;
 
@@ -43,4 +45,6 @@ pre {
 	padding: 0.5rem;
 	border-radius: 0.5rem;
 	tab-size: 4;
+
+	overflow-x: auto
 }

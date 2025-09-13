@@ -2,9 +2,6 @@ import type { Plugin, PluginOption, UserConfig } from "vite";
 import renderToString, { DomSerializerOptions } from "dom-serializer";
 import type { RenderedComponent } from "dreamland/ssr/server";
 
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
-
 export let jsxPlugin = (): Plugin => ({
 	name: "dreamland/vite/jsx",
 	config(config: UserConfig) {

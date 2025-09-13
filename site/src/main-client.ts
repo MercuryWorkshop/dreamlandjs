@@ -7,3 +7,4 @@ hydrate(
 	document.head,
 	document.querySelector("[dlssr-d]")!
 );
+// document.querySelector("#app")!.replaceWith(App());

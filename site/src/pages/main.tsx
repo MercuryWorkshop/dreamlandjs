@@ -1,16 +1,11 @@
-import { css, type Component, type ComponentChild } from "dreamland/core";
+import { css, type Component } from "dreamland/core";
 import { Link } from "dreamland/router";
 
 // @ts-expect-error
 import Main from "./main.mdx";
 
 import logo from "../logo/uwu.svg";
-
-let ExternalLink: Component<{ href: string, children: ComponentChild }> = function(cx) {
-	return (
-		<a href={this.href} target="_blank">{cx.children}</a>
-	)
-}
+import { ExternalLink } from "../utils";
 
 export let MainPage: Component = function() {
 	return (
@@ -25,6 +20,7 @@ export let MainPage: Component = function() {
 					<ExternalLink href="https://npmjs.com/package/dreamland">npm</ExternalLink>
 					<ExternalLink href="https://github.com/MercuryWorkshop/dreamlandjs">GitHub</ExternalLink>
 					<ExternalLink href="https://discord.gg/GKKF3CmHPA">Discord</ExternalLink>
+					<Link href="/docs/getting-started">Docs</Link>
 				</div>
 			</div>
 			<div class="content">
@@ -79,7 +75,7 @@ MainPage.style = css`
 	.content {
 		flex: 2;
 		min-height: 0;
-		overflow-y: scroll;
+		overflow-y: auto;
 
 		padding: 0 1rem;
 
@@ -94,7 +90,7 @@ MainPage.style = css`
 		:scope {
 			flex-direction: column;
 			height: auto;
-			overflow-y: scroll;
+			overflow-y: auto;
 		}
 
 		.hero {

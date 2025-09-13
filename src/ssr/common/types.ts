@@ -5,7 +5,7 @@ export type SsrValue =
 			v: SsrObject;
 	  }
 	| {
-			t: "s" /* set */;
+			t: "s" /* set */ | "a" /* array */;
 			v: SsrValue[] /* values index */;
 	  }
 	| {

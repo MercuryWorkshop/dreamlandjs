@@ -57,7 +57,7 @@ let mapChild = (
 					return;
 				}
 
-				current.map((x) => parent.removeChild(x));
+				current.map((x) => x.parentNode === parent && parent.removeChild(x));
 				let anchor: Node = start;
 				for (let child of mapped) {
 					parent.insertBefore(child, anchor.nextSibling);

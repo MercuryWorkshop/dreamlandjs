@@ -76,7 +76,7 @@ export default defineConfig({
 								return (
 									MDXLayout 
 										? _jsx(MDXLayout, { children: [_createMdxContent(this)], ...this })
-										: _jsx(_Fragment, { children: [_createMdxContent(this)], ...this })
+										: _createMdxContent(this)
 								)
 							}
 						`,

@@ -11,11 +11,11 @@ export type RouteParams = Record<string, string>;
 
 export type ShowElement =
 	| DLElement<{
-			outlet: HTMLElement | null | undefined;
-			"on:routeshown"?: (path: string) => void;
+		outlet: HTMLElement | null | undefined;
+		"on:routeshown"?: (path: string) => void;
 
-			[index: string]: any;
-	  }>
+		[index: string]: any;
+	}>
 	| HTMLElement;
 export type ShowTarget =
 	| ShowElement
@@ -84,7 +84,7 @@ let populateComponent = (
 			state[param] = params[param];
 		}
 
-		if (outlet) state.outlet = outlet;
+		state.outlet = outlet;
 		state["on:routeshown"]?.(path);
 	} else if (required) {
 		dev: {
@@ -174,7 +174,7 @@ export let Route: Component<{
 	path?: string;
 	show?: ShowTarget;
 	children?: ComponentChild;
-}> = function (cx) {
+}> = function(cx) {
 	return {
 		_path: this.path,
 		_show: this.show,
@@ -185,7 +185,8 @@ export let Route: Component<{
 export let Link: Component<{
 	href: string;
 	class?: string;
-}> = function (cx) {
+	children?: ComponentChild;
+}> = function(cx) {
 	this.class = this.class || "";
 
 	return (
@@ -219,7 +220,7 @@ export let Router: Component<
 		navigate: (path: string) => boolean;
 		ssgables: () => [string, string][];
 	}
-> = function (cx) {
+> = function(cx) {
 	dev: {
 		if (router) throw new Error("A router was already created");
 	}
