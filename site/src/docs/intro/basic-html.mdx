@@ -14,25 +14,29 @@ This is the simplest possible way to use dreamland and also why it's so easy to 
 
 If you're coming from other frameworks like React, you might be used to using `className` instead of `class`. dreamland always uses `class` to match HTML.
 
-## Syntax sugar for elements 
+## Syntax sugar for elements
 
 For any DOM event, you can use the prop prefix `on` to add an event listener:
+
 ```tsx
 <button on:click={() => alert("clicked!")}>click me!</button>
 ```
 
 You can set properties on the element itself (like `innerHTML`) with the prop prefix `attr`:
+
 ```tsx
 <div attr:innerHTML={markdownOutput} />
 ```
 
 You can set inline styles regularly with a string, or you can pass an object with property names that `CSSStyleDeclaration`'s `setProperty` accepts (this includes CSS variables):
+
 ```tsx
 let regularStyle = <div style="color: red; background: blue;" />;
-let objectStyle  = <div style={{ color: "red", background: "blue" }} />;
+let objectStyle = <div style={{ color: "red", background: "blue" }} />;
 ```
 
 You can toggle on/off specific classes by using the prop prefix `class` (this becomes more useful when you pass a pointer to it):
+
 ```tsx
 <div class="card container" class:active={true} />
 ```

@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import { devSsr } from "dreamland/vite";
 import { compile } from "@mdx-js/mdx";
+import { literalsHtmlCssMinifier } from "@literals/rollup-plugin-html-css-minifier";
 
 import rehypeStarryNight from "rehype-starry-night";
 import { all as grammars } from "@wooorm/starry-night";
@@ -11,6 +12,7 @@ import { gzipSync, brotliCompressSync } from "zlib";
 
 export default defineConfig({
 	plugins: [
+		literalsHtmlCssMinifier(),
 		devSsr({
 			entry: "/src/main-server.ts",
 		}),

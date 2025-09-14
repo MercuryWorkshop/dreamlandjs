@@ -17,16 +17,18 @@ export interface DocGroup {
 
 export let docs: DocPage[] = Object.entries(
 	import.meta.glob("./docs/**/*.mdx", { eager: true })
-).map(([path, module]: [string, any]) => {
-	return {
-		type: "page",
-		path: path.replace("./docs/", "").replace(".mdx", ""),
-		groups: module.title,
-		title: module.title.at(-1),
-		component: module.default,
-		order: module.order || 0,
-	} as const;
-}).sort((a, b) => a.order - b.order);
+)
+	.map(([path, module]: [string, any]) => {
+		return {
+			type: "page",
+			path: path.replace("./docs/", "").replace(".mdx", ""),
+			groups: module.title,
+			title: module.title.at(-1),
+			component: module.default,
+			order: module.order || 0,
+		} as const;
+	})
+	.sort((a, b) => a.order - b.order);
 
 export let groups: (DocGroup | DocPage)[] = [];
 for (let page of docs) {

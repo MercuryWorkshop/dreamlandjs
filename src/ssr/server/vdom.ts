@@ -10,7 +10,7 @@ import {
 } from "domhandler";
 import { parseDocument } from "htmlparser2";
 import renderToString from "dom-serializer";
-import { SSR_ID } from "../common/consts";
+import { CSS_IDENT, SSR_ID } from "../common/consts";
 
 export class Node {
 	_id: number;
@@ -255,7 +255,7 @@ export let newVDom = (old: DomImpl) => {
 		(text?: any) => push(new Text("" + text)),
 		(text?: any) => push(new Comment("" + text)),
 		() => {
-			let ret = old[4]();
+			let ret = CSS_IDENT + identArr.size;
 			identArr.set(elArr.length, ret);
 			return ret;
 		},

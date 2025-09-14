@@ -6,16 +6,21 @@ They work just like stateful objects, but automatically save and restore across 
 dreamland core provides a `localStorage` backing and opt-in autosave or save-before-exit (`beforeunload`) i the core bundle.
 
 You can make one with `createStore`:
+
 ```tsx
 import { createStore } from "dreamland/core";
 
-export let settings = createStore({
-	color: "#FFFFFF",
-	fontSize: 16,
-}, { ident: "settings", backing: "localstorage", autosave: "auto" });
+export let settings = createStore(
+	{
+		color: "#FFFFFF",
+		fontSize: 16,
+	},
+	{ ident: "settings", backing: "localstorage", autosave: "auto" }
+);
 ```
 
 You can also provide an object containing optionally async `read` and `write` functions as a custom backing:
+
 ```tsx
 import { createStore } from "dreamland/core";
 
@@ -25,13 +30,16 @@ let backing = {
 	},
 	async write(ident: string, value: string): Promise<void> {
 		// write to IDB or post to server...
-	}
-}
+	},
+};
 
-export let settings = createStore({
-	color: "#FFFFFF",
-	fontSize: 16,
-}, { ident: "settings", backing, autosave: "auto" });
+export let settings = createStore(
+	{
+		color: "#FFFFFF",
+		fontSize: 16,
+	},
+	{ ident: "settings", backing, autosave: "auto" }
+);
 ```
 
-You can manually save all stores at any time with the `saveAllStores` exported function. 
+You can manually save all stores at any time with the `saveAllStores` exported function.

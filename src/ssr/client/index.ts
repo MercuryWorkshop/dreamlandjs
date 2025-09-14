@@ -6,10 +6,9 @@ import {
 	jsx,
 	setDomImpl,
 } from "dreamland/core";
-import { SSR, SSR_DATA, SSR_ID } from "../common/consts";
+import { SSR_DATA, SSR_ID } from "../common/consts";
 import { hydrateState, Json } from "../common/serialize";
 import { SsrData, SsrObject } from "../common/types";
-import { off } from "process";
 
 export let hydrate = (
 	component: () => HTMLElement,

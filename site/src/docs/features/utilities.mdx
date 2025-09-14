@@ -6,11 +6,13 @@ dreamland core also provides some more miscallaneous sugar to make code look bet
 ## Reactive strings: usestr
 
 You can use the `use` function as a template tag function to create string pointers:
+
 ```tsx
 <div>
 	<input placeholder={use`Hello, ${this.name}!`} />
 </div>
 ```
+
 This is useful for text or class strings which need to be recalculated.
 
 ## Delegates
@@ -19,26 +21,27 @@ Delegates make it easier to call functions on child components, which would inst
 They are functions which have a `listen` function on them.
 
 For example, you can create a delegate in the parent component and then pass it to the child component, which then calls `listen` on it:
+
 ```tsx
 import { createDelegate } from "dreamland/core";
 
-let Ripples: Component<{ create: Delegate<MouseEvent> }> = function(cx) {
+let Ripples: Component<{ create: Delegate<MouseEvent> }> = function (cx) {
 	cx.mount = () => {
 		this.create.listen((e: MouseEvent) => {
 			// create ripple...
 		});
-	}
+	};
 
-	return <div />
-}
+	return <div />;
+};
 
-let Button: Component = function() {
+let Button: Component = function () {
 	let ripple = createDelegate<MouseEvent>();
 
 	return (
 		<div on:pointerdown={ripple}>
 			<Ripples create={ripple} />
 		</div>
-	)
-}
+	);
+};
 ```
