@@ -1,4 +1,18 @@
 export let title = ["Internals", "State System"];
-export let order = 4;
+export let order = 100;
 
-TODO
+The state system's code is mostly in `src/core/state/` in the repository, split into separate files for the pointer code, the stateful object code, and the `use`/usestr code.
+
+## The magic behind `use`
+
+`createState` returns a `Proxy` that wraps the (target) object passed in.
+It also registers a new `StateData` which has a listeners array, the target object, and a unique ID.
+By default, the `Proxy` just forwards gets/sets to the target object and notifies listeners on the `StateData` when values are set.
+This is where the `use` getter comes into play.
+
+When `use` is called, JavaScript first calls the getter, which sets a "use trap" flag and returns the actual `use` function.
+This "use trap" tells all stateful proxies to register a `PointerData` and return a new `Proxy` whenever a property is accessed.
+The `Proxy` tracks any further accesses, effectively building a "path" of accesses from the state object to the target property.
+It also turns into a `Symbol` ID corresponding to the `PointerData` when `Symbol.toPrimitive` is called on it.
+Next, JavaScript parses the arguments list, triggering all the proxies and collecting the paths.
+Finally, the `use` function is called which disables the "use trap", adds listeners to all stateful objects and pointers along the pointer's path, and returns a `Pointer<T>` linked to the `PointerData`.

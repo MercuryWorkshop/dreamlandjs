@@ -1,0 +1,37 @@
+export let title = ["Core Features", "Stores"];
+export let order = 20;
+
+If you need to store state persistently across loads, you can use dreamland core's stores.
+They work just like stateful objects, but automatically save and restore across loads.
+dreamland core provides a `localStorage` backing and opt-in autosave or save-before-exit (`beforeunload`) i the core bundle.
+
+You can make one with `createStore`:
+```tsx
+import { createStore } from "dreamland/core";
+
+export let settings = createStore({
+	color: "#FFFFFF",
+	fontSize: 16,
+}, { ident: "settings", backing: "localstorage", autosave: "auto" });
+```
+
+You can also provide an object containing optionally async `read` and `write` functions as a custom backing:
+```tsx
+import { createStore } from "dreamland/core";
+
+let backing = {
+	async read(ident: string): Promise<string | null> {
+		// read from IDB or fetch externally...
+	},
+	async write(ident: string, value: string): Promise<void> {
+		// write to IDB or post to server...
+	}
+}
+
+export let settings = createStore({
+	color: "#FFFFFF",
+	fontSize: 16,
+}, { ident: "settings", backing, autosave: "auto" });
+```
+
+You can manually save all stores at any time with the `saveAllStores` exported function. 

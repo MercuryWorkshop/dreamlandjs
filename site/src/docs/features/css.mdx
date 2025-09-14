@@ -1,0 +1,22 @@
+export let title = ["Core Features", "Scoped CSS"];
+export let order = 21;
+
+dreamland core comes with an optional built-in lightweight scoped component CSS solution.
+It uses the browser's CSS parsing and a tiny CSS selector parser based on LeaVerou's [parsel](https://github.com/LeaVerou/parsel) to rewrite CSS for scoping.
+Essentially, it adds `:where(.dlcss-tag)` to all selectors to make sure they only apply to elements within the component.
+It also aliases `:scope` to `.dlcss-tag.dlc` to target the root of the component.
+The scoping can be turned off by using `:global()`.
+
+You can use it by assigning a call to the `css` template tag to the `style` property on a component: 
+
+```tsx
+Card.style = css`
+	:scope {
+		background: var(--bg-3);
+	}
+
+	:global(*) > :scope {
+		/* ... */
+	}
+`;
+```
