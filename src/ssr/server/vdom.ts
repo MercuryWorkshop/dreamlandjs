@@ -137,6 +137,10 @@ export class Element extends Node {
 		);
 	}
 
+	set innerText(value: string) {
+		this.childNodes = [new Text(value)];
+	}
+
 	toStandard(): DomElement {
 		if (this.style.cssText) {
 			this.attributes.set("style", this.style.cssText);

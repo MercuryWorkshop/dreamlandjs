@@ -3,6 +3,7 @@ import { Link } from "dreamland/router";
 
 import { docs, groups, type DocGroup, type DocPage } from "../docs";
 import normal from "../logo/normal.svg";
+import { setTitle } from "../main";
 
 export let DocsLayout: Component<
 	{ outlet?: HTMLElement },
@@ -12,6 +13,7 @@ export let DocsLayout: Component<
 	this["on:routeshown"] = (path: string) => {
 		let page = docs.find((x) => path.replace("/docs/", "") === x.path);
 		this.doc = page;
+		setTitle(page?.title);
 	};
 
 	let render = (x: DocGroup | DocPage) => {
@@ -39,7 +41,7 @@ export let DocsLayout: Component<
 			<div class="sidebar">
 				<Link href="/">
 					<div class="hero">
-						<img src={normal} />
+						<img src={normal} alt="dreamland logo" />
 						<span>dreamland</span>
 					</div>
 				</Link>
@@ -76,7 +78,6 @@ DocsLayout.style = css`
 		flex-direction: column;
 
 		padding: 1.5rem 1rem 1rem 1rem;
-		overflow-y: auto;
 	}
 	.sidebar :global(a) {
 		text-decoration: none;

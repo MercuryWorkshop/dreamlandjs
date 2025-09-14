@@ -3,15 +3,15 @@ import { Link } from "dreamland/router";
 
 // @ts-expect-error
 import Main from "./main.mdx";
+import { ExternalLink } from "../utils";
 
 import logo from "../logo/uwu.svg";
-import { ExternalLink } from "../utils";
 
 export let MainPage: Component = function () {
 	return (
 		<div>
 			<div class="hero">
-				<img src={logo} alt="dreamland logo" />
+				<img src={logo} alt="dreamland.js" />
 				<div>
 					<div class="slogan">A utilitarian web framework</div>
 					<div>

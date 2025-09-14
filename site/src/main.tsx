@@ -1,22 +1,33 @@
-import type { Component } from "dreamland/core";
+import { createState, type Component, type Stateful } from "dreamland/core";
 import { Route, router, Router } from "dreamland/router";
 import { MainPage } from "./pages/main";
 import { jsx } from "dreamland/jsx-runtime";
 import { docs } from "./docs";
 import { DocsLayout } from "./pages/docs";
 
-let url: string | undefined;
+let page: Stateful<{
+	title: string,
+	url?: string,
+}> = createState({
+	title: "dreamland.js",
+});
 
-let App: Component = function (cx) {
+export let setTitle = (val: string | undefined) => page.title = val + " | dreamland.js";
+
+let App: Component<{}, { title: HTMLTitleElement }> = function(cx) {
 	cx.init = () => {
+		use(page.title).listen(title => {
+			this.title.innerText = title;
+		});
+
 		if (import.meta.env.SSR) {
-			router.route(url, "http://127.0.0.1:5173");
+			router.route(page.url, "http://127.0.0.1:5173");
 		} else {
 			router.route();
 		}
 	};
 
-	return (
+	return <>
 		<div id="app">
 			<Router>
 				<Route show={<MainPage />} />
@@ -27,10 +38,14 @@ let App: Component = function (cx) {
 				</Route>
 			</Router>
 		</div>
-	);
+		<>
+			<title this={use(this.title)}></title>
+			<meta property="og:title" content={use(page.title)} />
+		</>
+	</>;
 };
 
 export default (path?: string) => {
-	url = path;
+	page.url = path;
 	return <App />;
 };

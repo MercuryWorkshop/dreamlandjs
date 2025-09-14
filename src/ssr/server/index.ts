@@ -18,8 +18,16 @@ export function render(component: () => any): RenderedComponent {
 
 	setDomImpl(vdom);
 	jsx[DREAMLAND]();
-	let root = component() as Element;
+	let ret = component();
 	setDomImpl(old);
+
+	let root: Element, extraHead: Element[] = [];
+	if (ret instanceof Array) {
+		root = ret[0]
+		extraHead = ret[1]
+	} else {
+		root = ret;
+	}
 
 	let domIds = [];
 	let domIdents = new Set();
@@ -93,16 +101,18 @@ export function render(component: () => any): RenderedComponent {
 		}
 	}
 
-	let head = vdom[0].head.childNodes
-		.filter((x) => {
-			if (x instanceof Element) {
-				let cssId = x.attributes.get(CSS_IDENT + "id");
-				return domIdents.has(cssId);
-			}
+	let head = [
+		...extraHead,
+		...vdom[0].head.childNodes
+			.filter((x) => {
+				if (x instanceof Element) {
+					let cssId = x.attributes.get(CSS_IDENT + "id");
+					return domIdents.has(cssId);
+				}
 
-			return false;
-		})
-		.map((x) => x.toStandard()) as DomElement[];
+				return false;
+			})
+	].map((x) => x.toStandard()) as DomElement[];
 
 	return {
 		head,
