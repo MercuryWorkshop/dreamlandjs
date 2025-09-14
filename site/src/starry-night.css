@@ -1,0 +1,122 @@
+/* This is a theme distributed by `starry-night`.
+ * It’s based on what GitHub uses on their site.
+ * See <https://github.com/wooorm/starry-night> for more info. */
+.pl-c {
+	color: #9198a1;
+}
+
+.pl-c1,
+.pl-s .pl-v {
+	color: #79c0ff;
+}
+
+.pl-e,
+.pl-en {
+	color: #d2a8ff;
+}
+
+.pl-smi,
+.pl-s .pl-s1 {
+	color: #f0f6fc;
+}
+
+.pl-ent {
+	color: #7ee787;
+}
+
+.pl-k {
+	color: #ff7b72;
+}
+
+.pl-s,
+.pl-pds,
+.pl-s .pl-pse .pl-s1,
+.pl-sr,
+.pl-sr .pl-cce,
+.pl-sr .pl-sre,
+.pl-sr .pl-sra {
+	color: #a5d6ff;
+}
+
+.pl-v,
+.pl-smw {
+	color: #ffa657;
+}
+
+.pl-bu {
+	color: #f85149;
+}
+
+.pl-ii {
+	color: #f0f6fc;
+	background: #8e1519;
+}
+
+.pl-c2 {
+	color: #f0f6fc;
+	background: #b62324;
+}
+
+.pl-sr .pl-cce {
+	font-weight: bold;
+	color: #7ee787;
+}
+
+.pl-ml {
+	color: #f2cc60;
+}
+
+.pl-mh,
+.pl-mh .pl-en,
+.pl-ms {
+	font-weight: bold;
+	color: #1f6feb;
+}
+
+.pl-mi {
+	font-style: italic;
+	color: #f0f6fc;
+}
+
+.pl-mb {
+	font-weight: bold;
+	color: #f0f6fc;
+}
+
+.pl-md {
+	color: #ffdcd7;
+	background: #67060c;
+}
+
+.pl-mi1 {
+	color: #aff5b4;
+	background: #033a16;
+}
+
+.pl-mc {
+	color: #ffdfb6;
+	background: #5a1e02;
+}
+
+.pl-mi2 {
+	color: #f0f6fc;
+	background: #1158c7;
+}
+
+.pl-mdr {
+	font-weight: bold;
+	color: #d2a8ff;
+}
+
+.pl-ba {
+	color: #9198a1;
+}
+
+.pl-sg {
+	color: #3d444d;
+}
+
+.pl-corl {
+	text-decoration: underline;
+	color: #a5d6ff;
+}

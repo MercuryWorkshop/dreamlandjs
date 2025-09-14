@@ -14,7 +14,7 @@ export let MainPage: Component<{}, {}, { "on:routeshown": () => void }> = functi
 	return (
 		<div>
 			<div class="hero">
-				<img src={logo} alt="dreamland.js" />
+				<img src={logo} alt="dreamland.js" width={252} height={150}/>
 				<div>
 					<div class="slogan">A utilitarian web framework</div>
 					<div>
@@ -68,7 +68,8 @@ MainPage.style = css`
 		padding: 1rem;
 	}
 	.hero img {
-		margin: 0 1rem;
+		width: calc(100% - 2rem);
+		height: auto;
 	}
 	.slogan {
 		font-size: 1.5rem;
