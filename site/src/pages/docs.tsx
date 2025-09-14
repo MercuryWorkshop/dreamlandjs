@@ -79,7 +79,7 @@ DocsLayout.style = css`
 
 		padding: 1.5rem 1rem 1rem 1rem;
 	}
-	.sidebar :global(a) {
+	.sidebar :global(:is(a, a:visited)) {
 		text-decoration: none;
 		color: var(--text);
 	}
