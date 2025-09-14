@@ -12,7 +12,7 @@ let page: Stateful<{
 	title: "dreamland.js",
 });
 
-export let setTitle = (val: string | undefined) => page.title = val + " | dreamland.js";
+export let setTitle = (val?: string | undefined) => page.title = (val ? val + " | " : "") + "dreamland.js";
 
 let App: Component<{}, { title: HTMLTitleElement }> = function(cx) {
 	cx.init = () => {

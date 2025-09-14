@@ -6,8 +6,11 @@ import Main from "./main.mdx";
 import { ExternalLink } from "../utils";
 
 import logo from "../logo/uwu.svg";
+import { setTitle } from "../main";
 
-export let MainPage: Component = function () {
+export let MainPage: Component<{}, {}, { "on:routeshown": () => void }> = function () {
+	this["on:routeshown"] = () => setTitle();
+
 	return (
 		<div>
 			<div class="hero">
