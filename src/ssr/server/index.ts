@@ -21,10 +21,11 @@ export function render(component: () => any): RenderedComponent {
 	let ret = component();
 	setDomImpl(old);
 
-	let root: Element, extraHead: Element[] = [];
+	let root: Element,
+		extraHead: Element[] = [];
 	if (ret instanceof Array) {
-		root = ret[0]
-		extraHead = ret[1]
+		root = ret[0];
+		extraHead = ret[1];
 	} else {
 		root = ret;
 	}
@@ -103,15 +104,14 @@ export function render(component: () => any): RenderedComponent {
 
 	let head = [
 		...extraHead,
-		...vdom[0].head.childNodes
-			.filter((x) => {
-				if (x instanceof Element) {
-					let cssId = x.attributes.get(CSS_IDENT + "id");
-					return domIdents.has(cssId);
-				}
+		...vdom[0].head.childNodes.filter((x) => {
+			if (x instanceof Element) {
+				let cssId = x.attributes.get(CSS_IDENT + "id");
+				return domIdents.has(cssId);
+			}
 
-				return false;
-			})
+			return false;
+		}),
 	].map((x) => x.toStandard()) as DomElement[];
 
 	return {

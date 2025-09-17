@@ -10,7 +10,7 @@ export let serializeState = (
 	isNode: (x: any) => boolean
 ): SsrObject => {
 	let push = (arr: string[], val: any): number => {
-		let idx = arr.indexOf(val)
+		let idx = arr.indexOf(val);
 		if (idx != -1) return idx;
 		else return arr.push(val) - 1;
 	};
@@ -26,21 +26,25 @@ export let serializeState = (
 		if (!["bigint", "function", "object"].includes(typeof val)) {
 			return push(data.v, val);
 		} else if (val instanceof Pointer) {
-			return { t: "p", v: exportPtr(val) };
+			return [4, exportPtr(val)];
 		} else if (val instanceof Map) {
 			let entries = Object.fromEntries(val.entries());
-			return { t: "m", v: _serialize(entries) };
+			return [0, _serialize(entries)];
 		} else if (val instanceof Set) {
 			let vals = [...val.values()].map((x) => _val(x));
 			if (vals.some(isUndefined)) return;
 
-			return { t: "s", v: vals };
+			return [2, vals];
 		} else if (val instanceof Array) {
 			let vals = val.map((x) => _val(x));
 			if (vals.some(isUndefined)) return;
-			return { t: "a", v: vals };
-		} else if (typeof val === "object" && [undefined, Object].includes(val.constructor)) {
-			return { t: "o", v: _serialize(val) }
+
+			return [3, vals];
+		} else if (
+			typeof val === "object" &&
+			[undefined, Object].includes(val.constructor)
+		) {
+			return [1, _serialize(val)];
 		} else if (isNode(val)) {
 		} else {
 			dev: {
@@ -76,19 +80,22 @@ export let hydrateState = (data: SsrData, state: SsrObject, target: any) => {
 	let _val = (val: SsrValue, target?: any, ptr?: boolean): any => {
 		if (typeof val == "number") {
 			return data.v[val];
-		} else if (val.t == "p") {
-			hydratePtr(target as Pointer<any>, val.v);
+		}
+
+		let [type, v] = val as any;
+		if (type == 4) {
+			hydratePtr(target as Pointer<any>, v);
 			return ptr ? NO_CHANGE : target;
-		} else if (val.t == "s") {
-			return new Set(val.v.map((x) => _val(x, {})));
-		} else if (val.t == "m") {
+		} else if (type == 2) {
+			return new Set(v.map((x: SsrValue) => _val(x, {})));
+		} else if (type == 0) {
 			let t = {};
-			_hydrate(val.v, t);
+			_hydrate(v, t);
 			return new Map(Object.entries(t));
-		} else if (val.t == "a") {
-			return val.v.map((x) => _val(x, {}));
-		} else if (val.t == "o") {
-			_hydrate(val.v, target);
+		} else if (type == 3) {
+			return v.map((x: SsrValue) => _val(x, {}));
+		} else if (type == 1) {
+			_hydrate(v, target);
 			return target;
 		}
 	};

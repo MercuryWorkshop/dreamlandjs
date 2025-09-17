@@ -34,8 +34,7 @@ export let hydrate = (
 			rootIdx == idx
 				? ssr
 				: ssr.querySelector(selector) || head.querySelector(selector);
-		if (ret)
-			els.push([idx, ret]);
+		if (ret) els.push([idx, ret]);
 		return ret;
 	};
 	let getRelative = () => {
@@ -70,7 +69,9 @@ export let hydrate = (
 	let root = component();
 	setDomImpl(old);
 
-	for (let [i, component] of (els as [number, DLElement<any>][]).filter((x) => x[1].$)) {
+	for (let [i, component] of (els as [number, DLElement<any>][]).filter(
+		(x) => x[1].$
+	)) {
 		let state = data.n[i];
 		hydrateState(data, state as SsrObject, component.$.state);
 	}
