@@ -216,8 +216,8 @@ export let Router: Component<
 		_el: HTMLElement | null;
 	},
 	{
-		route: (path?: string, origin?: string) => boolean;
-		navigate: (path: string) => boolean;
+		route: (path?: string, origin?: string) => string | undefined;
+		navigate: (path: string) => string | undefined;
 		ssgables: () => [string, string][];
 	}
 > = function (cx) {
@@ -234,7 +234,7 @@ export let Router: Component<
 	this.route = (
 		path: string = location.pathname,
 		origin: string = location.origin
-	): boolean => {
+	): string | undefined => {
 		let realPath = new URL(path, origin).pathname;
 		if (realPath.endsWith(".html"))
 			realPath = realPath.slice(0, realPath.length - 5);
@@ -244,11 +244,12 @@ export let Router: Component<
 
 		this._el = el;
 
-		return !!el;
+		if (el)
+			return realPath;
 	};
 	this.navigate = (path) => {
 		let ret = this.route(path);
-		if (ret) history.pushState(null, "", path);
+		if (ret) history.pushState(null, "", ret);
 		return ret;
 	};
 
