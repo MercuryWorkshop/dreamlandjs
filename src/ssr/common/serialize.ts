@@ -9,8 +9,8 @@ export let serializeState = (
 	object: object,
 	isNode: (x: any) => boolean
 ): SsrObject => {
-	let push = (arr: string[], val: string): number => {
-		let idx = arr.indexOf(val);
+	let push = (arr: string[], val: any): number => {
+		let idx = arr.indexOf(val)
 		if (idx != -1) return idx;
 		else return arr.push(val) - 1;
 	};
@@ -23,7 +23,9 @@ export let serializeState = (
 	let isUndefined = (x: any): x is undefined => typeof x == "undefined";
 
 	let _val = (val: any): SsrValue | undefined => {
-		if (val instanceof Pointer) {
+		if (!["bigint", "function", "object"].includes(typeof val)) {
+			return push(data.v, val);
+		} else if (val instanceof Pointer) {
 			return { t: "p", v: exportPtr(val) };
 		} else if (val instanceof Map) {
 			let entries = Object.fromEntries(val.entries());
@@ -37,14 +39,9 @@ export let serializeState = (
 			let vals = val.map((x) => _val(x));
 			if (vals.some(isUndefined)) return;
 			return { t: "a", v: vals };
-		} else if (typeof val === "object") {
-			if (isNode(val)) return;
-			// TODO this is ugly and leads to unnecessary escaping
-			let stringified = STRINGIFY(val);
-			if (!stringified) return;
-
-			if (stringified.startsWith("{")) return { t: "o", v: _serialize(val) };
-			else return push(data.v, STRINGIFY(val));
+		} else if (typeof val === "object" && [undefined, Object].includes(val.constructor)) {
+			return { t: "o", v: _serialize(val) }
+		} else if (isNode(val)) {
 		} else {
 			dev: {
 				console.warn("[dreamland.js] did not serialize unknown value ", val);
@@ -78,18 +75,18 @@ export let hydrateState = (data: SsrData, state: SsrObject, target: any) => {
 	// TODO this is ugly
 	let _val = (val: SsrValue, target?: any, ptr?: boolean): any => {
 		if (typeof val == "number") {
-			return Json.parse(data.v[val]);
+			return data.v[val];
 		} else if (val.t == "p") {
 			hydratePtr(target as Pointer<any>, val.v);
 			return ptr ? NO_CHANGE : target;
 		} else if (val.t == "s") {
-			return new Set(val.v.map((x) => _val(x)));
+			return new Set(val.v.map((x) => _val(x, {})));
 		} else if (val.t == "m") {
 			let t = {};
 			_hydrate(val.v, t);
 			return new Map(Object.entries(t));
 		} else if (val.t == "a") {
-			return val.v.map((x) => _val(x));
+			return val.v.map((x) => _val(x, {}));
 		} else if (val.t == "o") {
 			_hydrate(val.v, target);
 			return target;

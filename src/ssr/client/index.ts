@@ -24,19 +24,18 @@ export let hydrate = (
 	textarea.innerHTML = dataEl.innerText;
 	let data: SsrData = Json.parse(textarea.value);
 
-	let els: [number, DLElement<any>][] = [];
+	let els: [number, HTMLElement][] = [];
 
 	let rootIdx = +ssr.getAttribute(SSR_ID);
 	let idx = -1;
 	let getInternal = (idx: number) => {
 		let selector = `[${SSR_ID}="${idx}"]`;
-		let ret =
+		let ret: HTMLElement =
 			rootIdx == idx
 				? ssr
 				: ssr.querySelector(selector) || head.querySelector(selector);
-		if ((ret as DLElement<any>)?.$) {
-			els.push([idx, ret as DLElement<any>]);
-		}
+		if (ret)
+			els.push([idx, ret]);
 		return ret;
 	};
 	let getRelative = () => {
@@ -71,7 +70,7 @@ export let hydrate = (
 	let root = component();
 	setDomImpl(old);
 
-	for (let [i, component] of els.filter((x) => x[1].$)) {
+	for (let [i, component] of (els as [number, DLElement<any>][]).filter((x) => x[1].$)) {
 		let state = data.n[i];
 		hydrateState(data, state as SsrObject, component.$.state);
 	}

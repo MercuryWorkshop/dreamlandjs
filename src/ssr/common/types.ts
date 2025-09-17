@@ -27,7 +27,7 @@ export type Node =
 
 export interface SsrData {
 	k /* keys */ : string[];
-	v /* values */ : string[];
+	v /* values */ : any[];
 	n /* nodes */ : Record<number, Node>;
 	i /* idents */ : Record<number, string>;
 	t /* textFixups */ : [number, number, number][];
