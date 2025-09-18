@@ -6,17 +6,18 @@ import { docs } from "./docs";
 import { DocsLayout } from "./pages/docs";
 
 let page: Stateful<{
-	title: string,
-	url?: string,
+	title: string;
+	url?: string;
 }> = createState({
 	title: "dreamland.js",
 });
 
-export let setTitle = (val?: string | undefined) => page.title = (val ? val + " | " : "") + "dreamland.js";
+export let setTitle = (val?: string | undefined) =>
+	(page.title = (val ? val + " | " : "") + "dreamland.js");
 
-let App: Component<{}, { title: HTMLTitleElement }> = function(cx) {
+let App: Component<{}, { title: HTMLTitleElement }> = function (cx) {
 	cx.init = () => {
-		use(page.title).listen(title => {
+		use(page.title).listen((title) => {
 			this.title.innerText = title;
 		});
 
@@ -27,22 +28,24 @@ let App: Component<{}, { title: HTMLTitleElement }> = function(cx) {
 		}
 	};
 
-	return <>
-		<div id="app">
-			<Router>
-				<Route show={<MainPage />} />
-				<Route show={<DocsLayout />} path="docs">
-					{docs.map(({ path, component }) => {
-						return <Route path={path} show={() => jsx(component, {})} />;
-					})}
-				</Route>
-			</Router>
-		</div>
+	return (
 		<>
-			<title this={use(this.title)}></title>
-			<meta property="og:title" content={use(page.title)} />
+			<div id="app">
+				<Router>
+					<Route show={<MainPage />} />
+					<Route show={<DocsLayout />} path="docs">
+						{docs.map(({ path, component }) => {
+							return <Route path={path} show={() => jsx(component, {})} />;
+						})}
+					</Route>
+				</Router>
+			</div>
+			<>
+				<title this={use(this.title)}></title>
+				<meta property="og:title" content={use(page.title)} />
+			</>
 		</>
-	</>;
+	);
 };
 
 export default (path?: string) => {

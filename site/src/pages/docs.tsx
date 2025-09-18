@@ -41,7 +41,7 @@ export let DocsLayout: Component<
 			<div class="sidebar">
 				<Link href="/">
 					<div class="hero">
-						<img src={normal} alt="dreamland logo" width="400" height="400"  />
+						<img src={normal} alt="dreamland logo" width="400" height="400" />
 						<span>dreamland</span>
 					</div>
 				</Link>

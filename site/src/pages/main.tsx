@@ -8,43 +8,44 @@ import { ExternalLink } from "../utils";
 import logo from "../logo/uwu.svg";
 import { setTitle } from "../main";
 
-export let MainPage: Component<{}, {}, { "on:routeshown": () => void }> = function () {
-	this["on:routeshown"] = () => setTitle();
+export let MainPage: Component<{}, {}, { "on:routeshown": () => void }> =
+	function () {
+		this["on:routeshown"] = () => setTitle();
 
-	return (
-		<div>
-			<div class="hero">
-				<img src={logo} alt="dreamland.js" width={252} height={150}/>
-				<div>
-					<div class="slogan">A utilitarian web framework</div>
+		return (
+			<div>
+				<div class="hero">
+					<img src={logo} alt="dreamland.js" width={252} height={150} />
 					<div>
-						by{" "}
-						<ExternalLink href="https://mercurywork.shop/">
-							Mercury Workshop
+						<div class="slogan">A utilitarian web framework</div>
+						<div>
+							by{" "}
+							<ExternalLink href="https://mercurywork.shop/">
+								Mercury Workshop
+							</ExternalLink>
+						</div>
+					</div>
+					<div class="links">
+						<ExternalLink href="https://npmjs.com/package/dreamland">
+							npm
 						</ExternalLink>
+						<ExternalLink href="https://github.com/MercuryWorkshop/dreamlandjs">
+							GitHub
+						</ExternalLink>
+						<ExternalLink href="https://discord.gg/GKKF3CmHPA">
+							Discord
+						</ExternalLink>
+						<Link href="/docs/getting-started">Docs</Link>
 					</div>
 				</div>
-				<div class="links">
-					<ExternalLink href="https://npmjs.com/package/dreamland">
-						npm
-					</ExternalLink>
-					<ExternalLink href="https://github.com/MercuryWorkshop/dreamlandjs">
-						GitHub
-					</ExternalLink>
-					<ExternalLink href="https://discord.gg/GKKF3CmHPA">
-						Discord
-					</ExternalLink>
-					<Link href="/docs/getting-started">Docs</Link>
+				<div class="content">
+					<div>
+						<Main />
+					</div>
 				</div>
 			</div>
-			<div class="content">
-				<div>
-					<Main />
-				</div>
-			</div>
-		</div>
-	);
-};
+		);
+	};
 MainPage.style = css`
 	:scope {
 		width: 100%;

@@ -1,0 +1,44 @@
+export let title = ["Features", "Router"];
+export let order = 30;
+
+dreamland has a first-party react-router equivalent that supports most of the features react-router has.
+It's designed to be a singleton component that is controlled via the `router` export in `dreamland/router`.
+The router is constructed as a JSX component and routes are defined in JSX:
+
+```tsx
+<div id="app">
+	<Router>
+		<Route show={<MainPage />} />
+		<Route show={<DocsLayout />} path="docs">
+			{docs.map(({ path, component }) => {
+				return <Route path={path} show={() => jsx(component, {})} />;
+			})}
+		</Route>
+	</Router>
+</div>
+```
+
+Once a `Router` component is created, the instance is exposed by the `router` export.
+The `Router` automatically handles `popstate`.
+It also exposes a `route` function to simply change the current route without touching history and a `navigate` function to both change the current route and commit it to history:
+```tsx
+import { router } from "dreamland/router";
+
+router.navigate("/"); // sent to history
+```
+
+## SSR integration
+dreamland's router is compatible with SSR and hydration, and exposes a `ssgables` function to allow for easy prerendering.
+It returns any route that doesn't have dynamic parameters in it.
+```tsx
+let paths = router.ssgables();
+let template = /* index.html ... */;
+
+for (const [route, path] of paths) {
+	const rendered = await renderSsr(template, () => entry.default(route));
+	console.log(`prerendered: ${route}`);
+	let resolved = resolve("dist/static/" + path);
+	await mkdir(dirname(resolved), { recursive: true });
+	await writeFile(resolved, rendered);
+}
+```
