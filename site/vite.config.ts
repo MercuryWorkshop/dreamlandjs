@@ -12,7 +12,9 @@ import { gzipSync, brotliCompressSync } from "zlib";
 
 export default defineConfig({
 	plugins: [
-		literalsHtmlCssMinifier(),
+		literalsHtmlCssMinifier({
+			include: ["src/**/*.tsx"],
+		}),
 		devSsr({
 			entry: "/src/main-server.ts",
 		}),

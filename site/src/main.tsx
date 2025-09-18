@@ -4,6 +4,7 @@ import { MainPage } from "./pages/main";
 import { jsx } from "dreamland/jsx-runtime";
 import { docs } from "./docs";
 import { DocsLayout } from "./pages/docs";
+import { PlaygroundHost } from "./pages/playground";
 
 let page: Stateful<{
 	title: string;
@@ -33,7 +34,8 @@ let App: Component<{}, { title: HTMLTitleElement }> = function (cx) {
 			<div id="app">
 				<Router>
 					<Route show={<MainPage />} />
-					<Route show={<DocsLayout />} path="docs">
+					<Route path="playground" show={<PlaygroundHost />} />
+					<Route path="docs" show={<DocsLayout />}>
 						{docs.map(({ path, component }) => {
 							return <Route path={path} show={() => jsx(component, {})} />;
 						})}
