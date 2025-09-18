@@ -1,14 +1,19 @@
 import { css, type Component } from "dreamland/core";
 import { Monaco } from "./monaco";
+import { compile } from "./rollup";
+
+import code from "./code?raw";
 
 export let Playground: Component<{}, {
 	code: string,
 	transpiled: string,
 }> = function() {
-	this.code = "";
+	this.code = code;
 	this.transpiled = "";
 
-	use(this.code, this.transpiled).listen(x=>console.log(x));
+	use(this.transpiled).listen(async val => {
+		console.log(await compile(val));
+	});
 
 	return (
 		<div>

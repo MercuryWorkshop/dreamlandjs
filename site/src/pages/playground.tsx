@@ -1,8 +1,13 @@
 import { css, type Component } from "dreamland/core";
 
+// rollup hack
+import "../playground/setup";
+
 export let PlaygroundHost: Component<{}, { host?: HTMLElement }, { "on:routeshown": () => void }> = function() {
 	this["on:routeshown"] = async () => {
 		if (!import.meta.env.SSR) {
+
+
 			let playground = await import("../playground/playground");
 			this.host = <playground.Playground />
 		}

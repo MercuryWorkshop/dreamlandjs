@@ -11,6 +11,9 @@ importers:
       '@literals/rollup-plugin-html-css-minifier':
         specifier: ^3.0.1
         version: 3.0.1(rollup@4.49.0)
+      '@rollup/browser':
+        specifier: ^4.50.2
+        version: 4.50.2
       dreamland:
         specifier: link:..
         version: link:..
@@ -224,6 +227,9 @@ packages:
 
   '@mdx-js/mdx@3.1.1':
     resolution: {integrity: sha512-f6ZO2ifpwAQIpzGWaBQT2TXxPv6z3RBzQKpVftEWN78Vl/YweF1uwussDx8ECAXVtr3Rs89fKyG9YlzUs9DyGQ==}
+
+  '@rollup/browser@4.50.2':
+    resolution: {integrity: sha512-zAIUDySu2XowzVGgXH5c6KTNa/I72AvNGkqOX49l15N7ABQ/yG8L4nfWPvzME/RNWNPq+z0N7dMRMPX4DgAZBg==}
 
   '@rollup/pluginutils@5.3.0':
     resolution: {integrity: sha512-5EdhGZtnu3V88ces7s53hhfK5KSASnJZv8Lulpc04cWO3REESroJXg73DFsOmgbU2BhwV0E20bu2IDZb3VKW4Q==}
@@ -1035,6 +1041,10 @@ snapshots:
       vfile: 6.0.3
     transitivePeerDependencies:
       - supports-color
+
+  '@rollup/browser@4.50.2':
+    dependencies:
+      '@types/estree': 1.0.8
 
   '@rollup/pluginutils@5.3.0(rollup@4.49.0)':
     dependencies:
