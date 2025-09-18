@@ -1,5 +1,5 @@
 export let title = ["Migrating", "From v1"];
-export let order = 0;
+export let order = 100;
 
 ## Imports
 
@@ -15,7 +15,7 @@ import { css, createState, type Component } from "dreamland/core";
 
 ## Vite
 
-`vite-plugin-dreamland` is now unused.
+`vite-plugin-dreamland` is replaced with `dreamland/vite`'s `jsxPlugin`, which is only used for non-TypeScript projects.
 ```ts
 // old 
 import { defineConfig } from "vite";
