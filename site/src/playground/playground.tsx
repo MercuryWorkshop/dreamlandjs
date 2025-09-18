@@ -24,10 +24,10 @@ let compiled = (code: string) => `
 			html, body {
 				padding: 0;
 				margin: 0;
-			}
-			html, body, #app {
 				width: 100%;
 				height: 100%;
+				background: #111;
+				color: #fff;
 			}
 		</style>
 	</head>
@@ -86,5 +86,11 @@ Playground.style = css`
 
 	iframe {
 		border: none;
+	}
+
+	@media (max-width: 1000px) {
+		:scope {
+			flex-direction: column;
+		}
 	}
 `;
