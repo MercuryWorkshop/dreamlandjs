@@ -117,12 +117,16 @@ export let Monaco: Component<{ value: string, transpiled: string, }> = function(
 	}
 
 	return (
-		<div />
+		<div class="monaco" />
 	)
 }
 Monaco.style = css`
-	:scope, .monaco-editor {
+	:scope {
 		width: 100%;
 		height: 100%;
+	}
+
+	:scope > :global(.monaco-editor) {
+		position: absolute;
 	}
 `;

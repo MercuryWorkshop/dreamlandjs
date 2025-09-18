@@ -26,6 +26,10 @@ export let MainPage: Component<{}, {}, { "on:routeshown": () => void }> =
 						</div>
 					</div>
 					<div class="links">
+						<Link href="/playground">Playground</Link>
+						<Link href="/docs/getting-started">Docs</Link>
+					</div>
+					<div class="links">
 						<ExternalLink href="https://npmjs.com/package/dreamland">
 							npm
 						</ExternalLink>
@@ -35,7 +39,6 @@ export let MainPage: Component<{}, {}, { "on:routeshown": () => void }> =
 						<ExternalLink href="https://discord.gg/GKKF3CmHPA">
 							Discord
 						</ExternalLink>
-						<Link href="/docs/getting-started">Docs</Link>
 					</div>
 				</div>
 				<div class="content">

@@ -11,24 +11,23 @@ let modules = new Map(Object.entries(packageJson.exports).map(([k, v]: any) => {
 
 export async function compile(transpiled: string): Promise<string> {
 	const bundle = await rollup({
-		input: "index.jsx",
+		input: "index.js",
 		plugins: [
 			{
 				name: "loader",
 				resolveId(source) {
-					if (source === "index.jsx")
-						return source;
-					if (modules.has(source))
-						return source;
+					if (source === "index.js" || modules.has(source))
+						return "\0" + source;
 				},
 				load(source) {
-					if (source === "index.jsx")
+					if (source === "\0index.js")
 						return transpiled;
-					if (modules.has(source))
-						return modules.get(source);
+					if (source.startsWith("\0") && modules.has(source.slice(1)))
+						return modules.get(source.slice(1));
 				}
 			}
-		]
+		],
+		logLevel: "debug",
 	});
 
 	const output = await bundle.generate({ format: "es" });

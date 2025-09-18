@@ -4,7 +4,7 @@ if (!import.meta.env.SSR) {
 	let orgURL = URL as any;
 
 	globalThis.URL = function(...args: any[]) {
-		if (args[0].endsWith("bindings_wasm_bg.wasm")) {
+		if (typeof args[0] === "string" && args[0].includes("bindings_wasm_bg")) {
 			console.log("rollup hackfix");
 			return new Request(rollupWasm);
 		}
