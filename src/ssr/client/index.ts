@@ -63,6 +63,7 @@ export let hydrate = (
 		(x) => getRelative() || old[3](x),
 		() => data.i[idx + 1] || old[4](),
 		(x) => x.hasAttribute(SSR_ID),
+		undefined, // TODO move state hydration here?
 	] as const satisfies DomImpl;
 	setDomImpl(vdom);
 	jsx[DREAMLAND]();

@@ -264,5 +264,6 @@ export let newVDom = (old: DomImpl) => {
 			return ret;
 		},
 		undefined, // enables "ssr mode"
+		undefined,
 	] as const satisfies DomImpl;
 };

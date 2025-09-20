@@ -4,25 +4,26 @@ export let order = 100;
 ## Imports
 
 You now import from `dreamland/core`
+
 ```tsx
 // old
 import "dreamland/dev"; // or whatever
 
 // new
 import { css, createState, type Component } from "dreamland/core";
-
 ```
 
 ## Vite
 
 `vite-plugin-dreamland` is replaced with `dreamland/vite`'s `jsxPlugin`, which is only used for non-TypeScript projects.
+
 ```ts
-// old 
+// old
 import { defineConfig } from "vite";
 import { dreamlandPlugin } from "vite-plugin-dreamland";
 
 export default defineConfig({
-    plugins: [dreamlandPlugin()],
+	plugins: [dreamlandPlugin()],
 });
 
 // new
@@ -37,6 +38,7 @@ export default defineConfig({
 ## Styles
 
 For inline styles you now need to list the css name verbatim.
+
 ```tsx
 // old
 <div style={{ minWidth: "300px" }}>
@@ -46,42 +48,43 @@ For inline styles you now need to list the css name verbatim.
 ```
 
 For classes you now need to define them outside the component.
+
 ```tsx
 // old
 const App: Component<{}, {}> = function () {
-    this.css = `
+	this.css = `
       height: 100vh;
     `;
 
-    const red = css`
-        color: red;
-    `
+	const red = css`
+		color: red;
+	`;
 
-    return (
-        <div>
-            <NavBar />
-            <div class={red}>this text is red!</div>
-        </div>
-    );
+	return (
+		<div>
+			<NavBar />
+			<div class={red}>this text is red!</div>
+		</div>
+	);
 };
 
 // new
 const App: Component<{}, {}> = function () {
-    return (
-        <div>
-            <NavBar/>
-            <div class="red">this text is red!</div>
-        </div>
-    );
+	return (
+		<div>
+			<NavBar />
+			<div class="red">this text is red!</div>
+		</div>
+	);
 };
 App.style = css`
-:scope{
-    height: 100vh;
-}
-.red {
-    color: red;
-}
-`
+	:scope {
+		height: 100vh;
+	}
+	.red {
+		color: red;
+	}
+`;
 ```
 
 ## Reactivity
@@ -91,43 +94,43 @@ App.style = css`
 ```tsx
 // old
 export const NavBar: Component<
-    {},
-    {
-        pages: Record<string, { name: string; page: Component<any, any> }>;
-        path: string;
-    }
+	{},
+	{
+		pages: Record<string, { name: string; page: Component<any, any> }>;
+		path: string;
+	}
 > = function () {
-    this.path = new URL(document.URL).pathname;
-    useChange(this.path, () => {
-        let url = new URL(document.URL);
-        url.pathname = this.path;
-        if(window.location.toString() != url.toString()){
-          window.location.assign(url);
-        }
-    });
+	this.path = new URL(document.URL).pathname;
+	useChange(this.path, () => {
+		let url = new URL(document.URL);
+		url.pathname = this.path;
+		if (window.location.toString() != url.toString()) {
+			window.location.assign(url);
+		}
+	});
 
-    return (<div>Nav Bar</div>);
-}
+	return <div>Nav Bar</div>;
+};
 
-// new 
+// new
 export const NavBar: Component<
-    {},
-    {
-        pages: Record<string, { name: string; page: ComponentChild}>;
-        path: string;
-    }
+	{},
+	{
+		pages: Record<string, { name: string; page: ComponentChild }>;
+		path: string;
+	}
 > = function () {
-    this.path = new URL(document.URL).pathname;
-    use(this.path).listen(() => {
-        let url = new URL(document.URL);
-        url.pathname = this.path;
-        if (window.location.toString() != url.toString()) {
-            window.location.assign(url);
-        }
-    });
+	this.path = new URL(document.URL).pathname;
+	use(this.path).listen(() => {
+		let url = new URL(document.URL);
+		url.pathname = this.path;
+		if (window.location.toString() != url.toString()) {
+			window.location.assign(url);
+		}
+	});
 
-    return (<div>Nav Bar</div>);
-}
+	return <div>Nav Bar</div>;
+};
 ```
 
 `use(x, (x) => x)` with `use(x).map((x) => x)`
@@ -145,45 +148,47 @@ export const NavBar: Component<
 ```
 
 `$if(x, yes, no)` is now `use(x).andThen(yes, no)`
+
 ```tsx
 // old
-{$if(this.mobile, <Mobile />, <Desktop />)}
+{
+	$if(this.mobile, <Mobile />, <Desktop />);
+}
 
 // new
-{use(this.mobile).andThen(<Mobile />, <Desktop />)}
+{
+	use(this.mobile).andThen(<Mobile />, <Desktop />);
+}
 ```
 
-## `this` Object 
+## `this` Object
 
 Many items that were once accessed by `this.` are now accessed by `cx.` and JSX.Element is replaced with ComponentChild
+
 ```tsx
 // old
 export const Row: Component<{}, { children: JSX.Element }> = function () {
-    this.mount = () => {
-        (this.root.children[0] as HTMLDivElement).addEventListener(
-            "mouseenter",
-            () => {
-                console.log("enter!");
-            },
-        );
-    };
-    return <div>{this.children}</div>;
+	this.mount = () => {
+		(this.root.children[0] as HTMLDivElement).addEventListener(
+			"mouseenter",
+			() => {
+				console.log("enter!");
+			}
+		);
+	};
+	return <div>{this.children}</div>;
 };
 
 // new
 export const Row: Component<{ children: ComponentChild }, {}> = function (cx) {
-    cx.mount = () => {
-        (cx.root.children[0] as HTMLDivElement).addEventListener(
-            "mouseenter",
-            () => {
-                console.log("enter!");
-            },
-        );
-    }
-    return (
-        <div>
-            {cx.children}
-        </div>
-    );
+	cx.mount = () => {
+		(cx.root.children[0] as HTMLDivElement).addEventListener(
+			"mouseenter",
+			() => {
+				console.log("enter!");
+			}
+		);
+	};
+	return <div>{cx.children}</div>;
 };
 ```

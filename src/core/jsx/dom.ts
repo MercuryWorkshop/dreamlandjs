@@ -1,5 +1,6 @@
 import { GLOBAL } from "../consts";
 import { genuid } from "../css";
+import { Component, ComponentContext } from "./definitions";
 
 export let CSS_IDENT = "dlcss-";
 
@@ -9,6 +10,9 @@ export let new_Text = (text?: string) => new Text(text);
 export let new_Comment = (text?: string) => new Comment(text);
 export let genCssUid = () => CSS_IDENT + genuid();
 export let hydrating: (el: HTMLElement) => boolean | undefined = () => false;
+export let ssrTransform:
+	| ((init: Component<any, any, any>, cx?: ComponentContext<any>) => void)
+	| undefined;
 
 export type DomImpl = [
 	any,
@@ -17,6 +21,10 @@ export type DomImpl = [
 	(text?: string) => any,
 	() => string,
 	((el: HTMLElement) => boolean) | undefined,
+	(
+		| ((init: Component<any, any, any>, cx?: ComponentContext<any>) => void)
+		| undefined
+	),
 ];
 
 export let setDomImpl = (dom: DomImpl) => {
@@ -26,6 +34,7 @@ export let setDomImpl = (dom: DomImpl) => {
 	new_Comment = dom[3];
 	genCssUid = dom[4];
 	hydrating = dom[5];
+	ssrTransform = dom[6];
 };
 export let getDomImpl = (): DomImpl => [
 	DOCUMENT,
@@ -34,4 +43,5 @@ export let getDomImpl = (): DomImpl => [
 	new_Comment,
 	genCssUid,
 	hydrating,
+	ssrTransform,
 ];

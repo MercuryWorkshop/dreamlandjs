@@ -38,26 +38,28 @@ let compiled = (code: string) => `
 </html>
 `;
 
-export let Playground: Component<{}, {
-	code: string,
-	transpiled: string,
-	output: string;
-}> = function() {
+export let Playground: Component<
+	{},
+	{
+		code: string;
+		transpiled: string;
+		output: string;
+	}
+> = function () {
 	this.code = code;
 	this.transpiled = "";
 	this.output = compiling;
 
 	let idx = -1;
 
-	use(this.transpiled).listen(async val => {
+	use(this.transpiled).listen(async (val) => {
 		idx++;
 		let current = idx;
 		this.output = compiling;
 		try {
 			let res = await compile(val);
 
-			if (idx === current)
-				this.output = compiled(res);
+			if (idx === current) this.output = compiled(res);
 		} catch (err) {
 			this.output = error(err as any);
 		}
@@ -68,8 +70,8 @@ export let Playground: Component<{}, {
 			<Monaco value={use(this.code)} transpiled={use(this.transpiled)} />
 			<iframe srcdoc={use(this.output)} />
 		</div>
-	)
-}
+	);
+};
 Playground.style = css`
 	:scope {
 		width: 100%;
@@ -80,7 +82,8 @@ Playground.style = css`
 		gap: 0.5rem;
 	}
 
-	:scope > :global(.monaco), iframe {
+	:scope > :global(.monaco),
+	iframe {
 		flex: 1;
 	}
 

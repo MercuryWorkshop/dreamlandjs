@@ -8,7 +8,49 @@ Sadly `use` can't be exported via ESM as the state system requires it to actuall
 
 ## Pure JS
 
-TODO - importmap testing
+An importmap is required as dreamland imports itself internally. Here's an example importmap, assuming the dreamland package is in `dist`:
+
+```html
+<script type="importmap">
+	{
+		"imports": {
+			"dreamland/core": "./dist/core.js",
+			"dreamland/js-runtime": "./dist/js-runtime.js",
+			"dreamland/router": "./dist/router.js"
+		}
+	}
+</script>
+```
+
+Then you can use dreamland like normal JS with a bundler:
+
+```html
+<script type="module">
+	import { css } from "dreamland/core";
+	import { html } from "dreamland/js-runtime";
+
+	let App = function () {
+		this.counter = 0;
+
+		return html`
+			<div>
+				<h1>:3</h1>
+				<button on:click=${() => this.counter++}>
+					Count: ${use(this.counter)}
+				</button>
+			</div>
+		`;
+	};
+	App.style = css`
+		:scope {
+			border: 4px dashed cornflowerblue;
+			padding: 1em;
+		}
+	`;
+
+	document.querySelector("#app").replaceWith(html`<${App} />`);
+</script>
+```
 
 ## TypeScript
 
@@ -60,3 +102,5 @@ This just sets the following vite esbuild config:
 	}
 }
 ```
+
+dreamland provides a tagged template function for writing HTML in the `dreamland/js-runtime` export.

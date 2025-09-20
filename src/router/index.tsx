@@ -244,8 +244,7 @@ export let Router: Component<
 
 		this._el = el;
 
-		if (el)
-			return realPath;
+		if (el) return realPath;
 	};
 	this.navigate = (path) => {
 		let ret = this.route(path);

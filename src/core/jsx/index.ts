@@ -6,6 +6,7 @@ import {
 	genCssUid,
 	CSS_IDENT,
 	hydrating,
+	ssrTransform,
 } from "./dom";
 import { CSS_COMPONENT, rewriteCSS } from "../css";
 import {
@@ -140,6 +141,8 @@ function _jsx(
 	if (typeof init === "function") {
 		let state = createState({});
 
+		ssrTransform?.(init);
+
 		for (let attr in props) {
 			let val = props[attr];
 
@@ -226,6 +229,7 @@ function _jsx(
 				}
 		}
 
+		ssrTransform?.(init, cx);
 		cx.init?.();
 		if (hydrating) cx.mount?.();
 	} else {

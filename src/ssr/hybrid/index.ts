@@ -12,11 +12,11 @@ export let DropdownController: Component<{}, {
 	}
 
 	// return a bunch of mount points as a Fragment
-	// mount points have dl-ssr to figure out where to mount them, id matches "dl-ssr-id=..."
+	// mount points have dl-ssr to figure out where to mount them, id matches "dlssri=..."
 	// any children/components or other props will just get added onto or modify the element
 	return <>
-		<button dl-ssr={{ id: "abc" }} on:click={() => this.hidden = false} />
-		<div dl-ssr={{ id: "menu" }} class:hidden={use(this.hidden)}>
+		<button dlssr={{ id: "abc" }} on:click={() => this.hidden = false} />
+		<div dlssr={{ id: "menu" }} class:hidden={use(this.hidden)}>
 			<span>hydrated in content</span>
 		</div>
 	</>
@@ -53,6 +53,17 @@ export let mountOne = (
 		old[3],
 		old[4],
 		old[5],
+		(init, cx) => {
+			if (init === component) {
+				if (cx) {
+					cx.root = root;
+				} else if (init.style) {
+					dev: {
+						throw new Error("Hybrid SSR controllers do not support CSS");
+					}
+				}
+			}
+		},
 	] satisfies DomImpl;
 	setDomImpl(vdom);
 	let x = h(component, {});

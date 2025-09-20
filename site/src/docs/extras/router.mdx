@@ -21,6 +21,7 @@ The router is constructed as a JSX component and routes are defined in JSX:
 Once a `Router` component is created, the instance is exposed by the `router` export.
 The `Router` automatically handles `popstate`.
 It also exposes a `route` function to simply change the current route without touching history and a `navigate` function to both change the current route and commit it to history:
+
 ```tsx
 import { router } from "dreamland/router";
 
@@ -28,8 +29,10 @@ router.navigate("/"); // sent to history
 ```
 
 ## SSR integration
+
 dreamland's router is compatible with SSR and hydration, and exposes a `ssgables` function to allow for easy prerendering.
 It returns any route that doesn't have dynamic parameters in it.
+
 ```tsx
 let paths = router.ssgables();
 let template = /* index.html ... */;
