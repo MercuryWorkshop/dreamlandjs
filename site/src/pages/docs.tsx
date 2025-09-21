@@ -62,10 +62,6 @@ Sidebar.style = css`
 		text-decoration: underline;
 	}
 
-	:scope :global(.hero) {
-		font-size: 1.75rem;
-	}
-
 	.group {
 		display: flex;
 		flex-direction: column;
@@ -221,6 +217,10 @@ DocsLayout.style = css`
 	}
 	.menu button:hover, .sidebar.visible ~ .content .menu button {
 		background: var(--border-2);
+	}
+
+	:scope :is(.menu, .sidebar) :global(.hero) {
+		font-size: 1.75rem;
 	}
 
 	.content {
