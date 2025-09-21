@@ -67,6 +67,7 @@ export type DLElementNameToElement<T extends string> =
 	T extends keyof DLElementTagNames ? DLElementTagNames[T] : HTMLElement;
 type GlobalElement = Element;
 
+// eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace JSX {
 	export type IntrinsicElements = {
 		[El in keyof DLElementTagNames]: IntrinsicProps<DLElementTagNames[El]>;

@@ -45,8 +45,7 @@ export let serializeState = (
 			[undefined, Object].includes(val.constructor)
 		) {
 			return [1, _serialize(val)];
-		} else if (isNode(val)) {
-		} else {
+		} else if (!isNode(val)) {
 			dev: {
 				console.warn("[dreamland.js] did not serialize unknown value ", val);
 			}

@@ -186,7 +186,7 @@ export let Link: Component<{
 	href: string;
 	class?: string;
 	children?: ComponentChild;
-	"on:click"?: () => void,
+	"on:click"?: () => void;
 }> = function (cx) {
 	this.class = this.class || "";
 
@@ -227,6 +227,7 @@ export let Router: Component<
 	dev: {
 		if (router) throw new Error("A router was already created");
 	}
+	// eslint-disable-next-line @typescript-eslint/no-this-alias
 	router = this;
 
 	let routes = { _children: cx.children as any as RouteInternal[] };

@@ -16,7 +16,7 @@ type StoreAsyncBacking = {
 let LOCALSTORAGE = GLOBAL.localStorage || {};
 let INTERNAL = "__dls_ty";
 
-function _createStore<T extends Object>(
+function _createStore<T extends object>(
 	target: T,
 	options: {
 		ident: string;
@@ -24,7 +24,7 @@ function _createStore<T extends Object>(
 		autosave: "auto" | "manual" | "beforeunload";
 	}
 ): Promise<Stateful<T>>;
-function _createStore<T extends Object>(
+function _createStore<T extends object>(
 	target: T,
 	options: {
 		ident: string;
@@ -32,7 +32,7 @@ function _createStore<T extends Object>(
 		autosave: "auto" | "manual" | "beforeunload";
 	}
 ): Stateful<T>;
-function _createStore<T extends Object>(
+function _createStore<T extends object>(
 	target: T,
 	options: {
 		ident: string;

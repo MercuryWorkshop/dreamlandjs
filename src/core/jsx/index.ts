@@ -21,7 +21,6 @@ import { isBasePtr, maybeListen } from "../state/pointers";
 import { createState, stateProxy } from "../state/state";
 import { DREAMLAND, NO_CHANGE } from "../consts";
 import { DelegateListener } from "../delegate";
-import { hydrateState } from "../../ssr/common/serialize";
 
 export let currentCssIdent: string | null = null;
 export let callDelegateListeners = (
@@ -237,10 +236,8 @@ function _jsx(
 
 		ssrTransform?.(init, cx);
 
-		if (isNode(el) && hydrating?.(el))
-			cxs.push(cx);
-		else if (hydrating)
-			cx.mount?.();
+		if (isNode(el) && hydrating?.(el)) cxs.push(cx);
+		else if (hydrating) cx.mount?.();
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
@@ -330,6 +327,7 @@ function _jsx(
 		// this is annoying and expensive bundle size wise, so it's easier to just force a reparse
 		// NOTE: bindings on children of svgs will be lost, and conditionals inside svgs will break
 		// this is fine, no one does that anyway
+		// eslint-disable-next-line no-self-assign
 		if (xmlns) el.innerHTML = el.innerHTML;
 	}
 

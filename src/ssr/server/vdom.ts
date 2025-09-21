@@ -230,7 +230,7 @@ export class Text extends Node {
 	}
 }
 
-export let newVDom = (old: DomImpl) => {
+export let newVDom = () => {
 	let elArr: Node[] = [];
 	let push = (el: Node) => {
 		let i = elArr.push(el) - 1;

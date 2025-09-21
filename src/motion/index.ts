@@ -31,9 +31,9 @@ let tick_spring = <T>(
 	target_value: T
 ) => {
 	if (typeof current_value === "number" || is_date(current_value)) {
-		// @ts-ignore
+		// @ts-expect-error value is date / number
 		let delta = target_value - current_value;
-		// @ts-ignore
+		// @ts-expect-error value is date / number
 		let velocity = (current_value - last_value) / (ctx._dt || 1 / 60); // guard div by 0
 		let spring = ctx._stiffness * delta;
 		let damper = ctx._damping * velocity;
@@ -54,7 +54,7 @@ let tick_spring = <T>(
 	} else if (typeof current_value === "object") {
 		let next_value = {};
 		for (let k in current_value) {
-			// @ts-ignore
+			// @ts-expect-error next_value is just an object
 			next_value[k] = tick_spring(
 				ctx,
 				last_value[k],

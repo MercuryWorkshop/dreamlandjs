@@ -5,13 +5,13 @@ import { docs, groups, type DocGroup, type DocPage } from "../docs";
 import normal from "../logo/normal.svg";
 import { setTitle } from "../main";
 
-let Sidebar: Component<{ doc?: DocPage, menu: boolean }> = function() {
+let Sidebar: Component<{ doc?: DocPage; menu: boolean }> = function () {
 	let render = (x: DocGroup | DocPage) => {
 		if (x.type === "page") {
 			return (
 				<Link
 					href={"/docs/" + x.path}
-					on:click={() => this.menu = false}
+					on:click={() => (this.menu = false)}
 					class={use(this.doc).map((y) => (x.path === y?.path ? "active" : ""))}
 				>
 					{x.title}
@@ -37,8 +37,8 @@ let Sidebar: Component<{ doc?: DocPage, menu: boolean }> = function() {
 			</Link>
 			{groups.map(render)}
 		</div>
-	)
-}
+	);
+};
 Sidebar.style = css`
 	:scope {
 		width: 100%;
@@ -129,16 +129,16 @@ Sidebar.style = css`
 export let DocsLayout: Component<
 	{ outlet?: HTMLElement },
 	{
-		doc?: DocPage,
-		menu: boolean,
-		jsbroken: boolean,
+		doc?: DocPage;
+		menu: boolean;
+		jsbroken: boolean;
 	},
 	{ "on:routeshown"?: (path: string) => void }
-> = function(cx) {
+> = function (cx) {
 	this.menu = false;
 	this.jsbroken = true;
 
-	cx.mount = () => this.jsbroken = false;
+	cx.mount = () => (this.jsbroken = false);
 
 	this["on:routeshown"] = (path: string) => {
 		let page = docs.find((x) => path.replace("/docs/", "") === x.path);
@@ -157,16 +157,27 @@ export let DocsLayout: Component<
 			e.preventDefault();
 			this.menu = false;
 		}
-	}
+	};
 
 	return (
 		<div class:jsbroken={use(this.jsbroken)}>
-			<div class="sidebar" class:visible={use(this.menu)} on:click={sidebarContainerClicked}>
+			<div
+				class="sidebar"
+				class:visible={use(this.menu)}
+				on:click={sidebarContainerClicked}
+			>
 				<Sidebar doc={use(this.doc)} menu={use(this.menu)} />
 			</div>
 			<div class="content" on:click={contentClicked}>
 				<div class="menu">
-					<button on:click={(e: MouseEvent) => {e.stopPropagation(), this.menu = true}}>Menu</button>
+					<button
+						on:click={(e: MouseEvent) => {
+							e.stopPropagation();
+							this.menu = true;
+						}}
+					>
+						Menu
+					</button>
 				</div>
 				<div>
 					{use(this.doc).andThen((x: DocPage) => (
@@ -200,7 +211,7 @@ DocsLayout.style = css`
 		margin: 1.5rem 0;
 		display: none;
 	}
-	
+
 	.content {
 		flex: 1;
 		min-height: 0;

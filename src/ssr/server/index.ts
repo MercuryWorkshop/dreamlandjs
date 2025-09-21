@@ -14,7 +14,7 @@ export interface RenderedComponent {
 
 export function render(component: () => any): RenderedComponent {
 	let old = getDomImpl();
-	let vdom = newVDom(old);
+	let vdom = newVDom();
 
 	setDomImpl(vdom);
 	jsx[DREAMLAND]();
@@ -81,8 +81,10 @@ export function render(component: () => any): RenderedComponent {
 			);
 			let currentIdx = x.parent?.childNodes?.findIndex((y) => y._id === x._id);
 
-			return Object.getPrototypeOf(x).isPrototypeOf(last) &&
-				lastIdx + 1 === currentIdx
+			return Object.prototype.isPrototypeOf.call(
+				Object.getPrototypeOf(x),
+				last
+			) && lastIdx + 1 === currentIdx
 				? (lastGroup.push(x), acc)
 				: [...acc, [x]];
 		}, [])

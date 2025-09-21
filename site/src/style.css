@@ -43,4 +43,7 @@ pre {
 	line-height: 1.25em;
 }
 
-* { box-sizing: border-box; scrollbar-color: #ffffff22 transparent; }
+* {
+	box-sizing: border-box;
+	scrollbar-color: #ffffff22 transparent;
+}

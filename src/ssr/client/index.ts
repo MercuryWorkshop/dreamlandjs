@@ -51,7 +51,7 @@ export let hydrate = (
 		if (ssr) {
 			hydrateState(data, ssr as SsrObject, cx.state);
 		}
-	}
+	};
 	let hydrating = (x) => x.hasAttribute(SSR_ID);
 
 	for (let [parent, offset, len] of data.t) {
@@ -74,16 +74,16 @@ export let hydrate = (
 		hydrating,
 		(init, cx) => {
 			if (cx?.root instanceof old[1] && !hydrating(cx.root)) hydrateCx(cx);
-		}
+		},
 	] as const satisfies DomImpl;
 	setDomImpl(vdom);
 	jsx[DREAMLAND]();
 	let root = component();
 	setDomImpl(old);
 
-	jsx[NO_CHANGE]().map(x => {
+	jsx[NO_CHANGE]().map((x) => {
 		hydrateCx(x);
-		x.mount?.()
+		x.mount?.();
 	});
 
 	return root;

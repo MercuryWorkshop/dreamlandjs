@@ -1,7 +1,7 @@
 import { css, type Component } from "dreamland/core";
 import { Link } from "dreamland/router";
 
-// @ts-expect-error
+// @ts-expect-error mdx isn't typed
 import Main from "./main.mdx";
 import { ExternalLink } from "../utils";
 
