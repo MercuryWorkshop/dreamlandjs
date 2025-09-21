@@ -10,6 +10,8 @@ Utilities for scoped component CSS, integrations with Vite SSR, and spring/tween
 In fact, this docs site uses dreamland's prerendering support and has a compile-time MDX integration.
 Feel free to check out the code on the GitHub!
 
+dreamland targets the oldest browsers that support `:where()` (which is needed for dreamland's scoped CSS - similar to how Svelte needs it), which are **Chrome 88**, **Firefox 78**, and **Safari 14**. Transpilers can be used to run dreamland core on older versions, but scoped CSS will break.
+
 ## Use an intuitive state management system
 
 dreamland's component state management is centered around a `use()` function creating dynamic `Pointer<T>` instances.
