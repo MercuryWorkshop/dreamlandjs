@@ -2,34 +2,9 @@ import { css, type Component } from "dreamland/core";
 import { Link } from "dreamland/router";
 
 import { docs, groups, type DocGroup, type DocPage } from "../docs";
-import normal from "../logo/normal.svg";
 import { setTitle } from "../main";
-import { MdiIcon } from "../utils";
+import { Hero, MdiIcon } from "../utils";
 import { mdiMenu } from "@mdi/js";
-
-let Hero: Component = function() {
-	return (
-		<div>
-			<img src={normal} alt="dreamland logo" width="400" height="400" />
-			<span>dreamland</span>
-		</div>
-	)
-}
-Hero.style = css`
-	:scope {
-		font-size: 1.75rem;
-
-		display: flex;
-		gap: 0.5rem;
-		align-items: center;
-
-		font-weight: bold;
-	}
-	img {
-		height: 1.5em;
-		width: auto;
-	}
-`
 
 let Sidebar: Component<{ doc?: DocPage; menu: boolean }> = function() {
 	let render = (x: DocGroup | DocPage) => {
@@ -83,8 +58,12 @@ Sidebar.style = css`
 		text-decoration: none;
 		color: var(--text);
 	}
-	:scope :global(a):hover:not(:has(.hero)) {
+	:scope :global(a):hover {
 		text-decoration: underline;
+	}
+
+	:scope :global(.hero) {
+		font-size: 1.75rem;
 	}
 
 	.group {

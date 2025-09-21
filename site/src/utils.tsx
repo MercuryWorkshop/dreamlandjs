@@ -1,4 +1,5 @@
 import { css, type Component, type ComponentChild } from "dreamland/core";
+import normal from "./logo/normal.svg";
 
 export let ExternalLink: Component<{
 	href: string;
@@ -25,5 +26,27 @@ MdiIcon.style = css`
 	}
 	:scope path {
 		fill: currentColor;
+	}
+`;
+
+export let Hero: Component = function() {
+	return (
+		<div class="hero">
+			<img src={normal} alt="dreamland logo" width="400" height="400" />
+			<span>dreamland</span>
+		</div>
+	)
+}
+Hero.style = css`
+	:scope {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+
+		font-weight: bold;
+	}
+	img {
+		height: 1.5em;
+		width: auto;
 	}
 `;

@@ -4,11 +4,14 @@ import { css, type Component } from "dreamland/core";
 import "../playground/setup";
 import { setTitle } from "../main";
 
+import { Link } from "../../../dist/router";
+import { Hero } from "../utils";
+
 export let PlaygroundHost: Component<
 	{},
 	{ host?: HTMLElement },
 	{ "on:routeshown": () => void }
-> = function () {
+> = function() {
 	this["on:routeshown"] = async () => {
 		if (!import.meta.env.SSR) {
 			let playground = await import("../playground/playground");
@@ -21,7 +24,10 @@ export let PlaygroundHost: Component<
 	return (
 		<div>
 			<div class="head">
-				<h2>Dreamland.js Playground</h2>
+				<Link href="/">
+					<Hero />
+				</Link>
+				Playground
 			</div>
 			<div class="main">
 				{use(this.host).andThen(
@@ -48,9 +54,18 @@ PlaygroundHost.style = css`
 	.head {
 		padding: 0.5rem;
 		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+
+		font-size: 1.5rem;
+		font-weight: bold;
 	}
-	.head h2 {
-		margin: 0;
+
+	.head :global(a) {
+		text-decoration: none;
+	}
+	.head :global(a):hover {
+		text-decoration: underline;
 	}
 
 	.expand {
