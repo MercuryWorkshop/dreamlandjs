@@ -4,8 +4,34 @@ import { Link } from "dreamland/router";
 import { docs, groups, type DocGroup, type DocPage } from "../docs";
 import normal from "../logo/normal.svg";
 import { setTitle } from "../main";
+import { MdiIcon } from "../utils";
+import { mdiMenu } from "@mdi/js";
 
-let Sidebar: Component<{ doc?: DocPage; menu: boolean }> = function () {
+let Hero: Component = function() {
+	return (
+		<div>
+			<img src={normal} alt="dreamland logo" width="400" height="400" />
+			<span>dreamland</span>
+		</div>
+	)
+}
+Hero.style = css`
+	:scope {
+		font-size: 1.75rem;
+
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+
+		font-weight: bold;
+	}
+	img {
+		height: 1.5em;
+		width: auto;
+	}
+`
+
+let Sidebar: Component<{ doc?: DocPage; menu: boolean }> = function() {
 	let render = (x: DocGroup | DocPage) => {
 		if (x.type === "page") {
 			return (
@@ -30,10 +56,7 @@ let Sidebar: Component<{ doc?: DocPage; menu: boolean }> = function () {
 	return (
 		<div>
 			<Link href="/">
-				<div class="hero">
-					<img src={normal} alt="dreamland logo" width="400" height="400" />
-					<span>dreamland</span>
-				</div>
+				<Hero />
 			</Link>
 			{groups.map(render)}
 		</div>
@@ -62,20 +85,6 @@ Sidebar.style = css`
 	}
 	:scope :global(a):hover:not(:has(.hero)) {
 		text-decoration: underline;
-	}
-
-	.hero {
-		font-size: 1.75rem;
-
-		display: flex;
-		gap: 0.5rem;
-		align-items: center;
-
-		font-weight: bold;
-	}
-	.hero img {
-		height: 1.5em;
-		width: auto;
 	}
 
 	.group {
@@ -134,7 +143,7 @@ export let DocsLayout: Component<
 		jsbroken: boolean;
 	},
 	{ "on:routeshown"?: (path: string) => void }
-> = function (cx) {
+> = function(cx) {
 	this.menu = false;
 	this.jsbroken = true;
 
@@ -170,13 +179,15 @@ export let DocsLayout: Component<
 			</div>
 			<div class="content" on:click={contentClicked}>
 				<div class="menu">
+					<Hero />
+					<div class="expand" />
 					<button
 						on:click={(e: MouseEvent) => {
 							e.stopPropagation();
-							this.menu = true;
+							this.menu = !this.menu;
 						}}
 					>
-						Menu
+						<MdiIcon icon={mdiMenu} />
 					</button>
 				</div>
 				<div>
@@ -210,6 +221,27 @@ DocsLayout.style = css`
 	.menu {
 		margin: 1.5rem 0;
 		display: none;
+
+		gap: 0.5rem;
+	}
+
+	.menu button {
+		background: var(--bg-3);
+		color: var(--text);
+		border: 1px solid var(--border);
+		border-radius: 0.25rem;
+
+		font-size: 2rem;
+
+		display: flex;
+		align-items: center;
+		padding: 0.25rem;
+
+		transition: background 0.1s ease;
+		cursor: pointer;
+	}
+	.menu button:hover, .sidebar.visible ~ .content .menu button {
+		background: var(--border-2);
 	}
 
 	.content {
@@ -225,9 +257,11 @@ DocsLayout.style = css`
 		max-width: 60rem;
 	}
 
+	.expand { flex: 1; }
+
 	@media (max-width: 65rem) {
 		.menu {
-			display: block;
+			display: flex;
 		}
 		.jsbroken .menu {
 			visibility: hidden;

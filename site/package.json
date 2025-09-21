@@ -19,6 +19,7 @@
 	},
 	"dependencies": {
 		"@literals/rollup-plugin-html-css-minifier": "^3.0.1",
+		"@mdi/js": "^7.4.47",
 		"@rollup/browser": "^4.50.2",
 		"dreamland": "link:..",
 		"monaco-editor": "^0.53.0"

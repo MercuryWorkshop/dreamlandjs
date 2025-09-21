@@ -11,6 +11,9 @@ importers:
       '@literals/rollup-plugin-html-css-minifier':
         specifier: ^3.0.1
         version: 3.0.1(rollup@4.49.0)
+      '@mdi/js':
+        specifier: ^7.4.47
+        version: 7.4.47
       '@rollup/browser':
         specifier: ^4.50.2
         version: 4.50.2
@@ -224,6 +227,9 @@ packages:
     resolution: {integrity: sha512-KVFnxsZ03hTR6jfs+3rf3b6ovHZxL3QPUXVnaXWYNlk609xbMXrDMeIHzRapm6+qKj3o24YBnayqjbmEPS9atg==}
     peerDependencies:
       rollup: '^0.65.2 || ^1.0.0 || ^2.0.0 || ^3.0.0 || ^4.0.0 '
+
+  '@mdi/js@7.4.47':
+    resolution: {integrity: sha512-KPnNOtm5i2pMabqZxpUz7iQf+mfrYZyKCZ8QNz85czgEt7cuHcGorWfdzUMWYA0SD+a6Hn4FmJ+YhzzzjkTZrQ==}
 
   '@mdx-js/mdx@3.1.1':
     resolution: {integrity: sha512-f6ZO2ifpwAQIpzGWaBQT2TXxPv6z3RBzQKpVftEWN78Vl/YweF1uwussDx8ECAXVtr3Rs89fKyG9YlzUs9DyGQ==}
@@ -1011,6 +1017,8 @@ snapshots:
       '@rollup/pluginutils': 5.3.0(rollup@4.49.0)
       rollup: 4.49.0
       rollup-pluginutils: 2.8.2
+
+  '@mdi/js@7.4.47': {}
 
   '@mdx-js/mdx@3.1.1':
     dependencies:
