@@ -4,6 +4,14 @@ import { compile } from "./rollup";
 
 import code from "./code?raw";
 
+function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
+	let timeout: number;
+	return (...args: Parameters<T>): void => {
+		clearTimeout(timeout);
+		timeout = setTimeout(() => fn(...args), delay);
+	};
+}
+
 let compiling = `
 	<div style="background: #111; color: #fff; box-sizing: border-box; position: absolute; width: 100%; height: 100%; top: 0; left: 0; padding: 1em;">
 		<h1 style="margin: 0;">Compiling...</h1>
@@ -52,18 +60,20 @@ export let Playground: Component<
 
 	let idx = -1;
 
-	use(this.transpiled).listen(async (val) => {
-		idx++;
-		let current = idx;
-		this.output = compiling;
-		try {
-			let res = await compile(val);
+	use(this.transpiled).listen(
+		debounce(async (val) => {
+			idx++;
+			let current = idx;
 
-			if (idx === current) this.output = compiled(res);
-		} catch (err) {
-			this.output = error(err as any);
-		}
-	});
+			this.output = compiling;
+			try {
+				let res = await compile(val);
+				if (idx === current) this.output = compiled(res);
+			} catch (err) {
+				if (idx === current) this.output = error(err as any);
+			}
+		}, 200)
+	);
 
 	return (
 		<div>
