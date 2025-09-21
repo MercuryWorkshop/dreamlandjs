@@ -5,7 +5,7 @@ import { compile } from "./rollup";
 import code from "./code?raw";
 
 function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
-	let timeout: number;
+	let timeout: any;
 	return (...args: Parameters<T>): void => {
 		clearTimeout(timeout);
 		timeout = setTimeout(() => fn(...args), delay);
