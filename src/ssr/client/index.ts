@@ -1,9 +1,11 @@
 import {
+	ComponentContext,
 	DLElement,
 	DomImpl,
 	DREAMLAND,
 	getDomImpl,
 	jsx,
+	NO_CHANGE,
 	setDomImpl,
 } from "dreamland/core";
 import { SSR_DATA, SSR_ID } from "../common/consts";
@@ -44,6 +46,13 @@ export let hydrate = (
 		let [parent, offset] = info as [number, number];
 		return getInternal(parent)?.childNodes?.[offset];
 	};
+	let hydrateCx = (cx: ComponentContext<any>) => {
+		let ssr = data.n[cx?.root?.getAttribute?.(SSR_ID)];
+		if (ssr) {
+			hydrateState(data, ssr as SsrObject, cx.state);
+		}
+	}
+	let hydrating = (x) => x.hasAttribute(SSR_ID);
 
 	for (let [parent, offset, len] of data.t) {
 		let text = getInternal(parent).childNodes[offset] as Text;
@@ -62,20 +71,20 @@ export let hydrate = (
 		(x) => getRelative() || old[2](x),
 		(x) => getRelative() || old[3](x),
 		() => data.i[idx + 1] || old[4](),
-		(x) => x.hasAttribute(SSR_ID),
-		undefined, // TODO move state hydration here?
+		hydrating,
+		(init, cx) => {
+			if (cx?.root instanceof old[1] && !hydrating(cx.root)) hydrateCx(cx);
+		}
 	] as const satisfies DomImpl;
 	setDomImpl(vdom);
 	jsx[DREAMLAND]();
 	let root = component();
 	setDomImpl(old);
 
-	for (let [i, component] of (els as [number, DLElement<any>][]).filter(
-		(x) => x[1].$
-	)) {
-		let state = data.n[i];
-		hydrateState(data, state as SsrObject, component.$.state);
-	}
+	jsx[NO_CHANGE]().map(x => {
+		hydrateCx(x);
+		x.mount?.()
+	});
 
 	return root;
 };

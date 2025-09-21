@@ -95,6 +95,7 @@ export let hydrateState = (data: SsrData, state: SsrObject, target: any) => {
 		} else if (type == 3) {
 			return v.map((x: SsrValue) => _val(x, {}));
 		} else if (type == 1) {
+			target ||= {};
 			_hydrate(v, target);
 			return target;
 		}

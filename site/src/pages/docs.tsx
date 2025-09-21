@@ -5,22 +5,13 @@ import { docs, groups, type DocGroup, type DocPage } from "../docs";
 import normal from "../logo/normal.svg";
 import { setTitle } from "../main";
 
-export let DocsLayout: Component<
-	{ outlet?: HTMLElement },
-	{ doc?: DocPage },
-	{ "on:routeshown"?: (path: string) => void }
-> = function () {
-	this["on:routeshown"] = (path: string) => {
-		let page = docs.find((x) => path.replace("/docs/", "") === x.path);
-		this.doc = page;
-		setTitle(page?.title);
-	};
-
+let Sidebar: Component<{ doc?: DocPage, menu: boolean }> = function() {
 	let render = (x: DocGroup | DocPage) => {
 		if (x.type === "page") {
 			return (
 				<Link
 					href={"/docs/" + x.path}
+					on:click={() => this.menu = false}
 					class={use(this.doc).map((y) => (x.path === y?.path ? "active" : ""))}
 				>
 					{x.title}
@@ -38,52 +29,38 @@ export let DocsLayout: Component<
 
 	return (
 		<div>
-			<div class="sidebar">
-				<Link href="/">
-					<div class="hero">
-						<img src={normal} alt="dreamland logo" width="400" height="400" />
-						<span>dreamland</span>
-					</div>
-				</Link>
-				{groups.map(render)}
-			</div>
-			<div class="content">
-				<div>
-					{use(this.doc).andThen((x: DocPage) => (
-						<h1>{x.title}</h1>
-					))}
-					{use(this.outlet)}
+			<Link href="/">
+				<div class="hero">
+					<img src={normal} alt="dreamland logo" width="400" height="400" />
+					<span>dreamland</span>
 				</div>
-			</div>
+			</Link>
+			{groups.map(render)}
 		</div>
-	);
-};
-DocsLayout.style = css`
+	)
+}
+Sidebar.style = css`
 	:scope {
 		width: 100%;
-		min-height: 100%;
-		height: 100%;
-		display: flex;
-	}
 
-	.sidebar {
-		flex: 0 0 15rem;
 		position: relative;
-
-		width: calc(100% - 2rem);
-		height: calc(100% - 2.5rem);
 
 		display: flex;
 		gap: 1rem;
 		flex-direction: column;
 
 		padding: 1.5rem 1rem 1rem 1rem;
+
+		min-height: max-content;
+		height: 100%;
+
+		background: var(--bg-1);
 	}
-	.sidebar :global(:is(a, a:visited)) {
+	:scope :global(:is(a, a:visited)) {
 		text-decoration: none;
 		color: var(--text);
 	}
-	.sidebar :global(a):hover:not(:has(.hero)) {
+	:scope :global(a):hover:not(:has(.hero)) {
 		text-decoration: underline;
 	}
 
@@ -114,14 +91,14 @@ DocsLayout.style = css`
 		margin-left: 1rem;
 	}
 
-	.sidebar :global(.active) {
+	:scope :global(.active) {
 		font-weight: bold;
 
 		position: relative;
 		z-index: 1;
 	}
 
-	.sidebar :global(.active)::after {
+	:scope :global(.active)::after {
 		content: "";
 
 		background: var(--bg-2);
@@ -137,7 +114,7 @@ DocsLayout.style = css`
 		width: 1rem;
 		height: 1rem;
 	}
-	.sidebar::after {
+	:scope::after {
 		content: "";
 		background: var(--border-2);
 
@@ -147,7 +124,83 @@ DocsLayout.style = css`
 		top: 0;
 		right: 0;
 	}
+`;
 
+export let DocsLayout: Component<
+	{ outlet?: HTMLElement },
+	{
+		doc?: DocPage,
+		menu: boolean,
+		jsbroken: boolean,
+	},
+	{ "on:routeshown"?: (path: string) => void }
+> = function(cx) {
+	this.menu = false;
+	this.jsbroken = true;
+
+	cx.mount = () => this.jsbroken = false;
+
+	this["on:routeshown"] = (path: string) => {
+		let page = docs.find((x) => path.replace("/docs/", "") === x.path);
+		this.doc = page;
+		setTitle(page?.title);
+	};
+
+	let contentClicked = (e: MouseEvent) => {
+		if (this.menu) {
+			e.preventDefault();
+			this.menu = false;
+		}
+	};
+	let sidebarContainerClicked = (e: MouseEvent) => {
+		if (e.target === e.currentTarget) {
+			e.preventDefault();
+			this.menu = false;
+		}
+	}
+
+	return (
+		<div class:jsbroken={use(this.jsbroken)}>
+			<div class="sidebar" class:visible={use(this.menu)} on:click={sidebarContainerClicked}>
+				<Sidebar doc={use(this.doc)} menu={use(this.menu)} />
+			</div>
+			<div class="content" on:click={contentClicked}>
+				<div class="menu">
+					<button on:click={(e: MouseEvent) => {e.stopPropagation(), this.menu = true}}>Menu</button>
+				</div>
+				<div>
+					{use(this.doc).andThen((x: DocPage) => (
+						<h1>{x.title}</h1>
+					))}
+					{use(this.outlet)}
+				</div>
+			</div>
+		</div>
+	);
+};
+DocsLayout.style = css`
+	:scope {
+		position: relative;
+
+		width: 100%;
+		min-height: 100%;
+		height: 100%;
+		display: flex;
+
+		background: var(--bg-2);
+	}
+
+	.sidebar {
+		width: 18rem;
+		height: 100%;
+		overflow: hidden scroll;
+	}
+
+	.menu {
+		margin: 1.5rem 0;
+		display: none;
+	}
+	
 	.content {
 		flex: 1;
 		min-height: 0;
@@ -159,5 +212,26 @@ DocsLayout.style = css`
 	}
 	.content > div {
 		max-width: 60rem;
+	}
+
+	@media (max-width: 65rem) {
+		.menu {
+			display: block;
+		}
+		.jsbroken .menu {
+			visibility: hidden;
+		}
+
+		.sidebar {
+			display: none;
+		}
+		.sidebar.visible {
+			display: block;
+			position: absolute;
+
+			width: 22rem;
+			padding-right: 4rem;
+			background: linear-gradient(to right, var(--bg-2) 85%, transparent 100%);
+		}
 	}
 `;

@@ -186,6 +186,7 @@ export let Link: Component<{
 	href: string;
 	class?: string;
 	children?: ComponentChild;
+	"on:click"?: () => void,
 }> = function (cx) {
 	this.class = this.class || "";
 
@@ -199,6 +200,8 @@ export let Link: Component<{
 					if (!router) throw new Error("No router exists");
 				}
 				router.navigate(this.href);
+
+				this["on:click"]?.();
 			}}
 		>
 			{cx.children}

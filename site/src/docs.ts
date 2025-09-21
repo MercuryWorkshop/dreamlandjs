@@ -23,7 +23,7 @@ export let docs: DocPage[] = Object.entries(
 			type: "page",
 			path: path.replace("./docs/", "").replace(".mdx", ""),
 			groups: module.title,
-			title: module.title.at(-1),
+			title: module.title[module.title.length - 1],
 			component: module.default,
 			order: module.order || 0,
 		} as const;

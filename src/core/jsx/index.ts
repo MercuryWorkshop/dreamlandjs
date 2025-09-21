@@ -19,8 +19,9 @@ import {
 } from "./definitions";
 import { isBasePtr, maybeListen } from "../state/pointers";
 import { createState, stateProxy } from "../state/state";
-import { DREAMLAND } from "../consts";
+import { DREAMLAND, NO_CHANGE } from "../consts";
 import { DelegateListener } from "../delegate";
+import { hydrateState } from "../../ssr/common/serialize";
 
 export let currentCssIdent: string | null = null;
 export let callDelegateListeners = (
@@ -110,6 +111,9 @@ interface CssInfo {
 }
 
 let componentCssInfo: Map<Component, CssInfo> = new Map();
+let cxs = [];
+
+let isNode = (el): el is any => el instanceof node;
 
 function _jsx<T extends Component<any, any, any>>(
 	init: T,
@@ -207,7 +211,7 @@ function _jsx(
 		currentCssIdent = oldIdent;
 		cx.root = el;
 
-		if (el instanceof node) {
+		if (isNode(el)) {
 			dev: {
 				if ((el as DLElement<any>).$ && cssInfo)
 					throw new Error("Wrapper components cannot have CSS");
@@ -229,9 +233,14 @@ function _jsx(
 				}
 		}
 
-		ssrTransform?.(init, cx);
 		cx.init?.();
-		if (hydrating) cx.mount?.();
+
+		ssrTransform?.(init, cx);
+
+		if (isNode(el) && hydrating?.(el))
+			cxs.push(cx);
+		else if (hydrating)
+			cx.mount?.();
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
@@ -350,6 +359,7 @@ export let h = _h;
 export let jsx = _jsx;
 export let addDREAMLAND = () => {
 	jsx[DREAMLAND] = () => (componentCssInfo = new Map());
+	jsx[NO_CHANGE] = () => cxs.splice(0, cxs.length);
 };
 
 export let Fragment = (cx: any) => cx.children;
