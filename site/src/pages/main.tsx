@@ -34,13 +34,13 @@ export let MainPage: Component<{}, {}, { "on:routeshown": () => void }> =
 						<Link href="/docs/getting-started">Docs</Link>
 					</div>
 					<div class="links">
-						<ExternalLink href="https://npmjs.com/package/dreamland">
+						<ExternalLink href="https://npmjs.com/package/dreamland" label="npm">
 							<MdiIcon icon={mdiNpm} viewBox="2 2 20 20" />
 						</ExternalLink>
-						<ExternalLink href="https://github.com/MercuryWorkshop/dreamlandjs">
+						<ExternalLink href="https://github.com/MercuryWorkshop/dreamlandjs" label="GitHub">
 							<MdiIcon icon={mdiGithub} />
 						</ExternalLink>
-						<ExternalLink href="https://discord.gg/GKKF3CmHPA">
+						<ExternalLink href="https://discord.gg/GKKF3CmHPA" label="Discord">
 							<MdiIcon icon={discord} viewBox="0 0 16 16" />
 						</ExternalLink>
 					</div>

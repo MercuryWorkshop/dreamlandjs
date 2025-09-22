@@ -7,9 +7,10 @@ import { version } from "dl:bundle";
 export let ExternalLink: Component<{
 	href: string;
 	children: ComponentChild;
+	label?: string;
 }> = function (cx) {
 	return (
-		<a href={this.href} target="_blank">
+		<a href={this.href} target="_blank" aria-label={this.label}>
 			{cx.children}
 		</a>
 	);
