@@ -1,5 +1,7 @@
-// https://github.com/LeaVerou/parsel modified for size
+// 
 /*
+https://github.com/LeaVerou/parsel modified for size
+
 MIT License
 
 Copyright (c) 2020 Lea Verou

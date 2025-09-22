@@ -1,4 +1,6 @@
-/* simple svelte/motion spring port.
+/* 
+
+simple svelte/motion spring port from https://github.com/sveltejs/svelte/tree/main/packages/svelte/src/motion
 
 Copyright (c) 2016-2025 [Svelte Contributors](https://github.com/sveltejs/svelte/graphs/contributors)
 
