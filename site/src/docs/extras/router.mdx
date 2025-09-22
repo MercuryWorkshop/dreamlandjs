@@ -19,7 +19,7 @@ The router is constructed as a JSX component and routes are defined in JSX:
 ```
 
 Once a `Router` component is created, the instance is exposed by the `router` export.
-The `Router` automatically handles `popstate`.
+The `Router` automatically handles the `popstate` event for history navigation.
 It also exposes a `route` function to simply change the current route without touching history and a `navigate` function to both change the current route and commit it to history:
 
 ```tsx
@@ -27,6 +27,13 @@ import { router } from "dreamland/router";
 
 router.navigate("/"); // sent to history
 ```
+
+## Special Routes
+
+Routes without a `path` are treated as the "index.html" if they don't have any children.
+If they have children, they're treated as a layout and the component in `show` will get the child route's result assigned to `this.outlet`.
+
+If you assign a function to `this["on:routeshown"]`, it'll get called once the route is shown.
 
 ## SSR integration
 

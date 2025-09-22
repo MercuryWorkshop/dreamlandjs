@@ -4,3 +4,18 @@ export let order = 31;
 dreamland's SSR implementation is based around DOM element construction order, so it is especially prone to hydration errors with differing logic on server vs client.
 The server-side API is based around `domhandler`'s DOM with a custom internal DOM that implements the bare minimum needed for dreamland.
 This internal DOM is exposed to components on the server-side when rendering to SSR.
+
+## Integrating SSR with Vite
+
+dreamland provides a Vite plugin to enable SSR on the dev server for easy setup:
+1. Separate your entrypoint into a server, client, and common file.
+	- The common file should export a function that handles instantiating your app and setting the router up
+	- The server file should export a function that uses `render` from `dreamland/ssr/server` to render the common file's export into `domhandler` elements
+	- The client file should use `hydrate` from `dreamland/ssr/client` to hydrate the common file's export. This is your new client entrypoint.
+2. Add `<!--ssr-head-->` and `<!--ssr-body-->` to your html entrypoint, with `ssr-body` replacing the existing app root and `ssr-head` wherever you want to keep the SSR data.
+3. Add the `devSsr` plugin to your vite.config.ts, configuring the server entrypoint with the `entry` key.
+4. Confirm ssr is working and hydrating on the dev server.
+
+You can use SSR in production builds as well by telling vite to build a SSR bundle with `--ssr` and the server entrypoint, importing your render function from that bundle, and using the `renderSsr` helper from `dreamland/vite` to render the page like the dev server does.
+
+dreamland's router is strictly a layer above the dreamland core and SSR, so prerendering simply means telling your own code to route to a different path and saving that to a different file. You can check out this docs site's code (in the dreamland repo's site folder) for a working SSR + prerendering example.

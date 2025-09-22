@@ -31,7 +31,7 @@ let Sidebar: Component<{ doc?: DocPage; menu: boolean }> = function() {
 	return (
 		<div>
 			<Link href="/">
-				<Hero />
+				<Hero version={true} />
 			</Link>
 			{groups.map(render)}
 		</div>

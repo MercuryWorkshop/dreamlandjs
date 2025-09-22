@@ -19,7 +19,7 @@ export default defineConfig({
 			entry: "/src/main-server.ts",
 		}),
 		{
-			name: "dl-bundle-size",
+			name: "dl-bundle",
 			enforce: "pre",
 			resolveId(id) {
 				if (id === "dl:bundle") return "\0dl:bundle";
@@ -35,10 +35,13 @@ export default defineConfig({
 						"node_modules/dreamland/dist/ssr.client.js"
 					);
 
+					const packageJson = JSON.parse(await readFile("node_modules/dreamland/package.json", "utf-8"));
+
 					return {
 						code: `
 							export let dl = { bundle: "${(uncompressed / 1024).toFixed(1)}", gzip: "${(gzip / 1024).toFixed(1)}", brotli: "${(brotli / 1024).toFixed(1)}" };
 							export let ssr = "${(ssr.byteLength / 1024).toFixed(1)}";
+							export let version = "${packageJson.version}";
 						`,
 					};
 				}
