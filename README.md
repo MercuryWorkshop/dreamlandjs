@@ -1,5 +1,5 @@
 <h1 align="center">dreamland.js</h1>
-<p align="center"><img src="./static/logo.png" alt="logo" height="100"></p>
+<p align="center"><img src="./assets/logo.png" alt="logo" height="100"></p>
 
 dreamland is a utilitarian JSX-based web framework with **no virtual dom** and **no build step**. It is less than 4kb minified + brotli'd (smaller than preact), gradually integrates with existing plain JS projects, and is reasonably easy to learn.
 
