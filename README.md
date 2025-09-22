@@ -1,10 +1,10 @@
 <h1 align="center">dreamland.js</h1>
 <p align="center"><img src="./static/logo.png" alt="logo" height="100"></p>
 
-dreamland is a reactive JSX-inspired UI library with **no virtual dom** and **no build step**. It is less than 3kb minified (smaller than preact), gradually integrates with existing plain JS projects, and is reasonably easy to learn.
+dreamland is a utilitarian JSX-based web framework with **no virtual dom** and **no build step**. It is less than 4kb minified + brotli'd (smaller than preact), gradually integrates with existing plain JS projects, and is reasonably easy to learn.
 
 <div align="center">
- <a href="https://dreamland.js.org/getting-started">Get Started</a> | <a href="https://dreamland.js.org">Documentation</a> | <a href="https://dreamland.js.org/examples">Examples</a> | <a href="https://discord.gg/GKKF3CmHPA">Discord</a>
+ <a href="https://dreamland.js.org/docs/getting-started">Get Started</a> | <a href="https://dreamland.js.org">Documentation</a> | <a href="https://dreamland.js.org/playground">Playground</a> | <a href="https://discord.gg/GKKF3CmHPA">Discord</a>
 </div>
 <br/>
 
@@ -15,71 +15,8 @@ dreamland is a reactive JSX-inspired UI library with **no virtual dom** and **no
 
 ---
 
-# Getting Started
+Check out the [website](https://dreamland.js.org/docs/getting-started) to get started with dreamland. You can also try dreamland online in the [playground](https://dreamland.js.org/playground), which has dreamland and typescript set up already.
 
-## Plain JS
-
-dreamland can be integrated into plain javascript applications gradually and seamlessly. See the [website](https://dreamland.js.org) to learn the concepts that dreamland uses.
-
-To get started, in your HTML file, add `<script src="https://unpkg.com/dreamland"></script>` somewhere. This contains the html builder allowing you to start writing dreamland code in plain JS, such as the example shown below
-
-```javascript
-function App() {
-	this.counter = 0;
-	return html`
-		<div>
-			<button on:click=${() => this.counter++}>Click me!</button>
-			<p>${use(this.counter)}</p>
-		</div>
-	`;
-}
-
-window.addEventListener("load", () => {
-	document.body.appendChild(h(App));
-});
-```
-
-## Typescript + Bundler (vite, rollup, webpack, esbuild, etc)
-
-First install dreamland (`npm install dreamland`), then add this to the `compilerOptions` of your `tsconfig.json` to setup JSX.
-
-```json
-{
-	"jsx": "react-jsx",
-	"jsxImportSource": "dreamland"
-}
-```
-
-Now you can import anything needed from `dreamland/core`.
-
-```tsx
-import { Component, render } from "dreamland/core";
-
-// typescript syntax for defining components
-const App: Component<
-	{
-		// component properties. if you had a component that took a property like `<Button text="..." /> you would use a type like the one in the following line
-		// text: string
-	},
-	{
-		// types for internal state
-		counter: number;
-	}
-> = function () {
-	this.counter = 0;
-	return (
-		<div>
-			<button on:click={() => this.counter++}>Click me!</button>
-			<p>{use(this.counter)}</p>
-		</div>
-	);
-};
-
-window.addEventListener("load", () => {
-	document.body.appendChild(<App />);
-});
-```
-
-# Acknowledgements
+## Acknowledgements
 
 dreamland uses the [parsel](https://github.com/LeaVerou/parsel) CSS selector parsing library to transform CSS in components.
