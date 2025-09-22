@@ -5,9 +5,13 @@ import {
 	h,
 	Fragment,
 	ComponentState,
+	DREAMLAND,
 } from "dreamland/core";
 
-export type RouteParams = Record<string, string>;
+export type RouteParams = Record<string, string> & {
+	// @internal
+	[DREAMLAND]?: string;
+};
 
 export type ShowElement =
 	| DLElement<{
@@ -100,7 +104,10 @@ let matchRoute = (
 	route: string,
 	params: RouteParams
 ): boolean => {
-	if (route.startsWith(":")) {
+	if (params[DREAMLAND] || route === "*") {
+		params[DREAMLAND] += "/" + segment;
+		return true;
+	} else if (route.startsWith(":")) {
 		// param
 		params[route.substring(1)] = segment;
 		return true;
@@ -134,9 +141,13 @@ let _route = (
 			.every((x, i) => matchRoute(x, routePath[i], params))
 	) {
 		if (
-			(!segments.length || (segments[0] === "" && indexRoute)) &&
+			(!segments.length || (segments[0] === "" && indexRoute) || params[DREAMLAND]) &&
 			route._show
 		) {
+			if (params[DREAMLAND]) {
+				params["*"] = params[DREAMLAND].slice(10);
+				delete params[DREAMLAND];
+			}
 			// route matches fully
 			let el = getShow(route, true, path, params);
 
@@ -264,10 +275,12 @@ export let Router: Component<
 
 			if (route._children.length) {
 				return route._children.map((x) => traverse(path, x)).flat();
-			} else if (!route._path || !route._path.startsWith(":")) {
+			} else if (!route._path || !(route._path.startsWith(":") || route._path === "*")) {
 				return [
 					[path || "/", route._path ? path + ".html" : path + "/index.html"],
 				];
+			} else {
+				return [];
 			}
 		};
 		return traverse("", routes);
