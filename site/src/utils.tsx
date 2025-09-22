@@ -7,7 +7,7 @@ import { version } from "dl:bundle";
 export let ExternalLink: Component<{
 	href: string;
 	children: ComponentChild;
-}> = function(cx) {
+}> = function (cx) {
 	return (
 		<a href={this.href} target="_blank">
 			{cx.children}
@@ -15,13 +15,16 @@ export let ExternalLink: Component<{
 	);
 };
 
-export let MdiIcon: Component<{ icon: string, viewBox?: string }> = function() {
-	this.viewBox ??= "0 0 24 24";
+export let MdiIcon: Component<{ icon: string; viewBox?: string }> =
+	function () {
+		this.viewBox ??= "0 0 24 24";
 
-	return (
-		<svg xmlns="http://www.w3.org/2000/svg" viewBox={this.viewBox}><path d={use(this.icon)} /></svg>
-	)
-}
+		return (
+			<svg xmlns="http://www.w3.org/2000/svg" viewBox={this.viewBox}>
+				<path d={use(this.icon)} />
+			</svg>
+		);
+	};
 MdiIcon.style = css`
 	:scope {
 		width: 1em;
@@ -32,7 +35,7 @@ MdiIcon.style = css`
 	}
 `;
 
-export let Hero: Component<{ version?: boolean }> = function() {
+export let Hero: Component<{ version?: boolean }> = function () {
 	this.version ??= false;
 
 	return (
@@ -40,22 +43,19 @@ export let Hero: Component<{ version?: boolean }> = function() {
 			<img src={normal} alt="dreamland logo" width="400" height="400" />
 			<span>dreamland</span>
 
-			{this.version ? (
-				<div class="version">
-					v{version}
-				</div>
-			) : null}
+			{this.version ? <div class="version">v{version}</div> : null}
 		</div>
-	)
-}
+	);
+};
 Hero.style = css`
 	:scope {
 		display: grid;
 		gap: 0 0.5rem;
 		align-items: center;
 		grid-template-columns: 1.5em 1fr;
-		grid-template-areas: "a b"
-							 ". c";
+		grid-template-areas:
+			"a b"
+			". c";
 
 		font-weight: bold;
 	}

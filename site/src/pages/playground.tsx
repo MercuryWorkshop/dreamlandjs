@@ -11,7 +11,7 @@ export let PlaygroundHost: Component<
 	{},
 	{ host?: HTMLElement },
 	{ "on:routeshown": () => void }
-> = function() {
+> = function () {
 	this["on:routeshown"] = async () => {
 		if (!import.meta.env.SSR) {
 			let playground = await import("../playground/playground");

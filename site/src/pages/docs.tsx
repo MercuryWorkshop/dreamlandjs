@@ -6,7 +6,7 @@ import { setTitle } from "../main";
 import { Hero, MdiIcon } from "../utils";
 import { mdiMenu } from "@mdi/js";
 
-let Sidebar: Component<{ doc?: DocPage; menu: boolean }> = function() {
+let Sidebar: Component<{ doc?: DocPage; menu: boolean }> = function () {
 	let render = (x: DocGroup | DocPage) => {
 		if (x.type === "page") {
 			return (
@@ -118,7 +118,7 @@ export let DocsLayout: Component<
 		jsbroken: boolean;
 	},
 	{ "on:routeshown"?: (path: string) => void }
-> = function(cx) {
+> = function (cx) {
 	this.menu = false;
 	this.jsbroken = true;
 
@@ -215,7 +215,8 @@ DocsLayout.style = css`
 		transition: background 0.1s ease;
 		cursor: pointer;
 	}
-	.menu button:hover, .sidebar.visible ~ .content .menu button {
+	.menu button:hover,
+	.sidebar.visible ~ .content .menu button {
 		background: var(--border-2);
 	}
 
@@ -236,7 +237,9 @@ DocsLayout.style = css`
 		max-width: 60rem;
 	}
 
-	.expand { flex: 1; }
+	.expand {
+		flex: 1;
+	}
 
 	@media (max-width: 65rem) {
 		.menu {

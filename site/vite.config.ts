@@ -35,7 +35,9 @@ export default defineConfig({
 						"node_modules/dreamland/dist/ssr.client.js"
 					);
 
-					const packageJson = JSON.parse(await readFile("node_modules/dreamland/package.json", "utf-8"));
+					const packageJson = JSON.parse(
+						await readFile("node_modules/dreamland/package.json", "utf-8")
+					);
 
 					return {
 						code: `

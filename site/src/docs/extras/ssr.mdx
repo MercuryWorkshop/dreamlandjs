@@ -8,10 +8,11 @@ This internal DOM is exposed to components on the server-side when rendering to 
 ## Integrating SSR with Vite
 
 dreamland provides a Vite plugin to enable SSR on the dev server for easy setup:
+
 1. Separate your entrypoint into a server, client, and common file.
-	- The common file should export a function that handles instantiating your app and setting the router up
-	- The server file should export a function that uses `render` from `dreamland/ssr/server` to render the common file's export into `domhandler` elements
-	- The client file should use `hydrate` from `dreamland/ssr/client` to hydrate the common file's export. This is your new client entrypoint.
+   - The common file should export a function that handles instantiating your app and setting the router up
+   - The server file should export a function that uses `render` from `dreamland/ssr/server` to render the common file's export into `domhandler` elements
+   - The client file should use `hydrate` from `dreamland/ssr/client` to hydrate the common file's export. This is your new client entrypoint.
 2. Add `<!--ssr-head-->` and `<!--ssr-body-->` to your html entrypoint, with `ssr-body` replacing the existing app root and `ssr-head` wherever you want to keep the SSR data.
 3. Add the `devSsr` plugin to your vite.config.ts, configuring the server entrypoint with the `entry` key.
 4. Confirm ssr is working and hydrating on the dev server.
