@@ -2,13 +2,15 @@
 	"name": "dreamland",
 	"version": "0.1.0",
 	"description": "A utilitarian HTML rendering library",
-	"license": "MIT",
 	"type": "module",
-	"files": [
-		"dist/*.d.ts",
-		"dist/*.js",
-		"dist/*.js.map"
-	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/MercuryWorkshop/dreamlandjs"
+	},
+	"homepage": "https://dreamland.js.org/",
+	"author": "Mercury Workshop",
+	"bugs": "https://github.com/MercuryWorkshop/dreamlandjs/issues",
+	"license": "MIT",
 	"scripts": {
 		"build": "rollup -c",
 		"watch": "rollup -cw --config-dev",
@@ -58,6 +60,11 @@
 			"default": "./dist/vite.js"
 		}
 	},
+	"files": [
+		"dist/*.d.ts",
+		"dist/*.js",
+		"dist/*.js.map"
+	],
 	"devDependencies": {
 		"@eslint/js": "^9.36.0",
 		"@rollup/plugin-node-resolve": "^16.0.1",
