@@ -277,10 +277,7 @@ function _jsx(
 						(el as any).value = val;
 					},
 					() => {
-						el.addEventListener(
-							"change",
-							() => (val.value = (el as any)[attr])
-						);
+						el.addEventListener("input", () => (val.value = (el as any)[attr]));
 					}
 				);
 			} else if (attr === "class") {
