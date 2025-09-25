@@ -8,7 +8,7 @@ import {
 	hydrating,
 	ssrTransform,
 } from "./dom";
-import { CSS_COMPONENT, rewriteCSS } from "../css";
+import { CSS_COMPONENT } from "../css";
 import {
 	Component,
 	ComponentChild,
@@ -192,7 +192,7 @@ function _jsx(
 					styleEl.setAttribute(CSS_IDENT + "id", cssInfo._id);
 
 					DOCUMENT.head.append(styleEl);
-					rewriteCSS(styleEl, cssString, cssInfo._id);
+					style._rewrite(styleEl, cssString, cssInfo._id);
 				}
 				componentCssInfo.set(init, cssInfo);
 			}
