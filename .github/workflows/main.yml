@@ -98,11 +98,8 @@ jobs:
           name: packaged-dreamland
           path: .
 
-      - name: Extract package
-        run: tar xvf dreamland-*.tgz package --strip-components=1
-
       - name: Publish
-        run: npm publish --access public --no-git-checks
+        run: npm publish dreamland-${{ needs.version-check.outputs.new_version}}.tgz --access public --no-git-checks
 
   deploy:
     name: Upload to Github Pages

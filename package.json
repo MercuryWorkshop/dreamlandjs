@@ -5,7 +5,7 @@
 	"type": "module",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/MercuryWorkshop/dreamlandjs"
+		"url": "git+https://github.com/MercuryWorkshop/dreamlandjs.git"
 	},
 	"homepage": "https://dreamland.js.org/",
 	"author": "Mercury Workshop",
