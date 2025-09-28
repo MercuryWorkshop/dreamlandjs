@@ -52,7 +52,7 @@ export type DLElement<T> = HTMLElement & { $: ComponentContext<T> };
 type IntrinsicProps<ElementType extends Element> = {
 	this?: Pointer<ElementType | Element | null | undefined>;
 	children?: any;
-	[key: `class:${string}`]: Pointer<boolean>;
+	[key: `class:${string}`]: Pointer<boolean> | boolean;
 	[key: `on:${string}`]: (e: any) => void;
 	[key: string]: any;
 };

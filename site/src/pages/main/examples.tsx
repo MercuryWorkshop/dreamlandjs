@@ -1,0 +1,72 @@
+import { css, jsx, type Component } from "dreamland/core"
+import { examples, type Example } from "../../examples"
+
+export let ExampleView: Component<{ example: Example }> = function() {
+	return (
+		<div data-example={this.example.id}>
+			<div class="code">
+				{jsx(this.example.code, {})}
+			</div>
+			<div class="example">
+				{jsx(this.example.component, {})}
+			</div>
+		</div>
+	)
+}
+ExampleView.style = css`
+	:scope {
+		flex: 0 0 100%;
+		min-width: 0;
+		scroll-snap-align: start;
+
+		padding: 0.5rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.code {
+		min-height: 0;
+	}
+
+	.code > :global(pre) {
+		margin: 0;
+		height: 100%;
+
+		border-radius: 0.5rem 0.5rem 0.1rem 0.1rem;
+	}
+
+	.code > :global(pre) > :global(code) {
+		overflow: auto auto;
+	}
+
+	.example {
+		background: var(--bg-3);
+		padding: 0.5rem;
+		border-radius: 0.1rem 0.1rem 0.5rem 0.5rem;
+
+		flex: 1 0;
+	}
+
+	.example :global(:is(h1, h2, h3, h4)) {
+		margin: 0 0 0.5rem 0;
+	}
+`;
+
+export let ExamplesCarousel: Component = function() {
+	return (
+		<div>
+			{examples.map(x => <ExampleView example={x} />)}
+		</div>
+	)
+}
+ExamplesCarousel.style = css`
+	:scope {
+		display: flex;
+		overflow: scroll hidden;
+
+		scroll-snap-type: x mandatory;
+
+		height: 27.5rem;
+	}
+`;

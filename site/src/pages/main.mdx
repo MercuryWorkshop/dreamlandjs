@@ -1,46 +1,38 @@
+import { Link } from "dreamland/router";
 import { dl, ssr } from "dl:bundle";
+import { Columns } from "./main/helpers";
+import { BundleSize } from "./main/frameworks";
+import { ExamplesCarousel } from "./main/examples";
 
-## Create UI without the overhead
+<Columns reverse={false}>
+	<div>
+		## Lean and modular 
+		dreamland core is {dl.bundle}kb minified before treeshaking ({dl.gzip}kb gzipped; {dl.brotli}kb brotli'd) with modern features like scoped CSS-in-JS included.
+		It's modular, with everything except the state system being treeshakeable.
+		SSR/prerendering support only adds {ssr}kb minified to the client.
+	</div>
+	<div>
+		**Minimal counter app bundle size**
+		<BundleSize />
+	</div>
+</Columns>
 
-dreamland has **no virtual DOM** and is **extremely small**, at {dl.bundle}kb minified ({dl.gzip}kb gzipped, {dl.brotli}kb brotli'd).
-That's smaller than preact and SolidJS and can go even smaller with treeshaking. The only required part of the dreamland core bundle is the state system.
+<Columns reverse={true}>
+	<ExamplesCarousel />
+	<div>
+		## Powerful and intuitive
+		dreamland's syntax combines the intuitive Svelte style of state management and the power and integrability of JSX for a refreshing dev experience.
+		It's simple and pragmatic, making writing highly reactive code easy.
 
-The SSR client bundle only adds {ssr}kb minified, enabling **low-cost and easy-to-use prerendering** and server-side rendering.
-Utilities for scoped component CSS, integrations with Vite SSR, and spring/tween animations help make development even easier.
-In fact, this docs site uses dreamland's prerendering support and has a compile-time MDX integration.
-Feel free to check out the code on the GitHub!
+		Built-in scoped CSS-in-JS allows you to quickly reuse fully styled components without the need of external libraries.
+	</div>
+</Columns>
 
-dreamland targets the oldest browsers that support `:where()` (which is needed for dreamland's scoped CSS - similar to how Svelte needs it), which are **Chrome 88**, **Firefox 78**, and **Safari 14**. Transpilers can be used to run dreamland core on older versions, but scoped CSS will break.
+## Flexible and incremental
+dreamland has **no virtual DOM**, allowing for easy integration with vanilla JS libraries and the browser's DOM APIs.
+It's easy to incrementally add dreamland to existing vanilla JS codebases because you can immediately attach dreamland components to the DOM.
 
-## Use an intuitive state management system
-
-dreamland's component state management is centered around a `use()` function creating dynamic `Pointer<T>` instances.
-Any value in a `Stateful<T>` object can be `use()`d and all pointers created for that value will automatically update when the value is assigned to, creating an experience very similar to vanilla JavaScript with only minimal magic needed.
-`Pointer<T>` has many utility functions to transform the value listened to or combine multiple pointers, making dreamland's state system a refreshing experience compared to other frameworks.
-
-```tsx
-import { type Component } from "dreamland/core";
-
-const Counter: Component<{}, { counter: number }> = function () {
-	this.counter = 0;
-
-	return (
-		<div>
-			<h1>Counter!</h1>
-			<div>{use(this.counter)} clicks</div>
-			<button on:click={() => this.counter++}>Click!</button>
-		</div>
-	);
-};
-```
-
-This intuitive state management system can also easily provide persistent storage and other advanced features, as all property changes on stateful objects can be listened to.
-dreamland provides `createStore` to easily create persistent storage that can be used just like a `Stateful<T>`.
-
-## Integrate (or integrate into) external code easily
-
-The lack of a virtual DOM by default means you can write your components in TypeScript or JavaScript (optionally with `htm` to skip the JSX transform) and immediately attach them to the DOM.
-Additionally, you can quickly integrate vanilla JS libraries like Chart.js with minimal code needed.
-
-It's possible to completely swap out the DOM implementation used by dreamland to enable SSR or embed the framework elsewhere as well.
-You can render HTML externally and use dreamland as a lightweight interactivity layer like Turbo Stimulus by replacing the DOM implementation with one that hydrates into existing nodes (this is provided by `dreamland/ssr/hybrid`).
+## Get started
+dreamland's available [on NPM](https://www.npmjs.com/package/dreamland).
+Check out <Link href="/docs/getting-started">the documentation</Link> to get started.
+You can also immediately try out dreamland in <Link href="/playground">the playground</Link>.
