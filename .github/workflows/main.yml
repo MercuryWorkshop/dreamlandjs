@@ -97,10 +97,7 @@ jobs:
         with:
           name: packaged-dreamland
           path: .
-
-      - name: Check version_changed
-        run: echo ${{ needs.version-check.outputs.version_changed }}
-
+          
       - name: Update npm
         run: npm install -g npm@latest
 
