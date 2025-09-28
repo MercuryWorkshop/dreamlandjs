@@ -82,9 +82,7 @@ jobs:
     name: Publish Dreamland to NPM
     runs-on: ubuntu-latest
     needs: [version-check, build]
-    permissions:
-      id-token: write
-      contents: read
+    permissions: write-all
     if: ${{ github.ref == 'refs/heads/rewrite' }} && ${{ needs.version-check.outputs.version_changed == 'true' }}
 
     steps:
@@ -102,6 +100,7 @@ jobs:
 
       - name: Update npm
         run: npm install -g npm@latest
+
       - name: Publish
         run: npm publish dreamland-${{ needs.version-check.outputs.new_version }}.tgz --access public --no-git-checks
 
