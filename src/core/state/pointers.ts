@@ -115,6 +115,7 @@ export let initRegularPtr = (id: symbol): boolean => {
 			_steps: path.slice(0, i + 1),
 			_listener: (prop) => {
 				if (prop === unwrapValue(x)) {
+					recalculate();
 					callAllListeners(ptr);
 				}
 			},
