@@ -14,20 +14,24 @@ let bundles = frameworks.map(([name, size]) => ({
 	relative: (size - min) / (max - min),
 }));
 
-export let BundleSize: Component = function() {
+export let BundleSize: Component = function () {
 	return (
 		<div>
-			{bundles.map(({ name, size, relative }) => <>
-				<div class="name">
-					{name}
-				</div>
-				<div class="bar" class:dreamland={name.startsWith("Dreamland")} style={{ "--size": relative }}>
-					<div>{(size / 1024).toFixed(2)}kb</div>
-				</div>
-			</>)}
+			{bundles.map(({ name, size, relative }) => (
+				<>
+					<div class="name">{name}</div>
+					<div
+						class="bar"
+						class:dreamland={name.startsWith("Dreamland")}
+						style={{ "--size": relative }}
+					>
+						<div>{(size / 1024).toFixed(2)}kb</div>
+					</div>
+				</>
+			))}
 		</div>
-	)
-}
+	);
+};
 BundleSize.style = css`
 	:scope {
 		display: grid;

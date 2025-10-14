@@ -6,14 +6,26 @@ import { resolve } from "node:path";
 import * as svelte from "svelte/compiler";
 import { minify } from "terser";
 
-async function bundleFile(codePath: string, terser: boolean, jsxImportSource: string): Promise<Uint8Array> {
+async function bundleFile(
+	codePath: string,
+	terser: boolean,
+	jsxImportSource: string
+): Promise<Uint8Array> {
 	let code = await readFile(resolve(import.meta.dirname, codePath), "utf-8");
 	return await bundle(code, terser, jsxImportSource);
 }
 
-async function bundle(code: string, terser: boolean, jsxImportSource?: string): Promise<Uint8Array> {
+async function bundle(
+	code: string,
+	terser: boolean,
+	jsxImportSource?: string
+): Promise<Uint8Array> {
 	let built = await build({
-		stdin: { contents: code, resolveDir: resolve(import.meta.dirname, "../../"), loader: "tsx", },
+		stdin: {
+			contents: code,
+			resolveDir: resolve(import.meta.dirname, "../../"),
+			loader: "tsx",
+		},
 		jsx: jsxImportSource ? "automatic" : undefined,
 		jsxImportSource,
 		target: "esnext",
@@ -44,7 +56,7 @@ async function svelteInput(codePath: string): Promise<string> {
 	return `${compiled.js.code}\nnew Counter({ target: document.querySelector("#app") });`;
 }
 
-export default async function() {
+export default async function () {
 	let dreamland = await bundleFile("dreamland.tsx", false, "dreamland");
 	let react = await bundleFile("react.tsx", false, "react");
 	let solid = await bundleFile("solid.tsx", false, "solid-js/h");
@@ -57,5 +69,5 @@ export default async function() {
 		["React", react.byteLength],
 		["SolidJS", solid.byteLength],
 		["Svelte", svelte.byteLength],
-	]
+	];
 }

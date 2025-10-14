@@ -1,6 +1,6 @@
 import { type Component } from "dreamland/core";
 
-const Counter: Component<{}, { counter: number }> = function() {
+const Counter: Component<{}, { counter: number }> = function () {
 	this.counter = 0;
 
 	return (

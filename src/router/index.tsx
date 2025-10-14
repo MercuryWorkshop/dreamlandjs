@@ -141,7 +141,9 @@ let _route = (
 			.every((x, i) => matchRoute(x, routePath[i], params))
 	) {
 		if (
-			(!segments.length || (segments[0] === "" && indexRoute) || params[DREAMLAND]) &&
+			(!segments.length ||
+				(segments[0] === "" && indexRoute) ||
+				params[DREAMLAND]) &&
 			route._show
 		) {
 			if (params[DREAMLAND]) {
@@ -275,7 +277,10 @@ export let Router: Component<
 
 			if (route._children.length) {
 				return route._children.map((x) => traverse(path, x)).flat();
-			} else if (!route._path || !(route._path.startsWith(":") || route._path === "*")) {
+			} else if (
+				!route._path ||
+				!(route._path.startsWith(":") || route._path === "*")
+			) {
 				return [
 					[path || "/", route._path ? path + ".html" : path + "/index.html"],
 				];

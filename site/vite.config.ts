@@ -53,7 +53,7 @@ async function compileMdx(content: string, name?: string) {
 			)
 		}
 	`;
-};
+}
 
 export default defineConfig({
 	plugins: [
@@ -72,10 +72,10 @@ export default defineConfig({
 			async load(id) {
 				if (id === "\0dl:frameworks") {
 					return {
-						code: `export default ${JSON.stringify(await bundleSize())}`
-					}
+						code: `export default ${JSON.stringify(await bundleSize())}`,
+					};
 				}
-			}
+			},
 		},
 		{
 			name: "dl-examples",
@@ -87,10 +87,10 @@ export default defineConfig({
 					return `
 						${file}
 
-						${await compileMdx("```tsx\n"+file+"\n```", "Code")}
+						${await compileMdx("```tsx\n" + file + "\n```", "Code")}
 					`;
 				}
-			}
+			},
 		},
 		{
 			name: "dl-bundle",

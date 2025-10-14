@@ -37,7 +37,10 @@ export type Component<Props = {}, Private = {}, Public = {}> = {
 	): HTMLElement;
 	style?: CssInit;
 };
-type StateObj<Props, Private, Public> = Omit<Props & Private & Public, "children">;
+type StateObj<Props, Private, Public> = Omit<
+	Props & Private & Public,
+	"children"
+>;
 type ComponentStateObj<T extends Component<any, any, any>> =
 	T extends Component<infer Props, infer Private, infer Public>
 		? StateObj<Props, Private, Public>
