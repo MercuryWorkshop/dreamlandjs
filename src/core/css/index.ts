@@ -1,4 +1,5 @@
 import {
+	ARRAY,
 	COMBINATOR_TOKEN,
 	COMMA_TOKEN,
 	PSEUDO_CLASS_TOKEN,
@@ -31,7 +32,7 @@ export let genuid = () => {
 	// prettier-ignore
 	// dl 0.0.x:
 	//     `${Array(4).fill(0).map(()=>Math.floor(Math.random()*36).toString(36)}).join('')}`
-	return [...Array(16)].reduce(a => a + Math.random().toString(36)[2], '')
+	return [...ARRAY(16)].reduce(a => a + Math.random().toString(36)[2], '')
 	// the above will occasionally misfire with `undefined` or 0 in the string whenever Math.random returns exactly 0 or really small numbers
 	// we don't care, it would be very uncommon for that to actually happen 16 times
 };

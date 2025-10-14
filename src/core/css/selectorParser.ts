@@ -36,6 +36,7 @@ import {
 	ATTRIBUTE_TOKEN,
 	TYPE_TOKEN,
 	ASSIGN,
+	MAP,
 } from "../consts";
 import { fatal } from "../utils";
 
@@ -110,7 +111,7 @@ export type Token =
 	| TypeToken
 	| UnknownToken;
 
-let TOKENS: Map<symbol, RegExp> = new Map([
+let TOKENS: Map<symbol, RegExp> = MAP([
 	[
 		ATTRIBUTE_TOKEN,
 		/\[\s*(?:(?<ns>\*|[-\w\P{ASCII}]*)\|)?(?<nm>[-\w\P{ASCII}]+)\s*(?:(?<op>\W?=)\s*(?<val>.+?)\s*(\s(?<case>[iIsS]))?\s*)?\]/gu,

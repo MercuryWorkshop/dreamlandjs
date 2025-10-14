@@ -17,10 +17,11 @@ import {
 	DLElement,
 	DLElementNameToElement,
 } from "./definitions";
-import { isBasePtr, maybeListen } from "../state/pointers";
+import { maybeListen } from "../state/pointers";
 import { createState, stateProxy } from "../state/state";
-import { DREAMLAND, NO_CHANGE } from "../consts";
+import { ARRAY, DREAMLAND, MAP, NO_CHANGE } from "../consts";
 import { DelegateListener } from "../delegate";
+import { isArray, isBasePtr, isNode } from "../utils";
 
 export let currentCssIdent: string | null = null;
 export let callDelegateListeners = (
@@ -73,7 +74,7 @@ let mapChild = (
 			...(hydrating?.(parent as HTMLElement) ? [] : current),
 			new_Comment("]"),
 		];
-	} else if (child instanceof node) {
+	} else if (isNode(child)) {
 		let list: DOMTokenList;
 		let apply = (child: any) => {
 			if ((list = child.classList)) {
@@ -95,7 +96,7 @@ let mapChild = (
 		if (identOverride || cssIdent) apply(child);
 
 		return [child];
-	} else if (child instanceof Array) {
+	} else if (isArray(child)) {
 		return child.flatMap((x) => mapChild(x, parent, cssIdent, identOverride));
 	} else {
 		return [new_Text(child as any)];
@@ -109,10 +110,8 @@ interface CssInfo {
 	_vars: [string, (props: any) => any][];
 }
 
-let componentCssInfo: Map<Component, CssInfo> = new Map();
+let componentCssInfo: Map<Component, CssInfo> = MAP();
 let cxs = [];
-
-let isNode = (el): el is any => el instanceof node;
 
 function _jsx<T extends Component<any, any, any>>(
 	init: T,
@@ -137,7 +136,7 @@ function _jsx(
 	let { children: _children, ...props } = _props;
 	if (key) props.key = key;
 	_children ||= [];
-	let children = _children instanceof Array ? _children : [_children];
+	let children = isArray(_children) ? _children : [_children];
 
 	let el: HTMLElement;
 
@@ -353,7 +352,7 @@ function _h(
 export let h = _h;
 export let jsx = _jsx;
 export let addDREAMLAND = () => {
-	jsx[DREAMLAND] = () => (componentCssInfo = new Map());
+	jsx[DREAMLAND] = () => (componentCssInfo = MAP());
 	jsx[NO_CHANGE] = () => cxs.splice(0, cxs.length);
 };
 
