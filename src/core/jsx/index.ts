@@ -1,14 +1,13 @@
 import {
 	new_Comment,
 	DOCUMENT,
-	node,
 	new_Text,
 	genCssUid,
 	CSS_IDENT,
 	hydrating,
 	ssrTransform,
 } from "./dom";
-import { CSS_COMPONENT } from "../css";
+import { CSS_COMPONENT, genuid } from "../css";
 import {
 	Component,
 	ComponentChild,
@@ -19,7 +18,7 @@ import {
 } from "./definitions";
 import { maybeListen } from "../state/pointers";
 import { createState, stateProxy } from "../state/state";
-import { ARRAY, DREAMLAND, MAP, NO_CHANGE } from "../consts";
+import { DREAMLAND, MAP, NO_CHANGE } from "../consts";
 import { DelegateListener } from "../delegate";
 import { isArray, isBasePtr, isNode } from "../utils";
 
@@ -179,7 +178,7 @@ function _jsx(
 						if (typeof func === "string") {
 							cssString += func;
 						} else {
-							let varid = genCssUid();
+							let varid = genuid();
 							cssString += `var(--${varid})`;
 							cssInfo._vars.push([varid, func]);
 						}
