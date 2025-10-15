@@ -20,7 +20,7 @@ import { maybeListen } from "../state/pointers";
 import { createState, stateProxy } from "../state/state";
 import { DREAMLAND, MAP, NO_CHANGE } from "../consts";
 import { DelegateListener } from "../delegate";
-import { isArray, isBasePtr, isNode } from "../utils";
+import { findLIS, isArray, isBasePtr, isNode } from "../utils";
 
 export let currentCssIdent: string | null = null;
 export let callDelegateListeners = (
@@ -44,6 +44,7 @@ let mapChild = (
 		return [new_Comment()];
 	} else if (isBasePtr(child)) {
 		let start = new_Comment("[");
+		let end = new_Comment("]");
 		let current: Node[] = null!;
 
 		maybeListen(child, (val: ComponentChild) => {
@@ -51,28 +52,28 @@ let mapChild = (
 
 			// pretty sure it's not possible to put a pointer child in not a htmlelement
 			if (!hydrating?.(parent as HTMLElement) && current) {
-				if (
-					mapped.length === current.length &&
-					current.every((value, index) => value === mapped[index])
-				) {
-					return;
-				}
-
-				current.map((x) => x.parentNode === parent && parent.removeChild(x));
+				let old = MAP(current.map((x, i) => [x, i]));
+				let staticNodes = mapped
+					.filter((x) => old.has(x))
+					.map((x) => old.get(x));
+				let LIS = MAP(findLIS(staticNodes).map((x) => [current[x], ,]));
 				let anchor: Node = start;
-				for (let child of mapped) {
-					parent.insertBefore(child, anchor.nextSibling);
+
+				mapped.map((child) => {
+					if (!old.has(child) || !LIS.has(child)) {
+						parent.insertBefore(child, anchor.nextSibling);
+					}
 					anchor = child;
-				}
+				});
+
+				current
+					.filter((x) => !mapped.includes(x))
+					.map((child) => parent.removeChild(child));
 			}
 			current = mapped;
 		});
 
-		return [
-			start,
-			...(hydrating?.(parent as HTMLElement) ? [] : current),
-			new_Comment("]"),
-		];
+		return [start, ...(hydrating?.(parent as HTMLElement) ? [] : current), end];
 	} else if (isNode(child)) {
 		let list: DOMTokenList;
 		let apply = (child: any) => {
