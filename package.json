@@ -1,6 +1,6 @@
 {
 	"name": "dreamland",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "A utilitarian HTML rendering library",
 	"type": "module",
 	"repository": {
