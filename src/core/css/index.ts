@@ -37,7 +37,25 @@ export let genuid = () => {
 };
 
 let GLOBAL = ":global(";
+let HMR_REGISTRY_KEY = "__dreamland_css_hmr_registry__";
+
+let getHmrCssOverride = (component: string): string | undefined => {
+	let global =
+		typeof globalThis !== "undefined" ? (globalThis as any) : undefined;
+	let registry = global?.[HMR_REGISTRY_KEY];
+	if (registry instanceof Map) return registry.get(component);
+	return undefined;
+};
+
 export let rewriteCss = (style: HTMLStyleElement, css: string, tag: string) => {
+	let component = style.getAttribute?.(CSS_COMPONENT);
+	if (component) {
+		let override = getHmrCssOverride(component);
+		if (typeof override === "string") {
+			css = override;
+		}
+	}
+
 	let where = tokenize(`:where(.${tag})`);
 	let globalWhereTransformation = `:where(._${genuid()} `;
 
