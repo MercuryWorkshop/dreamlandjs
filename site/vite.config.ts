@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import { devSsr } from "dreamland/vite";
+import { devSsr, jsxPlugin } from "dreamland/vite";
 import { compile } from "@mdx-js/mdx";
 import { literalsHtmlCssMinifier } from "@literals/rollup-plugin-html-css-minifier";
 
@@ -57,6 +57,7 @@ async function compileMdx(content: string, name?: string) {
 
 export default defineConfig({
 	plugins: [
+		jsxPlugin(),
 		literalsHtmlCssMinifier({
 			include: ["src/**/*.tsx"],
 		}),

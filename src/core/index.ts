@@ -9,7 +9,8 @@ export { createStore, saveAllStores } from "./store";
 
 export { createDelegate, Delegate } from "./delegate";
 
-export { css } from "./css";
+export { css, CSS_COMPONENT, rewriteCss } from "./css";
+export { CSS_IDENT } from "./jsx/dom";
 
 export {
 	DLElement,

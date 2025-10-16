@@ -10,7 +10,7 @@ import { stringify, Token, tokenize } from "./selectorParser";
 export type CssInit = {
 	_strings: TemplateStringsArray;
 	_funcs: (((state: any) => any) | string)[];
-	_rewrite: typeof _rewrite;
+	_rewrite: typeof rewriteCss;
 };
 
 export let css = /*@__NO_SIDE_EFFECTS__*/ <T extends Component<any, any, any>>(
@@ -20,7 +20,7 @@ export let css = /*@__NO_SIDE_EFFECTS__*/ <T extends Component<any, any, any>>(
 	return {
 		_strings,
 		_funcs,
-		_rewrite,
+		_rewrite: rewriteCss,
 	};
 };
 
@@ -37,7 +37,7 @@ export let genuid = () => {
 };
 
 let GLOBAL = ":global(";
-let _rewrite = (style: HTMLStyleElement, css: string, tag: string) => {
+export let rewriteCss = (style: HTMLStyleElement, css: string, tag: string) => {
 	let where = tokenize(`:where(.${tag})`);
 	let globalWhereTransformation = `:where(._${genuid()} `;
 

@@ -58,6 +58,10 @@
 		"./vite": {
 			"types": "./dist/vite.d.ts",
 			"default": "./dist/vite.js"
+		},
+		"./vite/client": {
+			"types": "./dist/vite.client.d.ts",
+			"default": "./dist/vite.client.js"
 		}
 	},
 	"files": [

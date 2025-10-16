@@ -107,12 +107,14 @@ export function render(component: () => any): RenderedComponent {
 	let head = [
 		...extraHead,
 		...vdom[0].head.childNodes.filter((x) => {
-			if (x instanceof Element) {
-				let cssId = x.attributes.get(CSS_IDENT + "id");
-				return domIdents.has(cssId);
-			}
+			console.log(x);
+			return true;
+			// if (x instanceof Element) {
+			// 	let cssId = x.attributes.get(CSS_IDENT + "id");
+			// 	return domIdents.has(cssId);
+			// }
 
-			return false;
+			// return false;
 		}),
 	].map((x) => x.toStandard()) as DomElement[];
 
