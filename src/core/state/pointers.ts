@@ -1,5 +1,13 @@
 import { getStatefulInner } from ".";
-import { TOPRIMITIVE, NO_CHANGE, DREAMLAND, SYMBOL } from "../consts";
+import {
+	TOPRIMITIVE,
+	NO_CHANGE,
+	DREAMLAND,
+	SYMBOL,
+	ARRAY,
+	MAP,
+} from "../consts";
+import { isBasePtr } from "../utils";
 import { isStateful, ObjectProp, StateData } from "./state";
 
 export const enum PointerType {
@@ -33,7 +41,7 @@ export type PointerData = {
 	  }
 );
 
-let internalPointers: Map<symbol, PointerData> = new Map();
+let internalPointers: Map<symbol, PointerData> = MAP();
 
 let followPath = (obj: any, path: PointerStep[]): any =>
 	path.reduce((acc, x) => acc[unwrapValue(x)], obj);
@@ -125,10 +133,6 @@ export let initRegularPtr = (id: symbol): boolean => {
 	recalculate();
 
 	return true;
-};
-
-export let isBasePtr = (val: any): val is Pointer<any> => {
-	return val instanceof Pointer;
 };
 
 export let unwrapValue = <T>(val: Pointer<T> | T): T =>
@@ -249,7 +253,7 @@ export class Pointer<T> {
 		this: Pointer<ArrayLike<U>>,
 		func: (val: U, i: number) => R
 	): Pointer<R[]> {
-		return this.map((x) => Array.from(x).map(func));
+		return this.map((x) => ARRAY.from(x).map(func));
 	}
 
 	clone(): Pointer<T> {

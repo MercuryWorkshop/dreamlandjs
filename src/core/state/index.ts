@@ -1,5 +1,6 @@
 import { DREAMLAND, TOPRIMITIVE } from "../consts";
-import { initRegularPtr, isBasePtr, Pointer } from "./pointers";
+import { isArray, isBasePtr } from "../utils";
+import { initRegularPtr, Pointer } from "./pointers";
 import { createState, internalStateful, StateData, Stateful } from "./state";
 
 export let useTrap = false;
@@ -55,7 +56,7 @@ export let defineUse = () =>
 				useTrap = last;
 
 				usestr: {
-					if (magicPtr instanceof Array && "raw" in magicPtr)
+					if (isArray(magicPtr) && "raw" in magicPtr)
 						return usestr(magicPtr, params);
 				}
 
