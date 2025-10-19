@@ -12,11 +12,25 @@ import {
 	type DreamlandCssUpdate,
 } from "./hmrPayload";
 
-export let jsxPlugin = (): Plugin => {
-	let command: "build" | "serve" = "build";
-	let root = "";
-	let rootPosix = "";
-	let cssCache = new Map<string, CssModuleMeta>();
+type CssPluginContext = {
+	command: "build" | "serve";
+	root: string;
+	rootPosix: string;
+	cssCache: Map<string, CssModuleMeta>;
+};
+
+let createCssPluginContext = (): CssPluginContext => ({
+	command: "build",
+	root: "",
+	rootPosix: "",
+	cssCache: new Map<string, CssModuleMeta>(),
+});
+
+let sharedCssPluginContext = createCssPluginContext();
+
+export let jsxPlugin = (
+	context: CssPluginContext = sharedCssPluginContext
+): Plugin => {
 
 	return {
 		name: "dreamland/vite/jsx",
@@ -27,76 +41,90 @@ export let jsxPlugin = (): Plugin => {
 			config.esbuild.jsxImportSource = "dreamland";
 		},
 		configResolved(resolved) {
-			command = resolved.command;
-			root = resolved.root;
-			rootPosix = toPosixPath(root);
+			context.command = resolved.command;
+			context.root = resolved.root;
+			context.rootPosix = toPosixPath(context.root);
+			context.cssCache.clear();
 		},
 		transform(code, id) {
-			if (command !== "serve" || !isProcessable(id)) return null;
+			if (context.command !== "serve" || !isProcessable(id)) return null;
 
 			let analysis = analyzeCssModule(code, {
 				id,
-				root,
-				rootPosix,
+				root: context.root,
+				rootPosix: context.rootPosix,
 				transform: true,
 			});
 
 			if (!analysis) {
-				let fsPath = resolveFsPath(id, root);
-				if (fsPath) cssCache.delete(fsPath);
+				let fsPath = resolveFsPath(id, context.root);
+				if (fsPath) context.cssCache.delete(fsPath);
 				return null;
 			}
 
-			cssCache.set(analysis.fsPath, analysis.meta);
+			context.cssCache.set(analysis.fsPath, analysis.meta);
 			return analysis.transform ?? null;
-		},
-		async handleHotUpdate(ctx) {
-			if (command !== "serve" || !isProcessable(ctx.file)) return;
-
-			try {
-				let fsPath = toPosixPath(ctx.file);
-				let previous = cssCache.get(fsPath);
-				let nextAnalysis = analyzeCssModule(await ctx.read(), {
-					id: ctx.file,
-					root,
-					rootPosix,
-					transform: false,
-				});
-
-				if (!nextAnalysis) {
-					cssCache.delete(fsPath);
-					return;
-				}
-
-				cssCache.set(fsPath, nextAnalysis.meta);
-
-				if (!previous) return;
-
-				let updates = diffCssEntries(previous, nextAnalysis.meta);
-				console.log({ previous, nextAnalysis, updates });
-				if (!updates || !updates.length) return;
-
-				ctx.server.ws.send({
-					type: "custom",
-					event: DREAMLAND_CSS_EVENT,
-					data: { file: nextAnalysis.meta.publicPath, updates },
-				});
-
-				return [];
-			} catch (error) {
-				let logger = ctx.server.config.logger;
-				let message =
-					error instanceof Error
-						? error.stack || error.message
-						: String(error);
-				logger.error(
-					`[dreamland:vite] CSS HMR failed for ${ctx.file}\n${message}`
-				);
-				throw error;
-			}
 		},
 	};
 };
+
+export let cssHmrPlugin = (
+	context: CssPluginContext = sharedCssPluginContext
+): Plugin => ({
+	name: "dreamland/vite/css-hmr",
+	apply: "serve",
+	configResolved(resolved) {
+		context.command = resolved.command;
+		context.root = resolved.root;
+		context.rootPosix = toPosixPath(context.root);
+		context.cssCache.clear();
+	},
+	async handleHotUpdate(ctx) {
+		if (context.command !== "serve" || !isProcessable(ctx.file)) return;
+
+		try {
+			let fsPath = toPosixPath(ctx.file);
+			let previous = context.cssCache.get(fsPath);
+			let nextAnalysis = analyzeCssModule(await ctx.read(), {
+				id: ctx.file,
+				root: context.root,
+				rootPosix: context.rootPosix,
+				transform: false,
+			});
+
+			if (!nextAnalysis) {
+				context.cssCache.delete(fsPath);
+				return;
+			}
+
+			context.cssCache.set(fsPath, nextAnalysis.meta);
+
+			if (!previous) return;
+
+			let updates = diffCssEntries(previous, nextAnalysis.meta);
+			console.log({ previous, nextAnalysis, updates });
+			if (!updates || !updates.length) return;
+
+			ctx.server.ws.send({
+				type: "custom",
+				event: DREAMLAND_CSS_EVENT,
+				data: { file: nextAnalysis.meta.publicPath, updates },
+			});
+
+			return [];
+		} catch (error) {
+			let logger = ctx.server.config.logger;
+			let message =
+				error instanceof Error
+					? error.stack || error.message
+					: String(error);
+			logger.error(
+				`[dreamland:vite] CSS HMR failed for ${ctx.file}\n${message}`
+			);
+			throw error;
+		}
+	},
+});
 
 type AnalyzeCssOptions = {
 	id: string;
