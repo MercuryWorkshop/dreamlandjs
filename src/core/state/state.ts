@@ -6,7 +6,7 @@
 // that Symbol is in an "internal pointers" list allowing `state[state.x]` to add a pointer to the path instead of a static value
 
 import { getStatefulInner, useTrap } from ".";
-import { DREAMLAND, STATEFUL, SYMBOL, TOPRIMITIVE } from "../consts";
+import { DREAMLAND, MAP, STATEFUL, SYMBOL, TOPRIMITIVE } from "../consts";
 import {
 	initRegularPtr,
 	Pointer,
@@ -25,7 +25,7 @@ export type StateData = {
 	_proxy: any;
 };
 
-export let internalStateful: Map<symbol, StateData> = new Map();
+export let internalStateful: Map<symbol, StateData> = MAP();
 
 type StatefulObject = Record<string | symbol, any>;
 export type Stateful<T extends StatefulObject> = T & {

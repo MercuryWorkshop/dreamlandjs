@@ -27,14 +27,22 @@ export type DomImpl = [
 	),
 ];
 
-export let setDomImpl = (dom: DomImpl) => {
-	DOCUMENT = dom[0];
-	node = dom[1];
-	new_Text = dom[2];
-	new_Comment = dom[3];
-	genCssUid = dom[4];
-	hydrating = dom[5];
-	ssrTransform = dom[6];
+export let setDomImpl = ([
+	Doc,
+	Node,
+	New_Text,
+	New_Comment,
+	GenCssUid,
+	Hydrating,
+	SsrTransform,
+]: DomImpl) => {
+	DOCUMENT = Doc;
+	node = Node;
+	new_Text = New_Text;
+	new_Comment = New_Comment;
+	genCssUid = GenCssUid;
+	hydrating = Hydrating;
+	ssrTransform = SsrTransform;
 };
 export let getDomImpl = (): DomImpl => [
 	DOCUMENT,
