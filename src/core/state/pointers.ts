@@ -140,13 +140,14 @@ export let unwrapValue = <T>(val: Pointer<T> | T): T =>
 export let maybeListen = <T>(
 	val: Pointer<T> | T,
 	func: (val: T) => void,
-	pointer?: () => void
+	pointer?: () => void,
+	old?: T
 ) => {
+	func(unwrapValue(val));
 	if (isBasePtr(val)) {
 		pointer?.();
-		val.listen(func);
+		val.listen((x) => x !== old && ((old = x), func(x)));
 	}
-	func(unwrapValue(val));
 };
 
 export class Pointer<T> {
