@@ -98,6 +98,7 @@ export let initRegularPtr = (id: symbol): boolean => {
 	let path = ptr._path;
 	let target = ptr._state._target;
 	let steps: PtrInitStep[];
+	let len = path.length;
 
 	let recalculate = () =>
 		steps.forEach((x, i) => {
@@ -123,7 +124,7 @@ export let initRegularPtr = (id: symbol): boolean => {
 			_steps: path.slice(0, i + 1),
 			_listener: (prop) => {
 				if (prop === unwrapValue(x)) {
-					recalculate();
+					if (i < len - 1) recalculate();
 					callAllListeners(ptr);
 				}
 			},

@@ -30,37 +30,41 @@ const common = (include, output, unsafe) => {
 			filterRoot: process.cwd(),
 			tsconfig,
 		}),
-		...(DEV ? [] : [terser({
-			parse: {},
-			compress: {
-				passes: 5,
-				unsafe: unsafe,
-				unsafe_Function: unsafe,
-				unsafe_arrows: unsafe,
-				unsafe_comps: unsafe,
-				unsafe_math: unsafe,
-				unsafe_methods: unsafe,
-				unsafe_proto: unsafe,
-				unsafe_regexp: unsafe,
-				unsafe_symbols: unsafe,
-				unsafe_undefined: unsafe,
-			},
-			mangle: {
-				keep_classnames: false,
-				keep_fnames: false,
-				properties: {
-					regex: /^_.*/,
-				},
-			},
-			format: {
-				wrap_func_args: false,
-				comments: /^@/,
-			},
-			module: true,
-			ie8: false,
-			safari10: false,
-			ecma: 2022,
-		})]),
+		...(DEV
+			? []
+			: [
+					terser({
+						parse: {},
+						compress: {
+							passes: 5,
+							unsafe: unsafe,
+							unsafe_Function: unsafe,
+							unsafe_arrows: unsafe,
+							unsafe_comps: unsafe,
+							unsafe_math: unsafe,
+							unsafe_methods: unsafe,
+							unsafe_proto: unsafe,
+							unsafe_regexp: unsafe,
+							unsafe_symbols: unsafe,
+							unsafe_undefined: unsafe,
+						},
+						mangle: {
+							keep_classnames: false,
+							keep_fnames: false,
+							properties: {
+								regex: /^_.*/,
+							},
+						},
+						format: {
+							wrap_func_args: false,
+							comments: /^@/,
+						},
+						module: true,
+						ie8: false,
+						safari10: false,
+						ecma: 2022,
+					}),
+				]),
 		...(output
 			? [
 					visualizer({
