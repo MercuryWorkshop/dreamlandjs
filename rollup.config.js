@@ -30,7 +30,7 @@ const common = (include, output, unsafe) => {
 			filterRoot: process.cwd(),
 			tsconfig,
 		}),
-		terser({
+		...(DEV ? [] : [terser({
 			parse: {},
 			compress: {
 				passes: 5,
@@ -60,7 +60,7 @@ const common = (include, output, unsafe) => {
 			ie8: false,
 			safari10: false,
 			ecma: 2022,
-		}),
+		})]),
 		...(output
 			? [
 					visualizer({
