@@ -21,6 +21,7 @@ import { createState, stateProxy } from "../state/state";
 import { DREAMLAND, MAP, NO_CHANGE } from "../consts";
 import { DelegateListener } from "../delegate";
 import { findLIS, isArray, isBasePtr, isNode } from "../utils";
+import { Stateful } from "../../../dist/core";
 
 export let currentCssIdent: string | null = null;
 export let callDelegateListeners = (
@@ -141,7 +142,7 @@ function _jsx(
 	let el: HTMLElement;
 
 	if (typeof init === "function") {
-		let state = createState({});
+		let state = createState({}) as Stateful<any>;
 
 		ssrTransform?.(init);
 

@@ -1,238 +1,214 @@
-import { getStatefulInner } from ".";
+import { ARRAY, NO_CHANGE, SYMBOL, TOPRIMITIVE } from "../consts";
+import { ObjectProp } from "../utils";
 import {
-	TOPRIMITIVE,
-	NO_CHANGE,
-	DREAMLAND,
-	SYMBOL,
-	ARRAY,
-	MAP,
-} from "../consts";
-import { isBasePtr } from "../utils";
-import { isStateful, ObjectProp, StateData } from "./state";
+	_stateListen,
+	_stateListenRemove,
+	isStateful,
+	Stateful,
+	StatefulListener,
+} from "./state";
+import { useTrap, UseTrapMap, useTrapMap } from "./use";
 
-export const enum PointerType {
-	// state + pointer step
-	Regular,
-	// zipped pointer
-	Zipped,
-	// mapped pointer
-	Mapped,
+let internalPointers: WeakMap<
+	Pointer<any>,
+	InternalPointer<any>
+> = new WeakMap();
+
+const enum PointerType {
+	Regular = 0,
+	Mapped = 1,
+	Zipped = 2,
 }
-export type PointerStep = ObjectProp | Pointer<ObjectProp>;
-export type PointerData = {
-	_id: symbol;
-	_listeners: (() => void)[];
-} & (
-	| {
-			_type: PointerType.Regular;
-			_state: StateData;
-			_path: PointerStep[];
-	  }
-	| {
-			_type: PointerType.Zipped;
-			_ptrs: Pointer<any>[];
-	  }
-	| {
-			_type: PointerType.Mapped;
-			_ptr: PointerData;
 
-			_map: (val: any) => any;
-			_reverse?: (val: any) => any | typeof NO_CHANGE;
+type StateStepVal = Pointer<ObjectProp> | ObjectProp;
+type StateStep = {
+	readonly _prop: StateStepVal;
+	// the computed value used in _recalculate
+	_computed?: any;
+	// the current state object that has the listener
+	_state?: Stateful<any>;
+	// the listener
+	_callback?: StatefulListener;
+	_callbackRef?: WeakRef<StatefulListener>;
+};
+type InternalPointer<T> = { _listeners: ((val: T) => void)[] } & (
+	| {
+			readonly _type: PointerType.Regular;
+			readonly _state: Stateful<any>;
+			readonly _path: ReadonlyArray<StateStep>;
+	  }
+	| {
+			readonly _type: PointerType.Mapped;
+
+			readonly _ptr: Pointer<any>;
+			readonly _map: (val: any) => T;
+			readonly _reverse?: (val: T) => any | typeof NO_CHANGE;
+	  }
+	| {
+			readonly _type: PointerType.Zipped;
+
+			readonly _ptrs: ReadonlyArray<Pointer<any>>;
 	  }
 );
-
-let internalPointers: Map<symbol, PointerData> = MAP();
-
-let followPath = (obj: any, path: PointerStep[]): any =>
-	path.reduce((acc, x) => acc[unwrapValue(x)], obj);
-
-let getPtrValue = (ptr: PointerData): any => {
-	let obj: any;
-	if (ptr._type == PointerType.Regular) {
-		obj = followPath(ptr._state._target, ptr._path);
-	} else if (ptr._type == PointerType.Zipped) {
-		obj = ptr._ptrs.map((x) => x.value);
-	} else if (ptr._type == PointerType.Mapped) {
-		obj = ptr._map(getPtrValue(ptr._ptr));
-	}
-	return obj;
-};
-export let setPtrValue = (ptr: PointerData, value: any): boolean => {
-	if (value === NO_CHANGE) return false;
-	if (ptr._type == PointerType.Regular) {
-		let path = ptr._path;
-		followPath(ptr._state._proxy, path.slice(0, -1))[unwrapValue(path.at(-1))] =
-			value;
-		return true;
-	} else if (ptr._type == PointerType.Mapped && ptr._reverse) {
-		return setPtrValue(ptr._ptr, ptr._reverse(value));
-	}
-	return false;
+type InternalRegularPointer<T> = InternalPointer<T> & {
+	readonly _type: PointerType.Regular;
 };
 
-let callAllListeners = (ptr: PointerData) => {
-	ptr._listeners.forEach((x) => x());
-};
-
-export let registerPointer = <T extends PointerData>(ptr: T): T => {
-	internalPointers.set(ptr._id, ptr);
-	return ptr;
-};
-
-interface PtrInitStep {
-	_steps: PointerStep[];
-	_listener: (prop: ObjectProp) => void;
-	_state?: StateData;
+export interface InitializingPointer {
+	_state: Stateful<any>;
+	_path: ObjectProp[];
 }
 
-// once the path has been collected listeners are added to all state objects and pointers touched
-// any changes to props that the pointer touches trigger a recalculate and notify all of the pointers' listeners
-export let initRegularPtr = (id: symbol): boolean => {
-	let ptr = internalPointers.get(id);
-	if (!ptr) return false;
+let unwrapStep = (val: StateStep): any => unwrapValue(val._prop);
+let followPath = (obj: any, path: ReadonlyArray<StateStep>): any =>
+	path.reduce((acc, x) => acc[unwrapStep(x)], obj);
 
-	dev: {
-		if (ptr._type != PointerType.Regular) throw "Illegal invocation";
-	}
+export let initializeStep = (
+	map: UseTrapMap,
+	step: ObjectProp
+): StateStepVal => {
+	// map will just return nothing, cast to reduce code size
+	let init = map.get(step as symbol);
+	if (isPointer(init)) return init;
+	else if (!init) return step;
 
-	let path = ptr._path;
-	let target = ptr._state._target;
-	let steps: PtrInitStep[];
-	let len = path.length;
-
-	let recalculate = () =>
-		steps.forEach((x, i) => {
-			if (x._state)
-				x._state._listeners = x._state._listeners.filter(
-					(y) => y !== x._listener
-				);
-
-			let stateful = steps
-				.slice(0, i)
-				.map((x) => followPath(target, x._steps))
-				.find(isStateful);
-			x._state = stateful ? getStatefulInner(stateful) : ptr._state;
-
-			x._state._listeners.push(x._listener);
-		});
-
-	steps = path.map((x, i) => {
-		if (isBasePtr(x)) {
-			x.listen(recalculate);
-		}
-		return {
-			_steps: path.slice(0, i + 1),
-			_listener: (prop) => {
-				if (prop === unwrapValue(x)) {
-					if (i < len - 1) recalculate();
-					callAllListeners(ptr);
-				}
-			},
-		};
-	});
-
-	recalculate();
-
-	return true;
-};
-
-export let unwrapValue = <T>(val: Pointer<T> | T): T =>
-	isBasePtr(val) ? val.value : val;
-export let maybeListen = <T>(
-	val: Pointer<T> | T,
-	func: (val: T) => void,
-	pointer?: () => void,
-	old?: T
-) => {
-	func(unwrapValue(val));
-	if (isBasePtr(val)) {
-		pointer?.();
-		val.listen((x) => x !== old && ((old = x), func(x)));
-	}
+	return new Pointer({
+		_listeners: [],
+		_type: PointerType.Regular,
+		_state: init._state,
+		_path: init._path.map((x) => ({ _prop: initializeStep(map, x) })),
+	} satisfies InternalPointer<any>);
 };
 
 export class Pointer<T> {
 	// @internal
-	_ptr: PointerData;
+	_id: symbol = SYMBOL();
 
 	// @internal
 	_cssIdent?: string;
 
 	// @internal
-	constructor(sym: symbol) {
-		this._ptr = internalPointers.get(sym);
-		dev: {
-			if (!this._ptr) {
-				throw "Illegal invocation";
-			}
-		}
-	}
-
-	get value(): T {
-		return getPtrValue(this._ptr);
-	}
-	set value(val: T) {
-		setPtrValue(this._ptr, val);
-	}
-
-	[DREAMLAND](): Pointer<any>[] | null {
-		let ptr = this._ptr;
-		if (ptr._type == PointerType.Zipped) {
-			return ptr._ptrs;
-		}
-		return null;
-	}
-
-	[TOPRIMITIVE]() {
-		return this._ptr._id;
+	get _ptr(): InternalPointer<T> {
+		return internalPointers.get(this);
 	}
 
 	// @internal
-	_map(
-		mapping: (val: any) => any,
-		reverse?: (val: any) => any | typeof NO_CHANGE
-	): symbol {
-		let ptr: PointerData = registerPointer({
+	_recalculate(i: number, ptr: InternalRegularPointer<T>, step: StateStep) {
+		if (!step._callbackRef) {
+			step._callback = this._changed.bind(this, i) satisfies StatefulListener;
+			step._callbackRef = new WeakRef(step._callback);
+		}
+
+		if (step._state) _stateListenRemove(step._state, step._callbackRef);
+
+		let before = ptr._path.slice(0, i);
+
+		step._computed = followPath(ptr._state, before)[unwrapStep(step)];
+		step._state =
+			before.reverse().find((x) => isStateful(x._computed)) || ptr._state;
+
+		_stateListen(step._state, step._callbackRef);
+	}
+
+	// @internal
+	_changed(i: number, prop: ObjectProp) {
+		let ptr = this._ptr;
+		dev: {
+			if (ptr._type != PointerType.Regular) throw "unreachable";
+		}
+		let j = 0;
+		if (!ptr._path.map(unwrapStep).includes(prop)) return;
+
+		if (i < ptr._path.length - 1) {
+			for (; j <= i; j++) {
+				this._recalculate(j, ptr, ptr._path[j]);
+			}
+		}
+
+		this._callListeners();
+	}
+
+	// @internal
+	_callListeners() {
+		this._ptr._listeners.map((x) => x(this.value));
+	}
+
+	// @internal
+	constructor(internal: InternalPointer<T>) {
+		internalPointers.set(this, internal);
+
+		if (internal._type == PointerType.Regular) {
+			internal._path.map((x, i) => this._recalculate(i, internal, x));
+		} else if (internal._type == PointerType.Mapped) {
+			internal._ptr.listen((_) => this._callListeners());
+		} else if (internal._type == PointerType.Zipped) {
+			internal._ptrs.map((x) => x.listen((_) => this._callListeners()));
+		}
+	}
+
+	[TOPRIMITIVE]() {
+		if (useTrap) useTrapMap.set(this._id, this);
+		return this._id;
+	}
+
+	get value(): T {
+		let ptr = this._ptr;
+
+		if (ptr._type == PointerType.Regular) {
+			return followPath(ptr._state, ptr._path);
+		} else if (ptr._type == PointerType.Mapped) {
+			return ptr._map(ptr._ptr.value);
+		} else if (ptr._type == PointerType.Zipped) {
+			return ptr._ptrs.map((x) => x.value) as any;
+		}
+	}
+
+	// @internal
+	_set(val: T): boolean {
+		let ptr = this._ptr;
+
+		if (ptr._type == PointerType.Regular) {
+			followPath(ptr._state, ptr._path.slice(0, -1))[
+				unwrapStep(ptr._path[ptr._path.length])
+			] = val;
+			return true;
+		} else if (ptr._type == PointerType.Mapped) {
+			let val: any;
+			if (ptr._reverse && (val = ptr._reverse(val)) !== NO_CHANGE) {
+				ptr._ptr.value = val;
+				return true;
+			}
+		}
+		// zipped
+		return false;
+	}
+	set value(val: T) {
+		this._set(val);
+	}
+
+	listen(func: (val: T) => void): () => void {
+		let ptr = this._ptr;
+		ptr._listeners.push(func);
+		return () => (ptr._listeners = ptr._listeners.filter((x) => x !== func));
+	}
+
+	map<U>(func: (val: T) => U): Pointer<U>;
+	map<U>(func: (val: T) => U, reverse: (val: U) => T): Pointer<U>;
+	map<U>(_map: (val: T) => U, _reverse?: (val: U) => T) {
+		return new Pointer({
+			_listeners: [],
 			_type: PointerType.Mapped,
-			_id: SYMBOL(),
-			_listeners: [],
-
-			_map: mapping,
-			_reverse: reverse,
-			_ptr: this._ptr,
+			_ptr: this,
+			_map,
+			_reverse,
 		});
-
-		this.listen((_) => callAllListeners(ptr));
-
-		return ptr._id;
 	}
-
-	listen(func: (val: T) => void) {
-		this._ptr._listeners.push(() => func(this.value));
+	mapEach<U, R>(
+		this: Pointer<ArrayLike<U>>,
+		func: (val: U, i: number) => R
+	): Pointer<R[]> {
+		return this.map((x) => ARRAY.from(x).map(func));
 	}
-
-	zip<Ptrs extends ReadonlyArray<Pointer<any>>>(
-		...pointers: Ptrs
-	): Pointer<
-		[
-			T,
-			...{
-				[Idx in keyof Ptrs]: Ptrs[Idx] extends Pointer<infer Val> ? Val : never;
-			},
-		]
-	> {
-		let ptr: PointerData = registerPointer({
-			_type: PointerType.Zipped,
-			_id: SYMBOL(),
-			_listeners: [],
-			_ptrs: [new Pointer(this._ptr._id), ...pointers],
-		});
-
-		ptr._ptrs.map((x) => x.listen((_) => callAllListeners(ptr)));
-
-		return new Pointer(ptr._id);
-	}
-
 	andThen<True, False>(
 		then: True,
 		otherwise?: False
@@ -246,19 +222,37 @@ export class Pointer<T> {
 			return typeof real === "function" ? (real as (val: T) => any)(val) : real;
 		});
 	}
-	map<U>(func: (val: T) => U): Pointer<U>;
-	map<U>(func: (val: T) => U, reverse: (val: U) => T): Pointer<U>;
-	map<U>(func: (val: T) => U, reverse?: (val: U) => T) {
-		return new Pointer(this._map(func, reverse));
-	}
-	mapEach<U, R>(
-		this: Pointer<ArrayLike<U>>,
-		func: (val: U, i: number) => R
-	): Pointer<R[]> {
-		return this.map((x) => ARRAY.from(x).map(func));
-	}
 
-	clone(): Pointer<T> {
-		return new Pointer(this._ptr._id);
+	zip<Ptrs extends ReadonlyArray<Pointer<any>>>(
+		...pointers: Ptrs
+	): Pointer<
+		[
+			T,
+			...{
+				[Idx in keyof Ptrs]: Ptrs[Idx] extends Pointer<infer Val> ? Val : never;
+			},
+		]
+	> {
+		return new Pointer({
+			_listeners: [],
+			_type: PointerType.Zipped,
+			_ptrs: pointers,
+		});
 	}
 }
+
+export let isPointer = (val: any): val is Pointer<any> =>
+	val instanceof Pointer;
+export let unwrapValue = <T>(val: Pointer<T> | T): T =>
+	isPointer(val) ? val.value : val;
+export let maybeListen = <T>(
+	val: Pointer<T> | T,
+	func: (val: T) => void,
+	pointer?: () => void
+) => {
+	if (isPointer(val)) {
+		pointer?.();
+		val.listen(func);
+	}
+	func(unwrapValue(val));
+};
