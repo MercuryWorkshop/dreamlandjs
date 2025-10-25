@@ -103,7 +103,8 @@ export class Pointer<T> {
 
 		step._computed = followPath(ptr._state, before)[unwrapStep(step)];
 		step._state =
-			before.reverse().find((x) => isStateful(x._computed)) || ptr._state;
+			before.reverse().find((x) => isStateful(x._computed))?._computed ||
+			ptr._state;
 
 		_stateListen(step._state, step._callback);
 	}
@@ -111,16 +112,14 @@ export class Pointer<T> {
 	// @internal
 	_changed(i: number, prop: ObjectProp) {
 		let ptr = this._ptr;
+		let j = i;
 		dev: {
 			if (ptr._type != PointerType.Regular) throw "unreachable";
 		}
-		let j = 0;
 		if (!ptr._path.map(unwrapStep).includes(prop)) return;
 
-		if (i < ptr._path.length - 1) {
-			for (; j <= i; j++) {
-				this._recalculate(j, ptr, ptr._path[j]);
-			}
+		for (; j < ptr._path.length; j++) {
+			this._recalculate(j, ptr, ptr._path[j]);
 		}
 
 		this._callListeners();
@@ -167,7 +166,7 @@ export class Pointer<T> {
 
 		if (ptr._type == PointerType.Regular) {
 			followPath(ptr._state, ptr._path.slice(0, -1))[
-				unwrapStep(ptr._path[ptr._path.length])
+				unwrapStep(ptr._path[ptr._path.length - 1])
 			] = val;
 			return true;
 		} else if (ptr._type == PointerType.Mapped) {

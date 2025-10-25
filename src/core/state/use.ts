@@ -9,7 +9,7 @@ import { createState, Stateful } from "./state";
 
 // epheremal strong reference allowing pointers to be recorded and then looked up later
 export type UseTrapElement = Pointer<any> | InitializingPointer;
-export type UseTrapMap = Map<Symbol, UseTrapElement>;
+export type UseTrapMap = Map<symbol, UseTrapElement>;
 export let useTrapMap: UseTrapMap = MAP();
 
 export let useTrap = false;
@@ -80,6 +80,7 @@ export let defineUse = () => {
 					: magicPtr;
 			};
 		},
+		configurable: true,
 	});
 };
 
