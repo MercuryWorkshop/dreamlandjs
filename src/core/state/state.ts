@@ -12,7 +12,7 @@ export type StatefulListener = (prop: ObjectProp, state: Stateful<any>) => void;
 
 interface InternalStateful<T> {
 	_target: T;
-	_listeners: WeakRef<StatefulListener>[];
+	_listeners: StatefulListener[];
 	_proxies: Record<ObjectProp, Pointer<any>>;
 }
 
@@ -23,13 +23,13 @@ let getInternal = <T extends object>(
 ): InternalStateful<T> => internalStatefuls.get(stateful);
 export let _stateListen = <T extends object>(
 	stateful: Stateful<T>,
-	listener: WeakRef<StatefulListener>
+	listener: StatefulListener
 ) => {
 	getInternal(stateful)._listeners.push(listener);
 };
 export let _stateListenRemove = <T extends object>(
 	stateful: Stateful<T>,
-	listener: WeakRef<StatefulListener>
+	listener: StatefulListener
 ) => {
 	let inner = getInternal(stateful);
 	inner._listeners = inner._listeners.filter((x) => x !== listener);
@@ -74,10 +74,7 @@ export let createState = <T extends object>(target: T): Stateful<T> => {
 			let setRet = internal._proxies[p]
 				? internal._proxies[p]._set(newValue)
 				: Reflect.set(target, p, newValue, receiver);
-			if (setRet)
-				(internal._listeners = internal._listeners.filter((x) =>
-					x.deref()
-				)).map((x) => x.deref()?.(p, ret));
+			if (setRet) internal._listeners.map((x) => x(p, ret));
 			return setRet;
 		},
 	}) as Stateful<T>;
@@ -89,7 +86,7 @@ export let stateListen = <T extends object>(
 	state: Stateful<T>,
 	func: StatefulListener
 ) => {
-	_stateListen(state, new WeakRef(func));
+	_stateListen(state, func);
 };
 
 export let stateProxy = <T extends object, Key extends keyof T>(

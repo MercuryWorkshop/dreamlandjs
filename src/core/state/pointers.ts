@@ -29,7 +29,6 @@ type StateStep = {
 	_state?: Stateful<any>;
 	// the listener
 	_callback?: StatefulListener;
-	_callbackRef?: WeakRef<StatefulListener>;
 };
 type InternalPointer<T> = { _listeners: ((val: T) => void)[] } & (
 	| {
@@ -94,12 +93,11 @@ export class Pointer<T> {
 
 	// @internal
 	_recalculate(i: number, ptr: InternalRegularPointer<T>, step: StateStep) {
-		if (!step._callbackRef) {
+		if (!step._callback) {
 			step._callback = this._changed.bind(this, i) satisfies StatefulListener;
-			step._callbackRef = new WeakRef(step._callback);
 		}
 
-		if (step._state) _stateListenRemove(step._state, step._callbackRef);
+		if (step._state) _stateListenRemove(step._state, step._callback);
 
 		let before = ptr._path.slice(0, i);
 
@@ -107,7 +105,7 @@ export class Pointer<T> {
 		step._state =
 			before.reverse().find((x) => isStateful(x._computed)) || ptr._state;
 
-		_stateListen(step._state, step._callbackRef);
+		_stateListen(step._state, step._callback);
 	}
 
 	// @internal
