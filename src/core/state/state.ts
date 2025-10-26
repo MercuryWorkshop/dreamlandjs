@@ -1,132 +1,104 @@
-// the state system uses a getter on globalThis to "trap" all accesses to stateful properties
-// the getter returns a function which when called will turn off the trap immediately and then return a DLPointer
-// effectively the "trap" is only active during the time the js engine parses the argument list
-//
-// while the trap is active, stateful objects return a proxy that collects all accesses and coerces to a Symbol
-// that Symbol is in an "internal pointers" list allowing `state[state.x]` to add a pointer to the path instead of a static value
+import { DREAMLAND, STATEFUL, SYMBOL, TOPRIMITIVE } from "../consts";
+import { ObjectProp } from "../utils";
+import { InitializingPointer, Pointer } from "./pointers";
+import { useTrap, useTrapMap } from "./use";
 
-import { getStatefulInner, useTrap } from ".";
-import { DREAMLAND, MAP, STATEFUL, SYMBOL, TOPRIMITIVE } from "../consts";
-import {
-	initRegularPtr,
-	Pointer,
-	PointerData,
-	PointerStep,
-	PointerType,
-	registerPointer,
-	setPtrValue,
-} from "./pointers";
+let internalStatefuls: WeakMap<
+	Stateful<any>,
+	InternalStateful<any>
+> = new WeakMap();
 
-export type ObjectProp = string | symbol;
-export type StateData = {
-	_id: symbol;
-	_listeners: ((prop: ObjectProp) => void)[];
-	_target: any;
-	_proxy: any;
+export type StatefulListener = (prop: ObjectProp, state: Stateful<any>) => void;
+
+interface InternalStateful<T> {
+	_target: T;
+	_listeners: StatefulListener[];
+	_proxies: Record<ObjectProp, Pointer<any>>;
+}
+
+export type Stateful<T extends object> = T & { [DREAMLAND]: typeof STATEFUL };
+
+let getInternal = <T extends object>(
+	stateful: Stateful<T>
+): InternalStateful<T> => internalStatefuls.get(stateful);
+export let _stateListen = <T extends object>(
+	stateful: Stateful<T>,
+	listener: StatefulListener
+) => {
+	getInternal(stateful)._listeners.push(listener);
 };
-
-export let internalStateful: Map<symbol, StateData> = MAP();
-
-type StatefulObject = Record<string | symbol, any>;
-export type Stateful<T extends StatefulObject> = T & {
-	[DREAMLAND]: typeof STATEFUL;
+export let _stateListenRemove = <T extends object>(
+	stateful: Stateful<T>,
+	listener: StatefulListener
+) => {
+	let inner = getInternal(stateful);
+	inner._listeners = inner._listeners.filter((x) => x !== listener);
 };
+export let _stateTarget = <T extends object>(stateful: Stateful<T>): T =>
+	getInternal(stateful)._target;
 
-let mapStateStep = (step: any): PointerStep => {
-	return typeof step === "symbol" && initRegularPtr(step)
-		? new Pointer(step)
-		: step;
-};
-
-export let createState = <T extends StatefulObject>(obj: T): Stateful<T> => {
-	dev: {
-		if (!(obj instanceof Object)) {
-			throw "$state requires an object";
-		}
-	}
-
-	let data: Omit<StateData, "_proxy"> = {
+export let createState = <T extends object>(target: T): Stateful<T> => {
+	let internal: InternalStateful<T> = {
+		_target: target,
 		_listeners: [],
-		_target: obj,
-		_id: SYMBOL(),
-	};
-	let state = data as StateData;
-	internalStateful.set(state._id, state);
+		_proxies: {},
+	} satisfies InternalStateful<T>;
 
-	let proxy = new Proxy(obj, {
-		get(target, prop, proxy) {
-			if (prop == DREAMLAND) return useTrap ? state._id : STATEFUL;
+	let ret = new Proxy(target, {
+		get(target, p, receiver) {
 			if (useTrap) {
-				let ptr: PointerData = registerPointer({
-					_type: PointerType.Regular,
-					_state: state,
-					_id: SYMBOL(),
-					_path: [mapStateStep(prop)],
-					_listeners: [],
-				});
+				let sym = SYMBOL();
+				let ptr: InitializingPointer = {
+					_state: ret,
+					_path: [p],
+				} satisfies InitializingPointer;
+				useTrapMap.set(sym, ptr);
 
-				// this proxy collects all the accesses in this pointer instance and adds them to the path
 				return new Proxy(
 					{},
 					{
-						get(_target, prop, proxy) {
-							if (prop == TOPRIMITIVE) return () => ptr._id;
-
-							ptr._path.push(mapStateStep(prop));
-
-							return proxy;
+						get(target, p, receiver) {
+							if (p === TOPRIMITIVE) return () => sym;
+							ptr._path.push(p);
+							return receiver;
 						},
 					}
 				);
 			}
 
-			return Reflect.get(target, prop, proxy);
+			return internal._proxies[p]
+				? internal._proxies[p].value
+				: Reflect.get(target, p, receiver);
 		},
-		set(target, prop, newValue, proxy) {
-			let ret = Reflect.set(target, prop, newValue, proxy);
-			state._listeners.map((x) => x(prop));
-			return ret;
+		set(target, p, newValue, receiver) {
+			let setRet = internal._proxies[p]
+				? internal._proxies[p]._set(newValue)
+				: Reflect.set(target, p, newValue, receiver);
+			if (setRet) internal._listeners.map((x) => x(p, ret));
+			return setRet;
 		},
-	});
-
-	state._proxy = proxy;
-
-	return proxy as Stateful<T>;
+	}) as Stateful<T>;
+	internalStatefuls.set(ret, internal);
+	return ret;
 };
 
-export let stateListen = <T extends StatefulObject>(
+export let stateListen = <T extends object>(
 	state: Stateful<T>,
-	func: (newValue: any, prop: string | symbol) => void
+	func: StatefulListener
 ) => {
-	getStatefulInner(state)._listeners.push((prop) => func(state[prop], prop));
+	_stateListen(state, func);
 };
-export let stateProxy = <T extends StatefulObject, Key extends string | symbol>(
+
+export let stateProxy = <T extends object, Key extends keyof T>(
 	state: Stateful<T>,
 	key: Key,
 	ptr: Pointer<T[Key]>
 ) => {
-	let inner = getStatefulInner(state);
-	inner._target[key] = ptr.value;
-
-	let setting = false;
-	ptr.listen((x) => {
-		setting = true;
-		inner._proxy[key] = x;
-	});
-	inner._listeners.push((prop) => {
-		if (prop !== key) return;
-
-		if (setting) {
-			setting = false;
-			return;
-		}
-		if (!setPtrValue(ptr._ptr, state[prop])) {
-			setting = true;
-			(state as any)[prop] = ptr.value;
-		}
-	});
+	// `number` keys will get coerced to string anyway
+	getInternal(state)._proxies[key as ObjectProp] = ptr;
+	ptr.listen((val) =>
+		getInternal(state)._listeners.map((x) => x(key as ObjectProp, val))
+	);
 };
 
-export let isStateful = (val: any): val is Stateful<any> => {
-	return typeof val === "object" && val !== null && val[DREAMLAND] == STATEFUL;
-};
+export let isStateful = (val: any): val is Stateful<any> => !!getInternal(val);

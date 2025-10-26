@@ -1,6 +1,11 @@
 import { ASSIGN, GLOBAL } from "./consts";
-import { getStatefulInner } from "./state";
-import { createState, isStateful, Stateful, stateListen } from "./state/state";
+import {
+	_stateTarget,
+	createState,
+	isStateful,
+	Stateful,
+	stateListen,
+} from "./state/state";
 
 let delegates = [];
 
@@ -64,7 +69,7 @@ function _createStore<T extends object>(
 			}
 
 			if (isStateful(v)) {
-				return { [INTERNAL]: "s", v: getStatefulInner(v)._target };
+				return { [INTERNAL]: "s", v: _stateTarget(v) };
 			}
 			return v;
 		});

@@ -12,7 +12,7 @@ export type ComponentChild =
 	| ComponentChild[]
 	| Pointer<ComponentChild>;
 
-export type ComponentContext<T> = {
+export type ComponentContext<T extends object> = {
 	state: Stateful<T>;
 
 	root: HTMLElement;
@@ -30,17 +30,24 @@ export type ComponentContext<T> = {
 type MappedProps<Props> = {
 	[Key in keyof Props]: Props[Key] | Pointer<Props[Key]>;
 };
-export type Component<Props = {}, Private = {}, Public = {}> = {
+type Empty = Record<string, never>;
+export type Component<
+	Props extends object = Empty,
+	Private extends object = Empty,
+	Public extends object = Empty,
+> = {
 	(
 		this: Stateful<StateObj<Props, Private, Public>>,
 		cx: ComponentContext<Props & Private & Public>
 	): HTMLElement;
 	style?: CssInit;
 };
-type StateObj<Props, Private, Public> = Omit<
-	Props & Private & Public,
-	"children"
->;
+// Omit<Type, Keys> is stupid and breaks callables like `on:click`
+type StateObj<Props, Private, Public> = {
+	[P in keyof (Props & Private & Public) as Exclude<P, "children">]: (Props &
+		Private &
+		Public)[P];
+};
 type ComponentStateObj<T extends Component<any, any, any>> =
 	T extends Component<infer Props, infer Private, infer Public>
 		? StateObj<Props, Private, Public>
@@ -51,7 +58,9 @@ export type ComponentState<T extends Component<any, any, any>> = Stateful<
 export type ComponentInstance<T extends Component<any, any, any>> = DLElement<
 	ComponentStateObj<T>
 >;
-export type DLElement<T> = HTMLElement & { $: ComponentContext<T> };
+export type DLElement<T extends object> = HTMLElement & {
+	$: ComponentContext<T>;
+};
 
 type IntrinsicProps<ElementType extends Element> = {
 	this?: Pointer<ElementType | Element | null | undefined>;

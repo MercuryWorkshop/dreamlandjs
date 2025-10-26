@@ -214,6 +214,7 @@ export let Link: Component<{
 				}
 				router.navigate(this.href);
 
+				let x = this["on:click"];
 				this["on:click"]?.();
 			}}
 		>
