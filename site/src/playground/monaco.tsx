@@ -25,7 +25,7 @@ import dreamlandFiles from "./dreamland";
 		}
 		return new editorWorker();
 	},
-} satisfies typeof monaco.MonacoEnvironment;
+};
 
 let typescript = monaco.languages.typescript.typescriptDefaults;
 

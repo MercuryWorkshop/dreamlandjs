@@ -12,22 +12,22 @@
 	"devDependencies": {
 		"@mdx-js/mdx": "^3.1.1",
 		"@wooorm/starry-night": "^3.8.0",
-		"esbuild": "*",
+		"esbuild": "^0.25.11",
 		"estree-util-visit": "^2.0.0",
-		"react": "^19.1.1",
-		"react-dom": "^19.1.1",
+		"react": "^19.2.0",
+		"react-dom": "^19.2.0",
 		"rehype-starry-night": "^2.2.0",
 		"solid-js": "^1.9.9",
-		"svelte": "^5.39.6",
-		"typescript": "~5.9.2",
-		"vite": "^7.1.6",
-		"terser": "*"
+		"svelte": "^5.42.2",
+		"terser": "^5.44.0",
+		"typescript": "~5.9.3",
+		"vite": "^7.1.12"
 	},
 	"dependencies": {
 		"@literals/rollup-plugin-html-css-minifier": "^3.0.1",
 		"@mdi/js": "^7.4.47",
-		"@rollup/browser": "^4.52.0",
+		"@rollup/browser": "^4.52.5",
 		"dreamland": "link:..",
-		"monaco-editor": "^0.53.0"
+		"monaco-editor": "^0.54.0"
 	}
 }
