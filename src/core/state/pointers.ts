@@ -20,6 +20,8 @@ const enum PointerType {
 	Zipped = 2,
 }
 
+type PointerListener = (prop?: ObjectProp) => void;
+
 type StateStepVal = Pointer<ObjectProp> | ObjectProp;
 type StateStep = {
 	readonly _prop: StateStepVal;
@@ -28,7 +30,7 @@ type StateStep = {
 	// the current state object that has the listener
 	_state?: Stateful<any>;
 	// the listener
-	_callback?: StatefulListener;
+	_callback?: PointerListener;
 };
 type InternalPointer<T> = { _listeners: ((val: T) => void)[] } & (
 	| {
@@ -92,11 +94,7 @@ export class Pointer<T> {
 	}
 
 	// @internal
-	_recalculate(i: number, ptr: InternalRegularPointer<T>, step: StateStep) {
-		if (!step._callback) {
-			step._callback = this._changed.bind(this, i) satisfies StatefulListener;
-		}
-
+	_recalculateOne(i: number, ptr: InternalRegularPointer<T>, step: StateStep) {
 		if (step._state) _stateListenRemove(step._state, step._callback);
 
 		let before = ptr._path.slice(0, i);
@@ -109,20 +107,23 @@ export class Pointer<T> {
 		_stateListen(step._state, step._callback);
 	}
 
-	// @internal
-	_changed(i: number, prop: ObjectProp) {
-		let ptr = this._ptr;
-		let j = i;
-		dev: {
-			if (ptr._type != PointerType.Regular) throw "unreachable";
-		}
-		if (!ptr._path.map(unwrapStep).includes(prop)) return;
-
-		for (; j < ptr._path.length; j++) {
-			this._recalculate(j, ptr, ptr._path[j]);
+	_recalculate(i: number, ptr: InternalRegularPointer<T>) {
+		for (; i < ptr._path.length; i++) {
+			this._recalculateOne(i, ptr, ptr._path[i]);
 		}
 
 		this._callListeners();
+	}
+
+	// @internal
+	_changed(i: number, prop?: ObjectProp) {
+		let ptr = this._ptr;
+		dev: {
+			if (ptr._type != PointerType.Regular) throw "unreachable";
+		}
+		if (prop && prop !== unwrapStep(ptr._path[i])) return;
+
+		this._recalculate(i, ptr);
 	}
 
 	// @internal
@@ -135,7 +136,11 @@ export class Pointer<T> {
 		internalPointers.set(this, internal);
 
 		if (internal._type == PointerType.Regular) {
-			internal._path.map((x, i) => this._recalculate(i, internal, x));
+			internal._path.map((x, i) => {
+				x._callback = this._changed.bind(this, i);
+				if (isPointer(x._prop)) x._prop.listen((_) => x._callback());
+				this._recalculateOne(i, internal, x);
+			});
 		} else if (internal._type == PointerType.Mapped) {
 			internal._ptr.listen((_) => this._callListeners());
 		} else if (internal._type == PointerType.Zipped) {
@@ -170,9 +175,9 @@ export class Pointer<T> {
 			] = val;
 			return true;
 		} else if (ptr._type == PointerType.Mapped) {
-			let val: any;
-			if (ptr._reverse && (val = ptr._reverse(val)) !== NO_CHANGE) {
-				ptr._ptr.value = val;
+			let recalculated: any;
+			if (ptr._reverse && (recalculated = ptr._reverse(val)) !== NO_CHANGE) {
+				ptr._ptr.value = recalculated;
 				return true;
 			}
 		}
@@ -233,7 +238,7 @@ export class Pointer<T> {
 		return new Pointer({
 			_listeners: [],
 			_type: PointerType.Zipped,
-			_ptrs: pointers,
+			_ptrs: [this, ...pointers],
 		});
 	}
 }

@@ -96,6 +96,9 @@ export let stateProxy = <T extends object, Key extends keyof T>(
 ) => {
 	// `number` keys will get coerced to string anyway
 	getInternal(state)._proxies[key as ObjectProp] = ptr;
+	ptr.listen((val) =>
+		getInternal(state)._listeners.map((x) => x(key as ObjectProp, val))
+	);
 };
 
 export let isStateful = (val: any): val is Stateful<any> => !!getInternal(val);
