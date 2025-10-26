@@ -1,4 +1,4 @@
-import { DREAMLAND, STATEFUL, SYMBOL, TOPRIMITIVE } from "../consts";
+import { COMMA_TOKEN, SYMBOL, TOPRIMITIVE } from "../consts";
 import { ObjectProp } from "../utils";
 import { InitializingPointer, Pointer } from "./pointers";
 import { useTrap, useTrapMap } from "./use";
@@ -16,7 +16,10 @@ interface InternalStateful<T> {
 	_proxies: Record<ObjectProp, Pointer<any>>;
 }
 
-export type Stateful<T extends object> = T & { [DREAMLAND]: typeof STATEFUL };
+export type Stateful<T extends object> = T & {
+	/// THIS IS A SEALED MARKER TYPE. do not try accessing it
+	readonly [COMMA_TOKEN]: unique symbol;
+};
 
 let getInternal = <T extends object>(
 	stateful: Stateful<T>
@@ -85,9 +88,9 @@ export let createState = <T extends object>(target: T): Stateful<T> => {
 
 export let stateListen = <T extends object>(
 	state: Stateful<T>,
-	func: StatefulListener
+	func: (newValue: any, prop: string | symbol) => void
 ) => {
-	_stateListen(state, func);
+	_stateListen(state, (prop, state) => func(state[prop], prop));
 };
 
 export let stateProxy = <T extends object, Key extends keyof T>(

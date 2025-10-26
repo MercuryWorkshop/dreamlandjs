@@ -1,7 +1,6 @@
 export const SYMBOL: typeof Symbol;
 
 export const DREAMLAND: unique symbol;
-export const STATEFUL: unique symbol;
 export const NO_CHANGE: unique symbol;
 
 export const COMMA_TOKEN: unique symbol;

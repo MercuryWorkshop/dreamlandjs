@@ -1,4 +1,4 @@
-import { ARRAY, NO_CHANGE, SYMBOL, TOPRIMITIVE } from "../consts";
+import { ARRAY, DREAMLAND, NO_CHANGE, SYMBOL, TOPRIMITIVE } from "../consts";
 import { ObjectProp } from "../utils";
 import {
 	_stateListen,
@@ -143,11 +143,6 @@ export class Pointer<T> {
 		}
 	}
 
-	[TOPRIMITIVE]() {
-		if (useTrap) useTrapMap.set(this._id, this);
-		return this._id;
-	}
-
 	get value(): T {
 		let ptr = this._ptr;
 
@@ -183,8 +178,51 @@ export class Pointer<T> {
 		this._set(val);
 	}
 
+	[DREAMLAND](): ReadonlyArray<Pointer<any>> | null {
+		return (
+			(this._ptr as InternalPointer<T> & { _type: PointerType.Zipped })._ptrs ||
+			null
+		);
+	}
+
+	[TOPRIMITIVE]() {
+		if (useTrap) useTrapMap.set(this._id, this);
+		return this._id;
+	}
+
 	listen(func: (val: T) => void) {
 		this._ptr._listeners.push(func);
+	}
+
+	zip<Ptrs extends ReadonlyArray<Pointer<any>>>(
+		...pointers: Ptrs
+	): Pointer<
+		[
+			T,
+			...{
+				[Idx in keyof Ptrs]: Ptrs[Idx] extends Pointer<infer Val> ? Val : never;
+			},
+		]
+	> {
+		return new Pointer({
+			_listeners: [],
+			_type: PointerType.Zipped,
+			_ptrs: [this, ...pointers],
+		});
+	}
+
+	andThen<True, False>(
+		then: True,
+		otherwise?: False
+	): Pointer<
+		| (True extends (val: T) => infer TR ? TR : True)
+		| (False extends (val: T) => infer FR ? FR : False)
+	> {
+		return this.map((val) => {
+			let real = val ? then : otherwise;
+			// typescript is an idiot
+			return typeof real === "function" ? (real as (val: T) => any)(val) : real;
+		});
 	}
 
 	map<U>(func: (val: T) => U): Pointer<U>;
@@ -203,36 +241,6 @@ export class Pointer<T> {
 		func: (val: U, i: number) => R
 	): Pointer<R[]> {
 		return this.map((x) => ARRAY.from(x).map(func));
-	}
-	andThen<True, False>(
-		then: True,
-		otherwise?: False
-	): Pointer<
-		| (True extends (val: T) => infer TR ? TR : True)
-		| (False extends (val: T) => infer FR ? FR : False)
-	> {
-		return this.map((val) => {
-			let real = val ? then : otherwise;
-			// typescript is an idiot
-			return typeof real === "function" ? (real as (val: T) => any)(val) : real;
-		});
-	}
-
-	zip<Ptrs extends ReadonlyArray<Pointer<any>>>(
-		...pointers: Ptrs
-	): Pointer<
-		[
-			T,
-			...{
-				[Idx in keyof Ptrs]: Ptrs[Idx] extends Pointer<infer Val> ? Val : never;
-			},
-		]
-	> {
-		return new Pointer({
-			_listeners: [],
-			_type: PointerType.Zipped,
-			_ptrs: [this, ...pointers],
-		});
 	}
 }
 

@@ -3,7 +3,6 @@ export let ARRAY = Array;
 export let [
 	// dl
 	DREAMLAND,
-	STATEFUL,
 	NO_CHANGE,
 	// selectorParser
 	COMMA_TOKEN,
@@ -15,7 +14,7 @@ export let [
 	UNIVERSAL_TOKEN,
 	ATTRIBUTE_TOKEN,
 	TYPE_TOKEN,
-] = ARRAY.from(ARRAY(12), SYMBOL);
+] = ARRAY.from(ARRAY(11), SYMBOL);
 export let TOPRIMITIVE = SYMBOL.toPrimitive;
 export let ASSIGN = Object.assign;
 export let GLOBAL = globalThis;
