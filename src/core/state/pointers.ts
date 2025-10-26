@@ -5,7 +5,6 @@ import {
 	_stateListenRemove,
 	isStateful,
 	Stateful,
-	StatefulListener,
 } from "./state";
 import { useTrap, UseTrapMap, useTrapMap } from "./use";
 
@@ -94,7 +93,7 @@ export class Pointer<T> {
 	}
 
 	// @internal
-	_recalculateOne(i: number, ptr: InternalRegularPointer<T>, step: StateStep) {
+	_recalculate(i: number, ptr: InternalRegularPointer<T>, step: StateStep) {
 		if (step._state) _stateListenRemove(step._state, step._callback);
 
 		let before = ptr._path.slice(0, i);
@@ -107,14 +106,6 @@ export class Pointer<T> {
 		_stateListen(step._state, step._callback);
 	}
 
-	_recalculate(i: number, ptr: InternalRegularPointer<T>) {
-		for (; i < ptr._path.length; i++) {
-			this._recalculateOne(i, ptr, ptr._path[i]);
-		}
-
-		this._callListeners();
-	}
-
 	// @internal
 	_changed(i: number, prop?: ObjectProp) {
 		let ptr = this._ptr;
@@ -123,7 +114,11 @@ export class Pointer<T> {
 		}
 		if (prop && prop !== unwrapStep(ptr._path[i])) return;
 
-		this._recalculate(i, ptr);
+		for (; i < ptr._path.length; i++) {
+			this._recalculate(i, ptr, ptr._path[i]);
+		}
+
+		this._callListeners();
 	}
 
 	// @internal
@@ -139,7 +134,7 @@ export class Pointer<T> {
 			internal._path.map((x, i) => {
 				x._callback = this._changed.bind(this, i);
 				if (isPointer(x._prop)) x._prop.listen((_) => x._callback());
-				this._recalculateOne(i, internal, x);
+				this._recalculate(i, internal, x);
 			});
 		} else if (internal._type == PointerType.Mapped) {
 			internal._ptr.listen((_) => this._callListeners());
@@ -168,6 +163,7 @@ export class Pointer<T> {
 	// @internal
 	_set(val: T): boolean {
 		let ptr = this._ptr;
+		let recalculated: any;
 
 		if (ptr._type == PointerType.Regular) {
 			followPath(ptr._state, ptr._path.slice(0, -1))[
@@ -175,7 +171,6 @@ export class Pointer<T> {
 			] = val;
 			return true;
 		} else if (ptr._type == PointerType.Mapped) {
-			let recalculated: any;
 			if (ptr._reverse && (recalculated = ptr._reverse(val)) !== NO_CHANGE) {
 				ptr._ptr.value = recalculated;
 				return true;
@@ -188,10 +183,8 @@ export class Pointer<T> {
 		this._set(val);
 	}
 
-	listen(func: (val: T) => void): () => void {
-		let ptr = this._ptr;
-		ptr._listeners.push(func);
-		return () => (ptr._listeners = ptr._listeners.filter((x) => x !== func));
+	listen(func: (val: T) => void) {
+		this._ptr._listeners.push(func);
 	}
 
 	map<U>(func: (val: T) => U): Pointer<U>;
