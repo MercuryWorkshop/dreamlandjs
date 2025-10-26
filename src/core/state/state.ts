@@ -75,7 +75,8 @@ export let createState = <T extends object>(target: T): Stateful<T> => {
 				? internal._proxies[p]._set(newValue)
 				: Reflect.set(target, p, newValue, receiver);
 			if (setRet) internal._listeners.map((x) => x(p, ret));
-			return setRet;
+			// returning setRet would be better here but it would break a lot of strictmode code
+			return true;
 		},
 	}) as Stateful<T>;
 	internalStatefuls.set(ret, internal);
