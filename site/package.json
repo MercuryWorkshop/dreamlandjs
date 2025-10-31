@@ -17,8 +17,8 @@
 		"react": "^19.2.0",
 		"react-dom": "^19.2.0",
 		"rehype-starry-night": "^2.2.0",
-		"solid-js": "^1.9.9",
-		"svelte": "^5.42.2",
+		"solid-js": "^1.9.10",
+		"svelte": "^5.43.2",
 		"terser": "^5.44.0",
 		"typescript": "~5.9.3",
 		"vite": "^7.1.12"
