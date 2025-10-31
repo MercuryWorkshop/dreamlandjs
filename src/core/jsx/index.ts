@@ -48,6 +48,7 @@ let mapChild = (
 		let current: Node[] = null!;
 
 		maybeListen(child, (val: ComponentChild) => {
+			if (current && !start.parentNode) return;
 			let mapped: Node[] = mapChild(val, parent, cssIdent, child._cssIdent);
 
 			// pretty sure it's not possible to put a pointer child in not a htmlelement
