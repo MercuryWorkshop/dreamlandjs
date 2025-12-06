@@ -58,6 +58,10 @@
 		"./vite": {
 			"types": "./dist/vite.d.ts",
 			"default": "./dist/vite.js"
+		},
+		"./3d": {
+			"types": "./dist/3d.d.ts",
+			"default": "./dist/3d.js"
 		}
 	},
 	"files": [
