@@ -61,8 +61,6 @@ export let defineUse = () => {
 				magicPtr: { [Symbol.toPrimitive]: () => symbol } | TemplateStringsArray,
 				...params: any[]
 			) => {
-				useTrap = false;
-
 				let map = useTrapMap;
 
 				usestr: {
