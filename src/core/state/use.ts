@@ -14,6 +14,11 @@ export let useTrapMap: UseTrapMap = MAP();
 
 export let useTrap = false;
 
+let resetTrap = () => {
+	useTrap = false;
+	useTrapMap = MAP();
+};
+
 let usestr = (
 	map: UseTrapMap,
 	template: TemplateStringsArray,
@@ -21,11 +26,14 @@ let usestr = (
 ) => {
 	let state = createState({}) as Stateful<{ _string: string }>;
 	let flattened = [];
+	let primitives = params.map((x) => x[TOPRIMITIVE]());
+	resetTrap();
+
 	for (let i in template) {
 		flattened.push(template[i]);
 		if (params[i]) {
 			let val = params[i];
-			let prop = initializeStep(map, val[TOPRIMITIVE]());
+			let prop = initializeStep(map, primitives[i]);
 
 			if (isPointer(prop)) {
 				let i = flattened.length;
@@ -56,7 +64,6 @@ export let defineUse = () => {
 				useTrap = false;
 
 				let map = useTrapMap;
-				useTrapMap = MAP();
 
 				usestr: {
 					if (magicPtr instanceof Array && "raw" in magicPtr)
@@ -75,6 +82,7 @@ export let defineUse = () => {
 				};
 
 				magicPtr = init(magicPtr);
+				resetTrap();
 				return params.length
 					? (magicPtr as Pointer<any>).zip(...params.map(init))
 					: magicPtr;
