@@ -68,7 +68,7 @@ let mapChild = (
 				});
 
 				current
-					.filter((x) => !mapped.includes(x))
+					.filter((x) => !mapped.includes(x) && x.parentNode === parent)
 					.map((child) => parent.removeChild(child));
 			}
 			current = mapped;
