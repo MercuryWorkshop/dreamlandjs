@@ -8,6 +8,9 @@ export let isArray = (val: any): val is Array<any> => val instanceof Array;
 export let isBasePtr = (val: any): val is Pointer<any> =>
 	val instanceof Pointer;
 
+export let deref = <T extends object>(x: WeakRef<T> | T): T =>
+	(x as any).deref ? (x as any).deref() : (x as T);
+
 export let fatal = () => {
 	throw new Error("dl");
 };

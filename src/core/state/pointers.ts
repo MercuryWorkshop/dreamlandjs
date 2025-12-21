@@ -1,5 +1,5 @@
 import { ARRAY, DREAMLAND, NO_CHANGE, SYMBOL, TOPRIMITIVE } from "../consts";
-import { ObjectProp } from "../utils";
+import { deref, ObjectProp } from "../utils";
 import {
 	_stateListen,
 	_stateListenRemove,
@@ -8,6 +8,7 @@ import {
 } from "./state";
 import { useTrap, UseTrapMap, useTrapMap } from "./use";
 
+let constraints: WeakMap<any, Pointer<any>[]> = new WeakMap();
 let internalPointers: WeakMap<
 	Pointer<any>,
 	InternalPointer<any>
@@ -19,8 +20,7 @@ const enum PointerType {
 	Zipped = 2,
 }
 
-type PointerListener = (prop?: ObjectProp) => void;
-
+type StateStepListener = (prop?: ObjectProp) => void;
 type StateStepVal = Pointer<ObjectProp> | ObjectProp;
 type StateStep = {
 	readonly _prop: StateStepVal;
@@ -29,9 +29,15 @@ type StateStep = {
 	// the current state object that has the listener
 	_state?: Stateful<any>;
 	// the listener
-	_callback?: PointerListener;
+	_callback?: StateStepListener;
+	// listener weakref
+	_callbackRef?: WeakRef<StateStepListener>;
 };
-type InternalPointer<T> = { _listeners: ((val: T) => void)[] } & (
+export type PointerListener<T> = (val: T) => void;
+type InternalPointer<T> = {
+	_listeners: (PointerListener<T> | WeakRef<PointerListener<T>>)[];
+	_pointers: WeakRef<Pointer<any>>[];
+} & (
 	| {
 			readonly _type: PointerType.Regular;
 			readonly _state: Stateful<any>;
@@ -52,6 +58,9 @@ type InternalPointer<T> = { _listeners: ((val: T) => void)[] } & (
 );
 type InternalRegularPointer<T> = InternalPointer<T> & {
 	readonly _type: PointerType.Regular;
+};
+type InternalZippedPointer<T> = InternalPointer<T> & {
+	readonly _type: PointerType.Zipped;
 };
 
 export interface InitializingPointer {
@@ -74,11 +83,15 @@ export let initializeStep = (
 
 	return new Pointer({
 		_listeners: [],
+		_pointers: [],
 		_type: PointerType.Regular,
 		_state: init._state,
 		_path: init._path.map((x) => ({ _prop: initializeStep(map, x) })),
 	} satisfies InternalPointer<any>);
 };
+
+type Truthy<T> = Exclude<T, false | 0 | "" | null | undefined>;
+type Falsy<T> = Extract<T, false | 0 | "" | null | undefined>;
 
 export class Pointer<T> {
 	// @internal
@@ -94,7 +107,7 @@ export class Pointer<T> {
 
 	// @internal
 	_recalculate(i: number, ptr: InternalRegularPointer<T>, step: StateStep) {
-		if (step._state) _stateListenRemove(step._state, step._callback);
+		if (step._state) _stateListenRemove(step._state, step._callbackRef);
 
 		let before = ptr._path.slice(0, i);
 
@@ -103,11 +116,11 @@ export class Pointer<T> {
 			before.reverse().find((x) => isStateful(x._computed))?._computed ||
 			ptr._state;
 
-		_stateListen(step._state, step._callback);
+		_stateListen(step._state, step._callbackRef);
 	}
 
 	// @internal
-	_changed(i: number, prop?: ObjectProp) {
+	_changed(i: number, _: any, prop?: ObjectProp) {
 		let ptr = this._ptr;
 		dev: {
 			if (ptr._type != PointerType.Regular) throw "unreachable";
@@ -123,7 +136,18 @@ export class Pointer<T> {
 
 	// @internal
 	_callListeners() {
-		this._ptr._listeners.map((x) => x(this.value));
+		let ptr = this._ptr;
+		(ptr._listeners = ptr._listeners.filter((x) => deref(x))).map((x) =>
+			deref(x)(this.value)
+		);
+		(ptr._pointers = ptr._pointers.filter((x) => deref(x))).map((x) =>
+			deref(x)._callListeners()
+		);
+	}
+
+	// @internal
+	_listen(pointer: Pointer<any>) {
+		this._ptr._pointers.push(new WeakRef(pointer));
 	}
 
 	// @internal
@@ -133,13 +157,14 @@ export class Pointer<T> {
 		if (internal._type == PointerType.Regular) {
 			internal._path.map((x, i) => {
 				x._callback = this._changed.bind(this, i);
-				if (isPointer(x._prop)) x._prop.listen((_) => x._callback());
+				x._callbackRef = new WeakRef(x._callback);
+				if (isPointer(x._prop)) x._prop.listen(x._callbackRef);
 				this._recalculate(i, internal, x);
 			});
 		} else if (internal._type == PointerType.Mapped) {
-			internal._ptr.listen((_) => this._callListeners());
+			internal._ptr._listen(this);
 		} else if (internal._type == PointerType.Zipped) {
-			internal._ptrs.map((x) => x.listen((_) => this._callListeners()));
+			internal._ptrs.map((x) => x._listen(this));
 		}
 	}
 
@@ -179,10 +204,7 @@ export class Pointer<T> {
 	}
 
 	[DREAMLAND](): ReadonlyArray<Pointer<any>> | null {
-		return (
-			(this._ptr as InternalPointer<T> & { _type: PointerType.Zipped })._ptrs ||
-			null
-		);
+		return (this._ptr as InternalZippedPointer<T>)._ptrs || null;
 	}
 
 	[TOPRIMITIVE]() {
@@ -190,7 +212,11 @@ export class Pointer<T> {
 		return this._id;
 	}
 
-	listen(func: (val: T) => void) {
+	listen(func: PointerListener<T>): void;
+	// @internal
+	listen(func: WeakRef<PointerListener<T>>): void;
+	// @internal
+	listen(func: PointerListener<T> | WeakRef<PointerListener<T>>) {
 		this._ptr._listeners.push(func);
 	}
 
@@ -206,23 +232,30 @@ export class Pointer<T> {
 	> {
 		return new Pointer({
 			_listeners: [],
+			_pointers: [],
 			_type: PointerType.Zipped,
 			_ptrs: [this, ...pointers],
 		});
 	}
 
-	andThen<True, False>(
-		then: True,
-		otherwise?: False
-	): Pointer<
-		| (True extends (val: T) => infer TR ? TR : True)
-		| (False extends (val: T) => infer FR ? FR : False)
-	> {
-		return this.map((val) => {
-			let real = val ? then : otherwise;
-			// typescript is an idiot
-			return typeof real === "function" ? (real as (val: T) => any)(val) : real;
-		});
+	and<R>(then: R | ((val: Truthy<T>) => R)): Pointer<Falsy<T> | R> {
+		return this.map(
+			(val) =>
+				(val as Falsy<T>) &&
+				(typeof then === "function"
+					? (then as (val: Truthy<T>) => R)(val as Truthy<T>)
+					: then)
+		);
+	}
+
+	or<R>(then: R | ((val: Falsy<T>) => R)): Pointer<Truthy<T> | R> {
+		return this.map(
+			(val) =>
+				(val as Truthy<T>) ||
+				(typeof then === "function"
+					? (then as (val: Falsy<T>) => R)(val as Falsy<T>)
+					: then)
+		);
 	}
 
 	map<U>(func: (val: T) => U): Pointer<U>;
@@ -230,6 +263,7 @@ export class Pointer<T> {
 	map<U>(_map: (val: T) => U, _reverse?: (val: U) => T) {
 		return new Pointer({
 			_listeners: [],
+			_pointers: [],
 			_type: PointerType.Mapped,
 			_ptr: this,
 			_map,
@@ -242,6 +276,15 @@ export class Pointer<T> {
 	): Pointer<R[]> {
 		return this.map((x) => ARRAY.from(x).map(func));
 	}
+
+	constrain(to: any) {
+		if (!constraints.has(to)) constraints.set(to, []);
+		constraints.get(to).push(this);
+		return this;
+	}
+	unconstrain(to: any) {
+		constraints.set(to, constraints.get(to)?.filter((x) => x !== this) || []);
+	}
 }
 
 export let isPointer = (val: any): val is Pointer<any> =>
@@ -250,12 +293,13 @@ export let unwrapValue = <T>(val: Pointer<T> | T): T =>
 	isPointer(val) ? val.value : val;
 export let maybeListen = <T>(
 	val: Pointer<T> | T,
+	constrain: any,
 	func: (val: T) => void,
 	pointer?: () => void
 ) => {
 	if (isPointer(val)) {
 		pointer?.();
-		val.listen(func);
+		val.constrain(constrain).listen(func);
 	}
 	func(unwrapValue(val));
 };

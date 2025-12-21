@@ -1,18 +1,14 @@
 import { COMMA_TOKEN, SYMBOL, TOPRIMITIVE } from "../consts";
-import { ObjectProp } from "../utils";
+import { deref, ObjectProp } from "../utils";
 import { InitializingPointer, Pointer } from "./pointers";
 import { useTrap, useTrapMap } from "./use";
 
-let internalStatefuls: WeakMap<
-	Stateful<any>,
-	InternalStateful<any>
-> = new WeakMap();
+let internalStatefuls: WeakMap<Stateful<any>, InternalStateful> = new WeakMap();
 
-export type StatefulListener = (prop: ObjectProp, state: Stateful<any>) => void;
+export type StatefulListener = (newValue: any, prop: ObjectProp) => void;
 
-interface InternalStateful<T> {
-	_target: T;
-	_listeners: StatefulListener[];
+interface InternalStateful {
+	_listeners: (StatefulListener | WeakRef<StatefulListener>)[];
 	_proxies: Record<ObjectProp, Pointer<any>>;
 }
 
@@ -21,31 +17,37 @@ export type Stateful<T extends object> = T & {
 	readonly [COMMA_TOKEN]: unique symbol;
 };
 
-let getInternal = <T extends object>(
-	stateful: Stateful<T>
-): InternalStateful<T> => internalStatefuls.get(stateful);
+let getInternal = (stateful: Stateful<any>): InternalStateful =>
+	internalStatefuls.get(stateful);
+let callListeners = (
+	internal: InternalStateful,
+	prop: ObjectProp,
+	newValue: any
+) => {
+	(internal._listeners = internal._listeners.filter((x) => deref(x))).map((x) =>
+		deref(x)(newValue, prop)
+	);
+};
+
 export let _stateListen = <T extends object>(
 	stateful: Stateful<T>,
-	listener: StatefulListener
+	listener: WeakRef<StatefulListener>
 ) => {
 	getInternal(stateful)._listeners.push(listener);
 };
 export let _stateListenRemove = <T extends object>(
 	stateful: Stateful<T>,
-	listener: StatefulListener
+	listener: WeakRef<StatefulListener>
 ) => {
 	let inner = getInternal(stateful);
 	inner._listeners = inner._listeners.filter((x) => x !== listener);
 };
-export let _stateTarget = <T extends object>(stateful: Stateful<T>): T =>
-	getInternal(stateful)._target;
 
 export let createState = <T extends object>(target: T): Stateful<T> => {
-	let internal: InternalStateful<T> = {
-		_target: target,
+	let internal: InternalStateful = {
 		_listeners: [],
 		_proxies: {},
-	} satisfies InternalStateful<T>;
+	} satisfies InternalStateful;
 
 	let ret = new Proxy(target, {
 		get(target, p, receiver) {
@@ -77,7 +79,7 @@ export let createState = <T extends object>(target: T): Stateful<T> => {
 			let setRet = internal._proxies[p]
 				? internal._proxies[p]._set(newValue)
 				: Reflect.set(target, p, newValue, receiver);
-			if (setRet) internal._listeners.map((x) => x(p, ret));
+			if (setRet) callListeners(internal, p, newValue);
 			// returning setRet would be better here but it would break a lot of strictmode code
 			return true;
 		},
@@ -88,21 +90,19 @@ export let createState = <T extends object>(target: T): Stateful<T> => {
 
 export let stateListen = <T extends object>(
 	state: Stateful<T>,
-	func: (newValue: any, prop: string | symbol) => void
+	func: StatefulListener
 ) => {
-	_stateListen(state, (prop, state) => func(state[prop], prop));
+	getInternal(state)._listeners.push(func);
 };
 
-export let stateProxy = <T extends object, Key extends keyof T>(
+export let stateProxy = <T extends object, Key extends keyof T & ObjectProp>(
 	state: Stateful<T>,
 	key: Key,
 	ptr: Pointer<T[Key]>
 ) => {
 	// `number` keys will get coerced to string anyway
 	getInternal(state)._proxies[key as ObjectProp] = ptr;
-	ptr.listen((val) =>
-		getInternal(state)._listeners.map((x) => x(key as ObjectProp, val))
-	);
+	ptr.listen((val) => callListeners(getInternal(state), key, val));
 };
 
 export let isStateful = (val: any): val is Stateful<any> => !!getInternal(val);

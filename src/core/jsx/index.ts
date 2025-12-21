@@ -47,7 +47,7 @@ let mapChild = (
 		let end = new_Comment("]");
 		let current: Node[] = null!;
 
-		maybeListen(child, (val: ComponentChild) => {
+		maybeListen(child, start, (val: ComponentChild) => {
 			if (current && !start.parentNode) return;
 			let mapped: Node[] = mapChild(val, parent, cssIdent, child._cssIdent);
 
@@ -225,7 +225,7 @@ function _jsx(
 					let id = `--${varid}`;
 					let style = el.style;
 
-					maybeListen(func(cx.state), (val: any) => {
+					maybeListen(func(cx.state), el, (val: any) => {
 						if (val === undefined) style.removeProperty(id);
 						else style.setProperty(id, val);
 					});
@@ -283,7 +283,7 @@ function _jsx(
 			} else if (attr === "class") {
 				let old = [];
 
-				maybeListen(val, (val: string) => {
+				maybeListen(val, el, (val: string) => {
 					let classes = val.split(" ").filter((x) => x.length);
 					if (old.length) classList.remove(...old);
 					if (classes.length) classList.add(...classes);
@@ -294,7 +294,7 @@ function _jsx(
 			} else if (attr.startsWith("class:")) {
 				let name = attr.substring(6);
 
-				maybeListen(val, (val: boolean) => {
+				maybeListen(val, el, (val: boolean) => {
 					if (val) {
 						classList.add(name);
 					} else {
@@ -303,17 +303,17 @@ function _jsx(
 				});
 			} else if (attr.startsWith("attr:")) {
 				let key = attr.substring(5);
-				maybeListen(val, (val: boolean) => {
+				maybeListen(val, el, (val: boolean) => {
 					if (!hydrating?.(el)) el[key] = val;
 				});
 			} else if (attr == "style" && typeof val == "object" && !isBasePtr(val)) {
 				for (let k in val) {
-					maybeListen(val[k], (v: any) => {
+					maybeListen(val[k], el, (v: any) => {
 						el.style.setProperty(k, v);
 					});
 				}
 			} else {
-				maybeListen(val, (val) => setAttr(attr, val));
+				maybeListen(val, el, (val) => setAttr(attr, val));
 			}
 		}
 

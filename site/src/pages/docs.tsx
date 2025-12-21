@@ -166,7 +166,7 @@ export let DocsLayout: Component<
 					</button>
 				</div>
 				<div>
-					{use(this.doc).andThen((x: DocPage) => (
+					{use(this.doc).and((x) => (
 						<h1>{x.title}</h1>
 					))}
 					{use(this.outlet)}

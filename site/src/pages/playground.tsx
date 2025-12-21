@@ -30,8 +30,7 @@ export let PlaygroundHost: Component<
 				Playground
 			</div>
 			<div class="main">
-				{use(this.host).andThen(
-					(x: any) => x,
+				{use(this.host).or(
 					<div class="loading">
 						<h2>
 							<b>Loading web IDE...</b>
