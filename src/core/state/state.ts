@@ -8,7 +8,8 @@ let internalStatefuls: WeakMap<Stateful<any>, InternalStateful> = new WeakMap();
 export type StatefulListener = (newValue: any, prop: ObjectProp) => void;
 
 interface InternalStateful {
-	_listeners: (StatefulListener | WeakRef<StatefulListener>)[];
+	_listeners: StatefulListener[];
+	_weaks: WeakRef<StatefulListener>[];
 	_proxies: Record<ObjectProp, Pointer<any>>;
 }
 
@@ -24,7 +25,8 @@ let callListeners = (
 	prop: ObjectProp,
 	newValue: any
 ) => {
-	(internal._listeners = internal._listeners.filter((x) => deref(x))).map((x) =>
+	internal._listeners.map((x) => x(newValue, prop));
+	(internal._weaks = internal._weaks.filter(deref)).map((x) =>
 		deref(x)(newValue, prop)
 	);
 };
@@ -33,19 +35,20 @@ export let _stateListen = <T extends object>(
 	stateful: Stateful<T>,
 	listener: WeakRef<StatefulListener>
 ) => {
-	getInternal(stateful)._listeners.push(listener);
+	getInternal(stateful)._weaks.push(listener);
 };
 export let _stateListenRemove = <T extends object>(
 	stateful: Stateful<T>,
 	listener: WeakRef<StatefulListener>
 ) => {
 	let inner = getInternal(stateful);
-	inner._listeners = inner._listeners.filter((x) => x !== listener);
+	inner._weaks = inner._weaks.filter((x) => x !== listener);
 };
 
 export let createState = <T extends object>(target: T): Stateful<T> => {
 	let internal: InternalStateful = {
 		_listeners: [],
+		_weaks: [],
 		_proxies: {},
 	} satisfies InternalStateful;
 

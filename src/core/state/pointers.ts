@@ -35,8 +35,8 @@ type StateStep = {
 };
 export type PointerListener<T> = (val: T) => void;
 type InternalPointer<T> = {
-	_listeners: (PointerListener<T> | WeakRef<PointerListener<T>>)[];
-	_pointers: WeakRef<Pointer<any>>[];
+	_listeners: PointerListener<T>[];
+	_weaks: WeakRef<PointerListener<T>>[];
 } & (
 	| {
 			readonly _type: PointerType.Regular;
@@ -83,7 +83,7 @@ export let initializeStep = (
 
 	return new Pointer({
 		_listeners: [],
-		_pointers: [],
+		_weaks: [],
 		_type: PointerType.Regular,
 		_state: init._state,
 		_path: init._path.map((x) => ({ _prop: initializeStep(map, x) })),
@@ -96,7 +96,8 @@ type Falsy<T> = Extract<T, false | 0 | "" | null | undefined>;
 export class Pointer<T> {
 	// @internal
 	_id: symbol = SYMBOL();
-
+	// @internal
+	_listener = this._callListeners.bind(this);
 	// @internal
 	_cssIdent?: string;
 
@@ -107,8 +108,7 @@ export class Pointer<T> {
 
 	// @internal
 	_recalculate(i: number, ptr: InternalRegularPointer<T>, step: StateStep) {
-		if (step._state) _stateListenRemove(step._state, step._callbackRef);
-
+		let old = step._state;
 		let before = ptr._path.slice(0, i);
 
 		step._computed = followPath(ptr._state, before)[unwrapStep(step)];
@@ -116,7 +116,10 @@ export class Pointer<T> {
 			before.reverse().find((x) => isStateful(x._computed))?._computed ||
 			ptr._state;
 
-		_stateListen(step._state, step._callbackRef);
+		if (step._state !== old) {
+			if (old) _stateListenRemove(old, step._callbackRef);
+			_stateListen(step._state, step._callbackRef);
+		}
 	}
 
 	// @internal
@@ -137,17 +140,8 @@ export class Pointer<T> {
 	// @internal
 	_callListeners() {
 		let ptr = this._ptr;
-		(ptr._listeners = ptr._listeners.filter((x) => deref(x))).map((x) =>
-			deref(x)(this.value)
-		);
-		(ptr._pointers = ptr._pointers.filter((x) => deref(x))).map((x) =>
-			deref(x)._callListeners()
-		);
-	}
-
-	// @internal
-	_listen(pointer: Pointer<any>) {
-		this._ptr._pointers.push(new WeakRef(pointer));
+		ptr._listeners.map((x) => x(this.value));
+		(ptr._weaks = ptr._weaks.filter(deref)).map((x) => deref(x)(this.value));
 	}
 
 	// @internal
@@ -158,13 +152,13 @@ export class Pointer<T> {
 			internal._path.map((x, i) => {
 				x._callback = this._changed.bind(this, i);
 				x._callbackRef = new WeakRef(x._callback);
-				if (isPointer(x._prop)) x._prop.listen(x._callbackRef);
+				if (isPointer(x._prop)) x._prop._listenWeak(x._callbackRef);
 				this._recalculate(i, internal, x);
 			});
 		} else if (internal._type == PointerType.Mapped) {
-			internal._ptr._listen(this);
+			internal._ptr._listenWeak(new WeakRef(this._listener));
 		} else if (internal._type == PointerType.Zipped) {
-			internal._ptrs.map((x) => x._listen(this));
+			internal._ptrs.map((x) => x._listenWeak(new WeakRef(this._listener)));
 		}
 	}
 
@@ -212,11 +206,11 @@ export class Pointer<T> {
 		return this._id;
 	}
 
-	listen(func: PointerListener<T>): void;
 	// @internal
-	listen(func: WeakRef<PointerListener<T>>): void;
-	// @internal
-	listen(func: PointerListener<T> | WeakRef<PointerListener<T>>) {
+	_listenWeak(func: WeakRef<PointerListener<T>>): void {
+		this._ptr._weaks.push(func);
+	}
+	listen(func: PointerListener<T>) {
 		this._ptr._listeners.push(func);
 	}
 
@@ -232,7 +226,7 @@ export class Pointer<T> {
 	> {
 		return new Pointer({
 			_listeners: [],
-			_pointers: [],
+			_weaks: [],
 			_type: PointerType.Zipped,
 			_ptrs: [this, ...pointers],
 		});
@@ -263,7 +257,7 @@ export class Pointer<T> {
 	map<U>(_map: (val: T) => U, _reverse?: (val: U) => T) {
 		return new Pointer({
 			_listeners: [],
-			_pointers: [],
+			_weaks: [],
 			_type: PointerType.Mapped,
 			_ptr: this,
 			_map,
@@ -297,9 +291,12 @@ export let maybeListen = <T>(
 	func: (val: T) => void,
 	pointer?: () => void
 ) => {
+	let old = val;
 	if (isPointer(val)) {
 		pointer?.();
-		val.constrain(constrain).listen(func);
+		val
+			.constrain(constrain)
+			.listen((val) => old !== val && (func(val), (old = val)));
 	}
 	func(unwrapValue(val));
 };
