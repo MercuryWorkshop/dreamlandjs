@@ -1,9 +1,9 @@
-import { COMMA_TOKEN, SYMBOL, TOPRIMITIVE } from "../consts";
+import { COMMA_TOKEN, REFLECT, SYMBOL, TOPRIMITIVE, WEAKMAP } from "../consts";
 import { deref, ObjectProp } from "../utils";
 import { InitializingPointer, Pointer } from "./pointers";
 import { useTrap, useTrapMap } from "./use";
 
-let internalStatefuls: WeakMap<Stateful<any>, InternalStateful> = new WeakMap();
+let internalStatefuls: WeakMap<Stateful<any>, InternalStateful> = WEAKMAP();
 
 export type StatefulListener = (newValue: any, prop: ObjectProp) => void;
 
@@ -41,8 +41,9 @@ export let _stateListenRemove = <T extends object>(
 	stateful: Stateful<T>,
 	listener: WeakRef<StatefulListener>
 ) => {
-	let inner = getInternal(stateful);
-	inner._weaks = inner._weaks.filter((x) => x !== listener);
+	getInternal(stateful)._weaks = getInternal(stateful)._weaks.filter(
+		(x) => x !== listener
+	);
 };
 
 export let createState = <T extends object>(target: T): Stateful<T> => {
@@ -76,12 +77,12 @@ export let createState = <T extends object>(target: T): Stateful<T> => {
 
 			return internal._proxies[p]
 				? internal._proxies[p].value
-				: Reflect.get(target, p, receiver);
+				: REFLECT.get(target, p, receiver);
 		},
 		set(target, p, newValue, receiver) {
 			let setRet = internal._proxies[p]
 				? internal._proxies[p]._set(newValue)
-				: Reflect.set(target, p, newValue, receiver);
+				: REFLECT.set(target, p, newValue, receiver);
 			if (setRet) callListeners(internal, p, newValue);
 			// returning setRet would be better here but it would break a lot of strictmode code
 			return true;

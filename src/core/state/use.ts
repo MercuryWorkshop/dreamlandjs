@@ -1,4 +1,5 @@
 import { MAP, TOPRIMITIVE } from "../consts";
+import { isArray } from "../utils";
 import {
 	initializeStep,
 	InitializingPointer,
@@ -64,7 +65,7 @@ export let defineUse = () => {
 				let map = useTrapMap;
 
 				usestr: {
-					if (magicPtr instanceof Array && "raw" in magicPtr)
+					if (isArray(magicPtr) && "raw" in magicPtr)
 						return usestr(map, magicPtr, params);
 				}
 

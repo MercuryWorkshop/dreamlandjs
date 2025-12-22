@@ -1,4 +1,12 @@
-import { ARRAY, DREAMLAND, NO_CHANGE, SYMBOL, TOPRIMITIVE } from "../consts";
+import {
+	ARRAY,
+	DREAMLAND,
+	NO_CHANGE,
+	SYMBOL,
+	TOPRIMITIVE,
+	WEAKMAP,
+	WEAKREF,
+} from "../consts";
 import { deref, ObjectProp } from "../utils";
 import {
 	_stateListen,
@@ -8,11 +16,8 @@ import {
 } from "./state";
 import { useTrap, UseTrapMap, useTrapMap } from "./use";
 
-let constraints: WeakMap<any, Pointer<any>[]> = new WeakMap();
-let internalPointers: WeakMap<
-	Pointer<any>,
-	InternalPointer<any>
-> = new WeakMap();
+let constraints: WeakMap<any, Pointer<any>[]> = WEAKMAP();
+let internalPointers: WeakMap<Pointer<any>, InternalPointer<any>> = WEAKMAP();
 
 const enum PointerType {
 	Regular = 0,
@@ -151,14 +156,14 @@ export class Pointer<T> {
 		if (internal._type == PointerType.Regular) {
 			internal._path.map((x, i) => {
 				x._callback = this._changed.bind(this, i);
-				x._callbackRef = new WeakRef(x._callback);
+				x._callbackRef = WEAKREF(x._callback);
 				if (isPointer(x._prop)) x._prop._listenWeak(x._callbackRef);
 				this._recalculate(i, internal, x);
 			});
 		} else if (internal._type == PointerType.Mapped) {
-			internal._ptr._listenWeak(new WeakRef(this._listener));
+			internal._ptr._listenWeak(WEAKREF(this._listener));
 		} else if (internal._type == PointerType.Zipped) {
-			internal._ptrs.map((x) => x._listenWeak(new WeakRef(this._listener)));
+			internal._ptrs.map((x) => x._listenWeak(WEAKREF(this._listener)));
 		}
 	}
 

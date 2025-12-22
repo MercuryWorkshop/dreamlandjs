@@ -16,11 +16,11 @@ import {
 	DLElement,
 	DLElementNameToElement,
 } from "./definitions";
-import { maybeListen } from "../state/pointers";
+import { isPointer, maybeListen } from "../state/pointers";
 import { createState, stateProxy, Stateful } from "../state/state";
 import { DREAMLAND, MAP, NO_CHANGE } from "../consts";
 import { DelegateListener } from "../delegate";
-import { findLIS, isArray, isBasePtr, isNode } from "../utils";
+import { findLIS, isArray, isNode } from "../utils";
 
 export let currentCssIdent: string | null = null;
 export let callDelegateListeners = (
@@ -42,7 +42,7 @@ let mapChild = (
 ): Node[] => {
 	if (child == null) {
 		return [new_Comment()];
-	} else if (isBasePtr(child)) {
+	} else if (isPointer(child)) {
 		let start = new_Comment("[");
 		let end = new_Comment("]");
 		let current: Node[] = null!;
@@ -149,7 +149,7 @@ function _jsx(
 		for (let attr in props) {
 			let val = props[attr];
 
-			if (isBasePtr(val)) {
+			if (isPointer(val)) {
 				stateProxy(state, attr, val);
 			} else {
 				state[attr] = val;
@@ -160,7 +160,7 @@ function _jsx(
 			// any pointers passed as children were unable to inherit the currentCssIdent.
 			// we add the currentCssIdent (which is of the parent) here since we know that the pointer came from the parent.
 			// this might break if pointers of elements are being passed as props but oh well
-			if (isBasePtr(child)) {
+			if (isPointer(child)) {
 				child._cssIdent ||= currentCssIdent;
 			}
 		}
@@ -306,7 +306,7 @@ function _jsx(
 				maybeListen(val, el, (val: boolean) => {
 					if (!hydrating?.(el)) el[key] = val;
 				});
-			} else if (attr == "style" && typeof val == "object" && !isBasePtr(val)) {
+			} else if (attr == "style" && typeof val == "object" && !isPointer(val)) {
 				for (let k in val) {
 					maybeListen(val[k], el, (v: any) => {
 						el.style.setProperty(k, v);

@@ -19,3 +19,6 @@ export let TOPRIMITIVE = SYMBOL.toPrimitive;
 export let ASSIGN = Object.assign;
 export let GLOBAL = globalThis;
 export let MAP = (x) => new Map(x);
+export let WEAKMAP = () => new WeakMap();
+export let WEAKREF = (x) => new WeakRef(x);
+export let REFLECT = Reflect;
