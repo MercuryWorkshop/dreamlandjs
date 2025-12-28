@@ -38,7 +38,7 @@ let usestr = (
 
 			if (isPointer(prop)) {
 				let i = flattened.length;
-				prop.listen((val) => {
+				prop.constrain(state).listen((val) => {
 					flattened[i] = val;
 					state._string = flattened.join("");
 				});
