@@ -12,7 +12,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
  */
 
-import { createState, Stateful } from "dreamland/core";
+import { createState, Pointer, Stateful, stateProxy } from "dreamland/core";
 
 interface TickContext {
 	_inv_mass: number;
@@ -89,19 +89,22 @@ export type Spring<T> = Stateful<SpringState<T>>;
 
 let timeNow = () => performance.now();
 
-export let createSpring = <T>(val: T, opts: SpringOptions = {}): Spring<T> => {
+let isPointer = <T>(x: T | Pointer<T>): x is Pointer<T> => x instanceof Pointer;
+
+export let createSpring = <T>(val: T | Pointer<T>, opts: SpringOptions = {}): Spring<T> => {
 	let state = createState({
 		stiffness: opts.stiffness ?? 0.15,
 		damping: opts.damping ?? 0.8,
 		precision: opts.precision ?? 0.01,
 
-		target: val,
-		current: val,
-	} satisfies SpringState<T>);
+		current: isPointer(val) ? val.value : val,
+	} satisfies Omit<SpringState<T>, "target"> as SpringState<T>);
+	if (isPointer(val)) stateProxy(state, "target", val);
+	else state.target = val;
 
 	let settling = false;
 	let last_time = 0;
-	let last_value = val;
+	let last_value = state.current;
 	let _inv_mass = 1;
 	let inv_mass_recovery_rate = 0;
 	let momentum = 0;
@@ -130,7 +133,7 @@ export let createSpring = <T>(val: T, opts: SpringOptions = {}): Spring<T> => {
 		else requestAnimationFrame(update);
 	};
 
-	use(state.target).listen((_) => {
+	use(state.target).constrain(state).listen((_) => {
 		if (!settling) {
 			last_time = timeNow();
 			inv_mass_recovery_rate = 1000 / (momentum * 60);
