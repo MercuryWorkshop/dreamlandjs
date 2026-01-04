@@ -36,7 +36,7 @@ export let mountOne = (
 	let old = getDomImpl();
 	let vdom = [
 		{
-			createElement(ty: string, _, props: any) {
+			createElement(ty: string, _: any, props: any) {
 				let ssr = props[SSR];
 				props[SSR] = false;
 				if (ssr) return lookup(ty, ssr.id);

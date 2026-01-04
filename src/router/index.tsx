@@ -15,7 +15,7 @@ export type RouteParams = Record<string, string> & {
 
 export type ShowElement =
 	| DLElement<{
-			outlet: HTMLElement | null | undefined;
+			outlet?: HTMLElement;
 			"on:routeshown"?: (path: string) => void;
 
 			[index: string]: any;
@@ -47,7 +47,7 @@ function _getShow(
 	required: false,
 	path: string,
 	params: RouteParams
-): ShowElement | null;
+): ShowElement | undefined;
 function _getShow(
 	route: RouteInternal,
 	required: true,
@@ -59,7 +59,7 @@ function _getShow(
 	required: boolean,
 	path: string,
 	params: RouteParams
-): ShowElement | null {
+): ShowElement | undefined {
 	let show = route._show;
 	dev: {
 		if (required && !show)
@@ -121,7 +121,7 @@ let _route = (
 	path: string,
 	segments: string[],
 	params: RouteParams
-): ShowElement | null => {
+): ShowElement | undefined => {
 	let routePath: string[] = [];
 	let indexRoute = false;
 	if (route._path) {
@@ -179,8 +179,6 @@ let _route = (
 			}
 		}
 	}
-
-	return null;
 };
 
 export let Route: Component<{
@@ -230,7 +228,7 @@ export let Router: Component<
 	},
 	{
 		// @internal
-		_el: HTMLElement | null;
+		_el?: HTMLElement;
 	},
 	{
 		route: (path?: string, origin?: string) => string | undefined;
@@ -258,7 +256,12 @@ export let Router: Component<
 			realPath = realPath.slice(0, realPath.length - 5);
 		let segments = realPath.split("/").slice(1);
 
-		let el: HTMLElement | null = _route(routes, realPath, [...segments], {});
+		let el: HTMLElement | undefined = _route(
+			routes,
+			realPath,
+			[...segments],
+			{}
+		);
 
 		this._el = el;
 

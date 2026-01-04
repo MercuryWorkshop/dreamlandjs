@@ -69,7 +69,7 @@ export let defineUse = () => {
 						return usestr(map, magicPtr, params);
 				}
 
-				let init = (x) => {
+				let init = (x: { [Symbol.toPrimitive]: () => symbol }) => {
 					dev: {
 						if (isPointer(x)) throw "Illegal invocation";
 					}
@@ -80,7 +80,7 @@ export let defineUse = () => {
 					return initted;
 				};
 
-				magicPtr = init(magicPtr);
+				magicPtr = init(magicPtr as { [Symbol.toPrimitive]: () => symbol });
 				resetTrap();
 				return params.length
 					? (magicPtr as Pointer<any>).zip(...params.map(init))

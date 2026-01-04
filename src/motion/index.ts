@@ -31,7 +31,7 @@ let tick_spring = <T>(
 	last_value: T,
 	current_value: T,
 	target_value: T
-) => {
+): any => {
 	if (typeof current_value === "number" || is_date(current_value)) {
 		// @ts-expect-error value is date / number
 		let delta = target_value - current_value;
@@ -46,12 +46,17 @@ let tick_spring = <T>(
 		} else {
 			ctx._settled = false; // signal loop to keep ticking
 			return is_date(current_value)
-				? new Date(current_value.getTime() + d)
+				? (new Date(current_value.getTime() + d) as T)
 				: current_value + d;
 		}
 	} else if (Array.isArray(current_value)) {
 		return current_value.map((_, i) =>
-			tick_spring(ctx, last_value[i], current_value[i], target_value[i])
+			tick_spring(
+				ctx,
+				(last_value as any)[i],
+				current_value[i],
+				(target_value as any)[i]
+			)
 		);
 	} else if (typeof current_value === "object") {
 		let next_value = {};
@@ -91,7 +96,10 @@ let timeNow = () => performance.now();
 
 let isPointer = <T>(x: T | Pointer<T>): x is Pointer<T> => x instanceof Pointer;
 
-export let createSpring = <T>(val: T | Pointer<T>, opts: SpringOptions = {}): Spring<T> => {
+export let createSpring = <T>(
+	val: T | Pointer<T>,
+	opts: SpringOptions = {}
+): Spring<T> => {
 	let state = createState({
 		stiffness: opts.stiffness ?? 0.15,
 		damping: opts.damping ?? 0.8,
@@ -133,14 +141,16 @@ export let createSpring = <T>(val: T | Pointer<T>, opts: SpringOptions = {}): Sp
 		else requestAnimationFrame(update);
 	};
 
-	use(state.target).constrain(state).listen((_) => {
-		if (!settling) {
-			last_time = timeNow();
-			inv_mass_recovery_rate = 1000 / (momentum * 60);
-			settling = true;
-			requestAnimationFrame(update);
-		}
-	});
+	use(state.target)
+		.constrain(state)
+		.listen((_) => {
+			if (!settling) {
+				last_time = timeNow();
+				inv_mass_recovery_rate = 1000 / (momentum * 60);
+				settling = true;
+				requestAnimationFrame(update);
+			}
+		});
 
 	return state;
 };

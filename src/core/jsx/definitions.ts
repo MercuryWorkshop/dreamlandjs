@@ -93,3 +93,13 @@ export namespace JSX {
 	export type LibraryManagedAttributes<C, _> =
 		C extends Component<infer Props, any, any> ? MappedProps<Props> : never;
 }
+import DLJSX = JSX;
+
+declare global {
+	namespace JSX {
+		type IntrinsicElements = DLJSX.IntrinsicElements;
+		type ElementType = DLJSX.ElementType;
+		type Element = DLJSX.Element;
+		type LibraryManagedAttributes<A, B> = DLJSX.LibraryManagedAttributes<A, B>;
+	}
+}

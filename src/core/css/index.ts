@@ -46,7 +46,7 @@ let _rewrite = (style: HTMLStyleElement, css: string, tag: string) => {
 		for (let i = 0; i < tokens.length; i++) {
 			let token = tokens[i];
 
-			let idx: number, cnt: number, arr: Token[];
+			let idx: number, cnt: number, arr: Token[] | undefined;
 			if (token._type == PSEUDO_CLASS_TOKEN && token.arg) {
 				let global = token.nm == "global";
 
@@ -78,7 +78,7 @@ let _rewrite = (style: HTMLStyleElement, css: string, tag: string) => {
 			}
 
 			if (arr) {
-				tokens.splice(idx, cnt, ...arr);
+				tokens.splice(idx!, cnt!, ...arr);
 				i += arr.length;
 			}
 		}
@@ -103,9 +103,9 @@ let _rewrite = (style: HTMLStyleElement, css: string, tag: string) => {
 		});
 
 	style.innerText = css.replaceAll(GLOBAL, globalWhereTransformation);
-	rewriteRules(style.sheet.cssRules);
+	rewriteRules(style.sheet!.cssRules);
 	dev: {
-		style.innerText = [...style.sheet.cssRules]
+		style.innerText = [...style.sheet!.cssRules]
 			.map((x) => x.cssText)
 			.join("\n");
 	}

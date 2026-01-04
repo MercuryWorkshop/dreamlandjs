@@ -22,7 +22,7 @@ import { DREAMLAND, MAP, NO_CHANGE } from "../consts";
 import { DelegateListener } from "../delegate";
 import { findLIS, isArray, isNode } from "../utils";
 
-export let currentCssIdent: string | null = null;
+export let currentCssIdent: string | undefined;
 export let callDelegateListeners = (
 	value: any,
 	listeners: DelegateListener<any>[]
@@ -37,7 +37,7 @@ export let callDelegateListeners = (
 let mapChild = (
 	child: ComponentChild,
 	parent: Node,
-	cssIdent: string,
+	cssIdent?: string,
 	identOverride?: string
 ): Node[] => {
 	if (child == null) {
@@ -45,7 +45,7 @@ let mapChild = (
 	} else if (isPointer(child)) {
 		let start = new_Comment("[");
 		let end = new_Comment("]");
-		let current: Node[] = null!;
+		let current: Node[];
 
 		maybeListen(child, start, (val: ComponentChild) => {
 			if (current && !start.parentNode) return;
@@ -54,9 +54,7 @@ let mapChild = (
 			// pretty sure it's not possible to put a pointer child in not a htmlelement
 			if (!hydrating?.(parent as HTMLElement) && current) {
 				let old = MAP(current.map((x, i) => [x, i]));
-				let staticNodes = mapped
-					.filter((x) => old.has(x))
-					.map((x) => old.get(x));
+				let staticNodes = mapped.map((x) => old.get(x)!).filter((x) => x);
 				let LIS = MAP(findLIS(staticNodes).map((x) => [current[x], ,]));
 				let anchor: Node = start;
 
@@ -74,7 +72,11 @@ let mapChild = (
 			current = mapped;
 		});
 
-		return [start, ...(hydrating?.(parent as HTMLElement) ? [] : current), end];
+		return [
+			start,
+			...(hydrating?.(parent as HTMLElement) ? [] : current!),
+			end,
+		];
 	} else if (isNode(child)) {
 		let list: DOMTokenList;
 		let apply = (child: any) => {
@@ -85,7 +87,7 @@ let mapChild = (
 				if (arr.find((x) => x == CSS_COMPONENT)) return;
 
 				if (!other) {
-					list.add(identOverride || cssIdent);
+					list.add(identOverride || cssIdent!);
 				} else if (identOverride && other !== identOverride) {
 					list.remove(other);
 					list.add(identOverride);
@@ -104,7 +106,7 @@ let mapChild = (
 	}
 };
 
-let CREATE_ELEMENT = "createElement";
+let CREATE_ELEMENT = "createElement" as const;
 
 interface CssInfo {
 	_id: string;
@@ -112,7 +114,7 @@ interface CssInfo {
 }
 
 let componentCssInfo: Map<Component, CssInfo> = MAP();
-let cxs = [];
+let cxs: ComponentContext<Component<any, any>>[] = [];
 
 function _jsx<T extends Component<any, any, any>>(
 	init: T,
@@ -134,7 +136,7 @@ function _jsx(
 			throw new Error("invalid component");
 	}
 
-	let { children: _children, ...props } = _props;
+	let { children: _children, ...props } = _props!;
 	if (key) props.key = key;
 	_children ||= [];
 	let children = isArray(_children) ? _children : [_children];
@@ -165,7 +167,7 @@ function _jsx(
 			}
 		}
 
-		let cssInfo: CssInfo | null = componentCssInfo.get(init);
+		let cssInfo: CssInfo | undefined = componentCssInfo.get(init);
 		if (init.style) {
 			let style = init.style;
 			let styleEl = DOCUMENT[CREATE_ELEMENT]("style");
@@ -248,7 +250,7 @@ function _jsx(
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
 		let xmlns = props?.xmlns;
-		el = DOCUMENT[CREATE_ELEMENT + (xmlns ? "NS" : "")](
+		el = (DOCUMENT as any)[CREATE_ELEMENT + (xmlns ? "NS" : "")](
 			xmlns || init,
 			xmlns && init,
 			props,
@@ -287,7 +289,7 @@ function _jsx(
 					}
 				);
 			} else if (attr === "class") {
-				let old = [];
+				let old: string[] = [];
 
 				maybeListen(val, el, (val: string) => {
 					let classes = val.split(" ").filter((x) => x.length);
@@ -310,7 +312,7 @@ function _jsx(
 			} else if (attr.startsWith("attr:")) {
 				let key = attr.substring(5);
 				maybeListen(val, el, (val: boolean) => {
-					if (!hydrating?.(el)) el[key] = val;
+					if (!hydrating?.(el)) (el as any)[key] = val;
 				});
 			} else if (attr == "style" && typeof val == "object" && !isPointer(val)) {
 				for (let k in val) {
@@ -357,7 +359,10 @@ function _h(
 }
 
 export let h = _h;
-export let jsx = _jsx;
+export let jsx: typeof _jsx & {
+	[DREAMLAND]: () => void;
+	[NO_CHANGE]: () => ComponentContext<Component<any, any>>[];
+} = _jsx as any;
 export let addDREAMLAND = () => {
 	jsx[DREAMLAND] = () => (componentCssInfo = MAP());
 	jsx[NO_CHANGE] = () => cxs.splice(0, cxs.length);
