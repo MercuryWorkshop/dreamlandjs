@@ -8,7 +8,7 @@ type NodeConstructor = (text?: string) => any;
 type CssUidGenerator = () => string;
 type IsHydrating = ((el: HTMLElement) => boolean) | undefined;
 type SsrTransformCallback =
-	| ((init: Component<any, any, any>, cx?: ComponentContext<any>) => void)
+	| (<T extends Component<any, any>>(init: T, cx?: ComponentContext<T>) => void)
 	| undefined;
 
 export let DOCUMENT = GLOBAL.document;

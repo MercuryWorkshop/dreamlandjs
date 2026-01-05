@@ -1,6 +1,6 @@
-import { type Component } from "dreamland/core";
+import { type FC } from "dreamland/core";
 
-const Counter: Component<{}, { counter: number }> = function () {
+function Counter(this: FC<{}, { counter: number }>) {
 	this.counter = 0;
 
 	return (
@@ -10,6 +10,6 @@ const Counter: Component<{}, { counter: number }> = function () {
 			<button on:click={() => this.counter++}>Click!</button>
 		</div>
 	);
-};
+}
 
 document.querySelector("#app")!.replaceWith(<Counter />);

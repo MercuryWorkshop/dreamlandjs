@@ -1,9 +1,10 @@
-import { css, type Component, type ComponentChild } from "dreamland/core";
+import { css, type FC, type ComponentChild } from "dreamland/core";
 
-export let Columns: Component<{ reverse: boolean; children?: ComponentChild }> =
-	function (cx) {
-		return <div class:reverse={this.reverse}>{cx.children}</div>;
-	};
+export function Columns(
+	this: FC<{ reverse: boolean; children?: ComponentChild }>
+) {
+	return <div class:reverse={this.reverse}>{this.children}</div>;
+}
 Columns.style = css`
 	:scope {
 		display: flex;

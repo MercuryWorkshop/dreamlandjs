@@ -9,8 +9,10 @@ import { Hero } from "../utils";
 
 export let PlaygroundHost: Component<
 	{},
-	{ host?: HTMLElement },
-	{ "on:routeshown": () => void }
+	{
+		host?: HTMLElement;
+		"on:routeshown": () => void;
+	}
 > = function () {
 	this["on:routeshown"] = async () => {
 		if (!import.meta.env.SSR) {

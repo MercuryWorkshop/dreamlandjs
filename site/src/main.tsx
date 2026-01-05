@@ -1,4 +1,4 @@
-import { createState, type Component, type Stateful } from "dreamland/core";
+import { createState, type FC, type Stateful } from "dreamland/core";
 import { Route, router, Router } from "dreamland/router";
 import { MainPage } from "./pages/main";
 import { jsx } from "dreamland/jsx-runtime";
@@ -16,11 +16,13 @@ let page: Stateful<{
 export let setTitle = (val?: string | undefined) =>
 	(page.title = (val ? val + " | " : "") + "dreamland.js");
 
-let App: Component<{}, { title: HTMLTitleElement }> = function (cx) {
-	cx.init = () => {
-		use(page.title).listen((title) => {
-			this.title.innerText = title;
-		});
+function App(this: FC<{}, { title: HTMLTitleElement }>) {
+	this.cx.init = () => {
+		use(page.title)
+			.constrain(this)
+			.listen((title) => {
+				this.title.innerText = title;
+			});
 
 		if (import.meta.env.SSR) {
 			router.route(page.url, "http://127.0.0.1:5173");
@@ -48,7 +50,7 @@ let App: Component<{}, { title: HTMLTitleElement }> = function (cx) {
 			</>
 		</>
 	);
-};
+}
 
 export default (path?: string) => {
 	page.url = path;

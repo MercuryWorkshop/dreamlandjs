@@ -1,4 +1,4 @@
-import { css, type Component } from "dreamland/core";
+import { css, type FC } from "dreamland/core";
 import { Link } from "dreamland/router";
 
 import { docs, groups, type DocGroup, type DocPage } from "../docs";
@@ -6,7 +6,7 @@ import { setTitle } from "../main";
 import { Hero, MdiIcon } from "../utils";
 import { mdiMenu } from "@mdi/js";
 
-let Sidebar: Component<{ doc?: DocPage; menu: boolean }> = function () {
+function Sidebar(this: FC<{ doc?: DocPage; menu: boolean }>) {
 	let render = (x: DocGroup | DocPage) => {
 		if (x.type === "page") {
 			return (
@@ -36,7 +36,7 @@ let Sidebar: Component<{ doc?: DocPage; menu: boolean }> = function () {
 			{groups.map(render)}
 		</div>
 	);
-};
+}
 Sidebar.style = css`
 	:scope {
 		width: 100%;
@@ -110,19 +110,21 @@ Sidebar.style = css`
 	}
 `;
 
-export let DocsLayout: Component<
-	{ outlet?: HTMLElement },
-	{
-		doc?: DocPage;
-		menu: boolean;
-		jsbroken: boolean;
-	},
-	{ "on:routeshown"?: (path: string) => void }
-> = function (cx) {
+export function DocsLayout(
+	this: FC<
+		{ outlet?: HTMLElement },
+		{
+			doc?: DocPage;
+			menu: boolean;
+			jsbroken: boolean;
+			"on:routeshown"?: (path: string) => void;
+		}
+	>
+) {
 	this.menu = false;
 	this.jsbroken = true;
 
-	cx.mount = () => (this.jsbroken = false);
+	this.cx.mount = () => (this.jsbroken = false);
 
 	this["on:routeshown"] = (path: string) => {
 		let page = docs.find((x) => path.replace("/docs/", "") === x.path);
@@ -174,7 +176,7 @@ export let DocsLayout: Component<
 			</div>
 		</div>
 	);
-};
+}
 DocsLayout.style = css`
 	:scope {
 		position: relative;

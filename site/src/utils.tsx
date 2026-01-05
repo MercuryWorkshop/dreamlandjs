@@ -1,31 +1,32 @@
-import { css, type Component, type ComponentChild } from "dreamland/core";
+import { css, type FC, type ComponentChild } from "dreamland/core";
 import normal from "./logo/normal.svg";
 
 // @ts-expect-error dl:bundle doesn't have types
 import { version } from "dl:bundle";
 
-export let ExternalLink: Component<{
-	href: string;
-	children: ComponentChild;
-	label?: string;
-}> = function (cx) {
+export function ExternalLink(
+	this: FC<{
+		href: string;
+		children: ComponentChild;
+		label?: string;
+	}>
+) {
 	return (
 		<a href={this.href} target="_blank" aria-label={this.label}>
-			{cx.children}
+			{this.children}
 		</a>
 	);
-};
+}
 
-export let MdiIcon: Component<{ icon: string; viewBox?: string }> =
-	function () {
-		this.viewBox ??= "0 0 24 24";
+export function MdiIcon(this: FC<{ icon: string; viewBox?: string }>) {
+	this.viewBox ??= "0 0 24 24";
 
-		return (
-			<svg xmlns="http://www.w3.org/2000/svg" viewBox={this.viewBox}>
-				<path d={use(this.icon)} />
-			</svg>
-		);
-	};
+	return (
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox={this.viewBox}>
+			<path d={use(this.icon)} />
+		</svg>
+	);
+}
 MdiIcon.style = css`
 	:scope {
 		width: 1em;
@@ -36,7 +37,7 @@ MdiIcon.style = css`
 	}
 `;
 
-export let Hero: Component<{ version?: boolean }> = function () {
+export function Hero(this: FC<{ version?: boolean }>) {
 	this.version ??= false;
 
 	return (
@@ -47,7 +48,7 @@ export let Hero: Component<{ version?: boolean }> = function () {
 			{this.version ? <div class="version">v{version}</div> : null}
 		</div>
 	);
-};
+}
 Hero.style = css`
 	:scope {
 		display: grid;

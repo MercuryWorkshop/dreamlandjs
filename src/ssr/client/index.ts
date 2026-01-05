@@ -47,7 +47,7 @@ export let hydrate = (
 		return getInternal(parent)?.childNodes?.[offset];
 	};
 	let hydrateCx = (cx: ComponentContext<any>) => {
-		let ssr = data.n[cx?.root?.getAttribute?.(SSR_ID) as any as number];
+		let ssr = data.n[cx?.state?.root?.getAttribute?.(SSR_ID) as any as number];
 		if (ssr) {
 			hydrateState(data, ssr as SsrObject, cx.state);
 		}
@@ -73,7 +73,8 @@ export let hydrate = (
 		() => data.i[idx + 1] || old[4](),
 		hydrating,
 		(init, cx) => {
-			if (cx?.root instanceof old[1] && !hydrating(cx.root)) hydrateCx(cx);
+			if (cx?.state?.root instanceof old[1] && !hydrating(cx.state?.root))
+				hydrateCx(cx);
 		},
 	] as const satisfies DomImpl;
 	setDomImpl(vdom);

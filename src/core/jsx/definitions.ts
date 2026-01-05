@@ -1,6 +1,7 @@
 import { CssInit } from "../css";
 import { Pointer } from "../state/pointers";
 import { Stateful } from "../state/state";
+import { COMMA_TOKEN } from "../consts";
 
 export type ComponentChild =
 	| Node
@@ -12,53 +13,58 @@ export type ComponentChild =
 	| ComponentChild[]
 	| Pointer<ComponentChild>;
 
-export type ComponentContext<T extends object> = {
-	state: Stateful<T>;
+type Empty = Record<string, never>;
+type BannedPropNames = "cx" | "root";
+type BanProps<T extends object> = {
+	[K in keyof T]: K extends BannedPropNames ? never : T[K];
+};
+type MapChildren<ChildrenTy> =
+	ChildrenTy extends Array<any> ? ChildrenTy : [ChildrenTy];
 
-	root: HTMLElement;
+type _StateProps<Combined extends BanProps<Combined>> = {
+	[K in keyof Combined]: K extends "children"
+		? MapChildren<Combined[K]>
+		: Combined[K];
+} & { root: JSX.Element; cx: ComponentCx<_StateProps<Combined>> };
+type StateProps<
+	Props extends BanProps<Props>,
+	This extends BanProps<This>,
+> = _StateProps<Props & This>;
+type ComponentStateProps<T extends Component<any, any>> =
+	T extends Component<infer Props, infer This>
+		? StateProps<Props, This>
+		: never;
 
-	children: ComponentChild[];
+export type FC<
+	Props extends BanProps<Props> = Empty,
+	This extends BanProps<This> = Empty,
+> = Stateful<StateProps<Props, This>>;
 
+export type Component<
+	Props extends BanProps<Props> = Empty,
+	This extends BanProps<This> = Empty,
+> = {
+	["typescript hackfix"](this: FC<Props, This>): HTMLElement;
+}["typescript hackfix"] & { style?: CssInit };
+
+interface ComponentCx<
+	StatefulProps extends { [COMMA_TOKEN]?: never } & object,
+> {
+	state: Stateful<StatefulProps>;
 	id?: string;
 
 	// Run only on client
 	mount?: () => void;
 	// Run on client and server
 	init?: () => void;
-};
+}
 
-type MappedProps<Props> = {
-	[Key in keyof Props]: Props[Key] | Pointer<Props[Key]>;
-};
-type Empty = Record<string, never>;
-export type Component<
-	Props extends object = Empty,
-	Private extends object = Empty,
-	Public extends object = Empty,
-> = {
-	(
-		this: Stateful<StateObj<Props, Private, Public>>,
-		cx: ComponentContext<Props & Private & Public>
-	): HTMLElement;
-	style?: CssInit;
-};
-// Omit<Type, Keys> is stupid and breaks callables like `on:click`
-type StateObj<Props, Private, Public> = {
-	[P in keyof (Props & Private & Public) as Exclude<P, "children">]: (Props &
-		Private &
-		Public)[P];
-};
-type ComponentStateObj<T extends Component<any, any, any>> =
-	T extends Component<infer Props, infer Private, infer Public>
-		? StateObj<Props, Private, Public>
-		: never;
-export type ComponentState<T extends Component<any, any, any>> = Stateful<
-	ComponentStateObj<T>
+export type ComponentState<T extends Component<any, any>> =
+	T extends Component<infer Props, infer This> ? FC<Props, This> : never;
+export type ComponentContext<T extends Component<any, any>> = ComponentCx<
+	ComponentStateProps<T>
 >;
-export type ComponentInstance<T extends Component<any, any, any>> = DLElement<
-	ComponentStateObj<T>
->;
-export type DLElement<T extends object> = HTMLElement & {
+export type ComponentInstance<T extends Component<any, any>> = HTMLElement & {
 	$: ComponentContext<T>;
 };
 
@@ -80,6 +86,10 @@ export type DLElementNameToElement<T extends string> =
 	T extends keyof DLElementTagNames ? DLElementTagNames[T] : HTMLElement;
 type GlobalElement = Element;
 
+type MappedProps<Props> = {
+	[Key in keyof Props]: Props[Key] | Pointer<Props[Key]>;
+};
+
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace JSX {
 	export type IntrinsicElements = {
@@ -88,14 +98,16 @@ export namespace JSX {
 		[element: string]: IntrinsicProps<GlobalElement>;
 	};
 
-	export type ElementType = keyof IntrinsicElements | Component<any, any, any>;
+	export type ElementType = keyof IntrinsicElements | Component<any, any>;
 	export type Element = HTMLElement;
 	export type LibraryManagedAttributes<C, _> =
-		C extends Component<infer Props, any, any> ? MappedProps<Props> : never;
+		C extends Component<infer Props, any> ? MappedProps<Props> : never;
 }
+
 import DLJSX = JSX;
 
 declare global {
+	// eslint-disable-next-line @typescript-eslint/no-namespace
 	namespace JSX {
 		type IntrinsicElements = DLJSX.IntrinsicElements;
 		type ElementType = DLJSX.ElementType;

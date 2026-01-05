@@ -1,11 +1,12 @@
 import {
-	DLElement,
-	Component,
 	ComponentChild,
+	Component,
+	ComponentState,
 	h,
 	Fragment,
-	ComponentState,
 	DREAMLAND,
+	ComponentInstance,
+	FC,
 } from "dreamland/core";
 
 export type RouteParams = Record<string, string> & {
@@ -14,12 +15,17 @@ export type RouteParams = Record<string, string> & {
 };
 
 export type ShowElement =
-	| DLElement<{
-			outlet?: HTMLElement;
-			"on:routeshown"?: (path: string) => void;
+	| ComponentInstance<
+			Component<
+				{
+					outlet?: HTMLElement;
+					"on:routeshown"?: (path: string) => void;
 
-			[index: string]: any;
-	  }>
+					[index: string]: any;
+				},
+				any
+			>
+	  >
 	| HTMLElement;
 export type ShowTarget =
 	| ShowElement
@@ -71,7 +77,9 @@ function _getShow(
 }
 let getShow = _getShow;
 
-let isComponent = (x: any): x is DLElement<any> => x.$;
+let isComponent = <T extends Component<any, any>>(
+	x: ComponentInstance<T> | HTMLElement
+): x is ComponentInstance<T> => (x as any).$;
 
 let populateComponent = (
 	el: ShowElement,
@@ -181,24 +189,28 @@ let _route = (
 	}
 };
 
-export let Route: Component<{
-	path?: string;
-	show?: ShowTarget;
-	children?: ComponentChild;
-}> = function (cx) {
+export function Route(
+	this: FC<{
+		path?: string;
+		show?: ShowTarget;
+		children?: ComponentChild;
+	}>
+) {
 	return {
 		_path: this.path,
 		_show: this.show,
-		_children: cx.children as any as RouteInternal[],
+		_children: this.children as any as RouteInternal[],
 	} satisfies RouteInternal as any;
-};
+}
 
-export let Link: Component<{
-	href: string;
-	class?: string;
-	children?: ComponentChild;
-	"on:click"?: () => void;
-}> = function (cx) {
+export function Link(
+	this: FC<{
+		href: string;
+		class?: string;
+		children?: ComponentChild;
+		"on:click"?: () => void;
+	}>
+) {
 	this.class = this.class || "";
 
 	return (
@@ -212,37 +224,37 @@ export let Link: Component<{
 				}
 				router.navigate(this.href);
 
-				let x = this["on:click"];
 				this["on:click"]?.();
 			}}
 		>
-			{cx.children}
+			{this.children}
 		</a>
 	);
-};
+}
 
 export let router: ComponentState<typeof Router>;
-export let Router: Component<
-	{
-		children: HTMLElement | HTMLElement[];
-	},
-	{
-		// @internal
-		_el?: HTMLElement;
-	},
-	{
-		route: (path?: string, origin?: string) => string | undefined;
-		navigate: (path: string) => string | undefined;
-		ssgables: () => [string, string][];
-	}
-> = function (cx) {
+export function Router(
+	this: FC<
+		{
+			children: HTMLElement | HTMLElement[];
+		},
+		{
+			// @internal
+			_el?: HTMLElement;
+
+			route: (path?: string, origin?: string) => string | undefined;
+			navigate: (path: string) => string | undefined;
+			ssgables: () => [string, string][];
+		}
+	>
+) {
 	dev: {
 		if (router) throw new Error("A router was already created");
 	}
 	// eslint-disable-next-line @typescript-eslint/no-this-alias
 	router = this;
 
-	let routes = { _children: cx.children as any as RouteInternal[] };
+	let routes = { _children: this.children as any as RouteInternal[] };
 	dev: {
 		validateRoute(routes);
 	}
@@ -295,11 +307,11 @@ export let Router: Component<
 		return traverse("", routes);
 	};
 
-	cx.mount = () => {
+	this.cx.mount = () => {
 		addEventListener("popstate", () => {
 			this.route();
 		});
 	};
 
 	return <>{use(this._el)}</>;
-};
+}

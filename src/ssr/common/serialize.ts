@@ -51,9 +51,11 @@ export let serializeState = (
 		}
 	};
 
-	let _serialize = (object: any): SsrObject => {
+	let _serialize = (object: any, root?: boolean): SsrObject => {
 		let out: SsrObject = [];
 		for (let k in object) {
+			if (root && ["cx", "root"].includes(k)) continue;
+
 			let v = object[k];
 			let val = _val(v);
 
@@ -62,7 +64,7 @@ export let serializeState = (
 		return out;
 	};
 
-	return _serialize(object);
+	return _serialize(object, true);
 };
 
 export let hydrateState = (data: SsrData, state: SsrObject, target: any) => {

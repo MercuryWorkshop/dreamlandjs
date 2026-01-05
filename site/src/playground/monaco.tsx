@@ -1,4 +1,4 @@
-import { css, type Component } from "dreamland/core";
+import { css, type FC } from "dreamland/core";
 
 import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
@@ -87,9 +87,7 @@ let tsReady: Promise<TypeScriptWorkerInit> = (async () => {
 	return worker;
 })();
 
-export let Monaco: Component<{ value: string; transpiled: string }> = function (
-	cx
-) {
+export function Monaco(this: FC<{ value: string; transpiled: string }>) {
 	let register = async (model: monaco.editor.IModel) => {
 		let worker = await tsReady;
 		let proxy = await worker(model.uri);
@@ -111,8 +109,8 @@ export let Monaco: Component<{ value: string; transpiled: string }> = function (
 		await recompile();
 	};
 
-	cx.mount = () => {
-		let editor = monaco.editor.create(cx.root, {
+	this.cx.mount = () => {
+		let editor = monaco.editor.create(this.root, {
 			model: monaco.editor.createModel(
 				this.value,
 				"typescript",
@@ -127,7 +125,7 @@ export let Monaco: Component<{ value: string; transpiled: string }> = function (
 	};
 
 	return <div class="monaco" />;
-};
+}
 Monaco.style = css`
 	:scope {
 		width: 100%;
