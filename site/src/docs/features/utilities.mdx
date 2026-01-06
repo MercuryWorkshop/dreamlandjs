@@ -26,7 +26,7 @@ For example, you can create a delegate in the parent component and then pass it 
 import { createDelegate } from "dreamland/core";
 
 function Ripples(this: FC<{ create: Delegate<MouseEvent> }>) {
-	cx.mount = () => {
+	this.cx.mount = () => {
 		this.create.listen((e: MouseEvent) => {
 			// create ripple...
 		});

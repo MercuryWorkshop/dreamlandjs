@@ -9,30 +9,30 @@ Calling `use()` with a property from a stateful object will return a dynamic ref
 import { createState } from "dreamland/core";
 
 let state = createState({
-	counter: 0,
+	count: 0,
 });
 (self as any).state = state;
 
 document.body.appendChild(
 	<div>
-		<button on:click={() => state.counter++}>click me!</button>
-		<p>{use(state.counter)}</p>
+		<button on:click={() => state.count++}>click me!</button>
+		<p>{use(state.count)}</p>
 	</div>
 );
 ```
 
-Whenever `state.counter` is updated, the specific nodes that depend on the value update to reflect the new value with minimal overhead.
+Whenever `state.count` is updated, the specific nodes that depend on the value update to reflect the new value with minimal overhead.
 
 This is done by listening to pointer value changes, like so:
 
 ```tsx
-use(state.counter).listen((val) => {
+use(state.count).listen((val) => {
 	console.log("new value! ", val);
 	// update dom...
 });
 ```
 
-`state.counter` has already updated to the new value once the listener is called, but the new value is provided as an argument for convenience.
+`state.count` has already updated to the new value once the listener is called, but the new value is provided as an argument for convenience.
 
 ## Transforming pointers
 
@@ -41,8 +41,8 @@ So, manipulating the value inside `use` will not work since the function is only
 
 ```tsx
 <div>
-	<button on:click={() => state.counter++}>click me!</button>
-	{use(this.counter % 2 == 0 ? "Even!" : "Odd") /* <-- won't work */}
+	<button on:click={() => state.count++}>click me!</button>
+	{use(this.count % 2 == 0 ? "Even!" : "Odd") /* <-- won't work */}
 </div>
 ```
 
@@ -50,9 +50,9 @@ To transform the actual value, use `Pointer`'s `map()` instead, like you would d
 
 ```tsx
 <div>
-	<button on:click={() => state.counter++}>click me!</button>
+	<button on:click={() => state.count++}>click me!</button>
 	{
-		use(state.counter).map((x) =>
+		use(state.count).map((x) =>
 			x % 2 == 0 ? "Even!" : "Odd"
 		) /* <-- works! */
 	}
@@ -60,17 +60,17 @@ To transform the actual value, use `Pointer`'s `map()` instead, like you would d
 ```
 
 This will work properly across updates, flipping between even and odd when the button is clicked.
-Only the closure passed to `map` is rerun when `state.counter` changes, not anything else.
+Only the closure passed to `map` is rerun when `state.count` changes, not anything else.
 
 If you want to allow setting the pointer's `value`, you can pass another closure to `map` to go in the opposite direction:
 
 ```tsx
-let stringCounter = use(state.counter).map(
+let stringCount = use(state.count).map(
 	(x) => "" + x,
 	(x) => +x
 );
-stringCounter.value = "5";
-console.log(stringCounter.value); // 5
+stringCount.value = "5";
+console.log(stringCount.value); // 5
 ```
 
 If you don't want to allow specific changes, you can import the symbol `NO_CHANGE` from `dreamland/core` and return that from the reverse `map` instead.
@@ -107,8 +107,8 @@ let settings: Stateful<{
 	state: null,
 });
 
-let class = use(settings.darkMode).andThen("dark-mode", "light-mode");
-let state = use(settings.state).andThen(x => "state-" + x, "state-none");
+let class = use(settings.darkMode).and("dark-mode").or("light-mode");
+let state = use(settings.state).and((x) => "state-" + x).or("state-none");
 ```
 
 If you have an arraylike value, you can map each element of the array instead of having to nest `map` closures by using `mapEach`:

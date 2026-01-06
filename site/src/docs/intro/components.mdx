@@ -24,13 +24,13 @@ function Button(this: FC<{ title: string; children?: ComponentChild }>) {
 
 `ComponentContext` has two main callbacks for initialization.
 The most common one used is `mount`, which is run only on the client side once the component's HTML has been constructed (but not necessarily after it's been added to the DOM).
-The other one is `init`, which runs in the same place as `mount` but is run on both the client and server side. `this.cx.root`, the component's HTML root, is accessible in both `init` and `mount`. You realistically can't touch the DOM in `init` however, even though it's possible to do so, as the default server-side DOM is very minimal.
+The other one is `init`, which runs in the same place as `mount` but is run on both the client and server side. `this.root`, the component's HTML root, is accessible in both `init` and `mount`. You realistically can't touch the DOM in `init` however, even though it's possible to do so, as the default server-side DOM is very minimal.
 
 ```tsx
 function ChartView(this: FC) {
 	this.cx.mount = () => {
 		// mount the chart on the client once the canvas is constructed
-		let chart = new Chart(this.cx.root as HTMLCanvasElement, {
+		let chart = new Chart(this.root as HTMLCanvasElement, {
 			/* ... */
 		});
 

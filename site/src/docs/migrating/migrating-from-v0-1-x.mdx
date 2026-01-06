@@ -1,0 +1,107 @@
+export let title = ["Migrating", "From v0.1.x"];
+export let order = 100;
+
+## Components
+
+Components are now defined as proper functions and typed within the this argument.
+
+```tsx
+// old
+const App: Component = function () {
+	return (
+		<div>
+			<NavBar />
+			<div class="red">this text is red!</div>
+		</div>
+	);
+};
+App.style = css`
+	:scope {
+		height: 100vh;
+	}
+	.red {
+		color: red;
+	}
+`;
+
+// new
+function App(this: FC) {
+	return (
+		<div>
+			<NavBar />
+			<div class="red">this text is red!</div>
+		</div>
+	);
+};
+App.style = css`
+	:scope {
+		height: 100vh;
+	}
+	.red {
+		color: red;
+	}
+`;
+```
+
+## `cx` Object
+
+The ComponentContext object is now located on `this` in your components 
+
+```tsx
+// old
+let ChartCard: Component<{}, { chart: HTMLCanvasElement }> = function (cx) {
+	cx.mount = () => {
+		// mount the chart on the client once the canvas is constructed
+		let chart = new Chart(this.chart as HTMLCanvasElement, {
+			/* ... */
+		});
+
+		// update the chart on data changes ...
+	}
+
+	return (
+		<div>
+			<h1>Chart</h1>
+			<canvas this={use(this.chart)} />
+		</div>
+	);
+};
+
+// new
+function ChartCard(this: FC<{}, {
+	chart: HTMLCanvasElement
+}>) {
+	this.cx.mount = () => {
+		// mount the chart on the client once the canvas is constructed
+		let chart = new Chart(this.chart as HTMLCanvasElement, {
+			/* ... */
+		});
+
+		// update the chart on data changes ...
+	};
+
+	return (
+		<div>
+			<h1>Chart</h1>
+			<canvas this={use(this.chart)} />
+		</div>
+	);
+};
+```
+
+
+## Reactivity
+
+`use(x).andThen(yes, no)` is now `use(x).and(yes).or(no)`
+
+```tsx
+// old
+{
+	use(this.mobile).andThen(<Mobile />, <Desktop />);
+}
+
+// new
+{
+	use(this.mobile).and(<Mobile />).or(<Desktop />);
+}
+```

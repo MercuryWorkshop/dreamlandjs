@@ -7,8 +7,8 @@ export function DropdownController(this: FC<{}, {
 	this.hidden = true;
 
 	this.cx.mount = () => {
-		// cx.root points to the controller root
-		console.log(this.cx.root.outerHTML);
+		// this.root points to the controller root
+		console.log(this.root.outerHTML);
 	}
 
 	// return a bunch of mount points as a Fragment
