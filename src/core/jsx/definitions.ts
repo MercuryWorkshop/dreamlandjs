@@ -13,7 +13,6 @@ export type ComponentChild =
 	| ComponentChild[]
 	| Pointer<ComponentChild>;
 
-type Empty = Record<string, never>;
 type BannedPropNames = "cx" | "root";
 type BanProps<T extends object> = {
 	[K in keyof T]: K extends BannedPropNames ? never : T[K];
@@ -36,13 +35,13 @@ type ComponentStateProps<T extends Component<any, any>> =
 		: never;
 
 export type FC<
-	Props extends BanProps<Props> = Empty,
-	This extends BanProps<This> = Empty,
+	Props extends BanProps<Props> = {},
+	This extends BanProps<This> = {},
 > = Stateful<StateProps<Props, This>>;
 
 export type Component<
-	Props extends BanProps<Props> = Empty,
-	This extends BanProps<This> = Empty,
+	Props extends BanProps<Props> = {},
+	This extends BanProps<This> = {},
 > = {
 	["typescript hackfix"](this: FC<Props, This>): HTMLElement;
 }["typescript hackfix"] & { style?: CssInit };
