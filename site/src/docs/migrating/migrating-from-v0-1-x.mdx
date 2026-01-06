@@ -1,10 +1,19 @@
 export let title = ["Migrating", "From v0.1.x"];
 export let order = 100;
 
-## Components
+## Component Syntax Revamp
 
-Components are now defined as proper functions and typed within the this argument.
+Component syntax has changed drastically, using proper function syntax instead of anonymous functions assigned to variables:
+- `Component` has two generic arguments: `Props` (stays the same as the old syntax) and `This` (maps to `Public & Private` in the old syntax)
+- The new `FC` type is used as the `this` type on components, specifying `Props` and `This`.
+- `cx` and `root` keys are no longer allowed to be used as props or internal state.
+- `cx` has been removed as an argument. It is now on `this`.
+- `root` and `children` have been moved from `cx` to `this`. `root` is still initialized after the initial component execution.
+	- `children` has better types now, accurately representing that it will always be an array with elements being the type you specify in Props/This
+- `DLElement` has been removed. Use `ComponentInstance` with a proper `Component` type instead.
+- `ComponentContext` now takes a `Component` type to align with the other `Component*` helpers.
 
+Here are some examples:
 ```tsx
 // old
 const App: Component = function () {
@@ -41,13 +50,7 @@ App.style = css`
 		color: red;
 	}
 `;
-```
 
-## `cx` Object
-
-The ComponentContext object is now located on `this` in your components 
-
-```tsx
 // old
 let ChartCard: Component<{}, { chart: HTMLCanvasElement }> = function (cx) {
 	cx.mount = () => {
