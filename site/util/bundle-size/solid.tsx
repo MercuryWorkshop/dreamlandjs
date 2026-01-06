@@ -11,6 +11,6 @@ function Counter() {
 			<button onClick={() => setCount((count) => count + 1)}>Click!</button>
 		</div>
 	);
-};
+}
 
 render(() => <Counter />, document.getElementById("app")!);

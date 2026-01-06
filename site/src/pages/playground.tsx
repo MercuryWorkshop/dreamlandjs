@@ -7,11 +7,15 @@ import { setTitle } from "../main";
 import { Link } from "../../../dist/router";
 import { Hero } from "../utils";
 
-export function PlaygroundHost(this: FC<{},
-	{
-		host?: HTMLElement;
-		"on:routeshown": () => void;
-	}>) {
+export function PlaygroundHost(
+	this: FC<
+		{},
+		{
+			host?: HTMLElement;
+			"on:routeshown": () => void;
+		}
+	>
+) {
 	this["on:routeshown"] = async () => {
 		if (!import.meta.env.SSR) {
 			let playground = await import("../playground/playground");
@@ -40,7 +44,7 @@ export function PlaygroundHost(this: FC<{},
 			</div>
 		</div>
 	);
-};
+}
 PlaygroundHost.style = css`
 	:scope {
 		width: 100%;

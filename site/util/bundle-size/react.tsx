@@ -11,6 +11,6 @@ function Counter() {
 			<button onClick={() => setCount(count + 1)}>Click!</button>
 		</div>
 	);
-};
+}
 
 ReactDOM.render(<Counter />, document.getElementById("app"));
