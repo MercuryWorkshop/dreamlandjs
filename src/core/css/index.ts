@@ -5,7 +5,7 @@ import {
 	PSEUDO_CLASS_TOKEN,
 	PSEUDO_ELEMENT_TOKEN,
 } from "../consts";
-import { Component, ComponentState } from "../jsx/definitions";
+import { ComponentFn, ComponentFnState } from "../jsx/definitions";
 import { stringify, Token, tokenize } from "./selectorParser";
 
 export type CssInit = {
@@ -14,9 +14,9 @@ export type CssInit = {
 	_rewrite: typeof _rewrite;
 };
 
-export let css = /*@__NO_SIDE_EFFECTS__*/ <T extends Component<any, any>>(
+export let css = /*@__NO_SIDE_EFFECTS__*/ <T extends ComponentFn<any, any>>(
 	_strings: TemplateStringsArray,
-	..._funcs: (((state: ComponentState<T>) => any) | string)[]
+	..._funcs: (((state: ComponentFnState<T>) => any) | string)[]
 ): CssInit => {
 	return {
 		_strings,

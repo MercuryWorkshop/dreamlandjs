@@ -39,12 +39,16 @@ export type FC<
 	This extends BanProps<This> = {},
 > = Stateful<StateProps<Props, This>>;
 
-export type Component<
+export type ComponentFn<
 	Props extends BanProps<Props> = {},
 	This extends BanProps<This> = {},
 > = {
 	["typescript hackfix"](this: FC<Props, This>): HTMLElement;
-}["typescript hackfix"] & { style?: CssInit };
+}["typescript hackfix"];
+export type Component<
+	Props extends BanProps<Props> = {},
+	This extends BanProps<This> = {},
+> = ComponentFn<Props, This> & { style?: CssInit };
 
 interface ComponentCx<
 	StatefulProps extends { [COMMA_TOKEN]?: never } & object,
@@ -58,6 +62,8 @@ interface ComponentCx<
 	init?: () => void;
 }
 
+export type ComponentFnState<T extends Component<any, any>> =
+	T extends ComponentFn<infer Props, infer This> ? FC<Props, This> : never;
 export type ComponentState<T extends Component<any, any>> =
 	T extends Component<infer Props, infer This> ? FC<Props, This> : never;
 export type ComponentContext<T extends Component<any, any>> = ComponentCx<
