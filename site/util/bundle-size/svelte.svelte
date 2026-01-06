@@ -1,7 +1,7 @@
 <script>
-	let counter = 0;
+	let count = $state(0);
 </script>
 
 <h1>Counter!</h1>
-<div>{counter} clicks</div>
-<button on:click={() => counter++}>Click!</button>
+<div>{count} clicks</div>
+<button onclick={() => count++}>Click!</button>

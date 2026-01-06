@@ -1,5 +1,5 @@
 export let title = ["Migrating", "From v0.0.x"];
-export let order = 100;
+export let order = 110;
 
 ## Imports
 
@@ -10,7 +10,7 @@ You now import from `dreamland/core`
 import "dreamland/dev"; // or whatever
 
 // new
-import { css, createState, type Component } from "dreamland/core";
+import { css, createState, type FC } from "dreamland/core";
 ```
 
 ## Vite
@@ -51,7 +51,7 @@ For classes you now need to define them outside the component.
 
 ```tsx
 // old
-const App: Component<{}, {}> = function () {
+const App: Component = function () {
 	this.css = `
       height: 100vh;
     `;
@@ -69,7 +69,7 @@ const App: Component<{}, {}> = function () {
 };
 
 // new
-const App: Component<{}, {}> = function () {
+function App(this: FC) {
 	return (
 		<div>
 			<NavBar />
@@ -113,17 +113,14 @@ export const NavBar: Component<
 };
 
 // new
-export const NavBar: Component<
-	{},
-	{
-		pages: Record<string, { name: string; page: ComponentChild }>;
-		path: string;
-	}
-> = function () {
+export function NavBar(this: FC<{}, {
+	pages: Record<string, { name: string; page: ComponentChild }>;
+	path: string;
+}>) {
 	this.path = new URL(document.URL).pathname;
-	use(this.path).listen(() => {
+	use(this.path).listen((path) => {
 		let url = new URL(document.URL);
-		url.pathname = this.path;
+		url.pathname = path;
 		if (window.location.toString() != url.toString()) {
 			window.location.assign(url);
 		}
@@ -147,7 +144,7 @@ export const NavBar: Component<
 </div>
 ```
 
-`$if(x, yes, no)` is now `use(x).andThen(yes, no)`
+`$if(x, yes, no)` is now `use(x).and(yes, no).or()`
 
 ```tsx
 // old
@@ -157,13 +154,13 @@ export const NavBar: Component<
 
 // new
 {
-	use(this.mobile).andThen(<Mobile />, <Desktop />);
+	use(this.mobile).and(<Mobile />).or(<Desktop />);
 }
 ```
 
 ## `this` Object
 
-Many items that were once accessed by `this.` are now accessed by `cx.` and JSX.Element is replaced with ComponentChild
+Many items that were once accessed by `this.` are now accessed by `this.cx.` and JSX.Element is replaced with ComponentChild
 
 ```tsx
 // old
@@ -180,15 +177,15 @@ export const Row: Component<{}, { children: JSX.Element }> = function () {
 };
 
 // new
-export const Row: Component<{ children: ComponentChild }, {}> = function (cx) {
-	cx.mount = () => {
-		(cx.root.children[0] as HTMLDivElement).addEventListener(
+export function Row(this: FC<{ children: ComponentChild }, {}>) {
+	this.cx.mount = () => {
+		(this.children[0] as HTMLDivElement).addEventListener(
 			"mouseenter",
 			() => {
 				console.log("enter!");
 			}
 		);
 	};
-	return <div>{cx.children}</div>;
+	return <div>{this.children}</div>;
 };
 ```

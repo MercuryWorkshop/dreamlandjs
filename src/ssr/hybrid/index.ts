@@ -1,14 +1,14 @@
 /*
 // regular dl2 component syntax
 // autoimported via the importmap stuff or manually mounted with `mount("selector or array of els", DropdownController)`
-export let DropdownController: Component<{}, {
+export function DropdownController(this: FC<{}, {
 	hidden: boolean,
-}> = function(cx) {
+}>) {
 	this.hidden = true;
 
-	cx.mount = () => {
+	this.cx.mount = () => {
 		// cx.root points to the controller root
-		console.log(cx.root.outerHTML);
+		console.log(this.cx.root.outerHTML);
 	}
 
 	// return a bunch of mount points as a Fragment
