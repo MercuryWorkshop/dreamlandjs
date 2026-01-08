@@ -16,7 +16,7 @@ import {
 	DLElement,
 	DLElementNameToElement,
 } from "./definitions";
-import { isPointer, maybeListen } from "../state/pointers";
+import { isPointer, maybeListen, setConstrainer } from "../state/pointers";
 import { createState, stateProxy, Stateful } from "../state/state";
 import { DREAMLAND, MAP, NO_CHANGE } from "../consts";
 import { DelegateListener } from "../delegate";
@@ -204,11 +204,15 @@ function _jsx(
 			id: cssInfo?._id,
 		} as ComponentContext<any>;
 
+		setConstrainer(state);
+
 		let oldIdent = currentCssIdent;
 		currentCssIdent = cssInfo?._id;
 		el = init.call(state, cx);
 		currentCssIdent = oldIdent;
 		cx.root = el;
+
+		setConstrainer(false);
 
 		if (isNode(el)) {
 			dev: {
@@ -232,12 +236,14 @@ function _jsx(
 				}
 		}
 
-		cx.init?.();
-
 		ssrTransform?.(init, cx);
+
+		setConstrainer(state);
+		cx.init?.();
 
 		if (isNode(el) && hydrating?.(el)) cxs.push(cx);
 		else if (hydrating) cx.mount?.();
+		setConstrainer(false);
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute

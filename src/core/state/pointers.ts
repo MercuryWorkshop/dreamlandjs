@@ -19,6 +19,9 @@ import { useTrap, UseTrapMap, useTrapMap } from "./use";
 let constraints: WeakMap<any, Pointer<any>[]> = WEAKMAP();
 let internalPointers: WeakMap<Pointer<any>, InternalPointer<any>> = WEAKMAP();
 
+let DEFAULT_CONSTRAINER: any | false | undefined;
+export let setConstrainer = (constrainer: typeof DEFAULT_CONSTRAINER) => DEFAULT_CONSTRAINER = constrainer;
+
 const enum PointerType {
 	Regular = 0,
 	Mapped = 1,
@@ -165,6 +168,8 @@ export class Pointer<T> {
 		} else if (internal._type == PointerType.Zipped) {
 			internal._ptrs.map((x) => x._listenWeak(WEAKREF(this._listener)));
 		}
+
+		if (DEFAULT_CONSTRAINER) this.constrain(DEFAULT_CONSTRAINER);
 	}
 
 	get value(): T {
