@@ -1,15 +1,15 @@
-import { css, type Component } from "dreamland/core";
+import { css, type FC } from "dreamland/core";
 
-let Counter: Component<{ count: number }> = function () {
+function Counter(this: FC<{ count: number }>) {
 	return (
 		<div>
 			<div>Count: {use(this.count)}</div>
 			<button on:click={() => this.count++}>{use`Count: ${this.count}`}</button>
 		</div>
 	);
-};
+}
 
-let App: Component<{}, { count: number }> = function () {
+function App(this: FC<{}, { count: number }>) {
 	this.count = 0;
 
 	return (
@@ -18,7 +18,7 @@ let App: Component<{}, { count: number }> = function () {
 			<Counter count={use(this.count)} />
 		</div>
 	);
-};
+}
 App.style = css`
 	:scope {
 		padding: 0 1rem;

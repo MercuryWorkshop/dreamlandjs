@@ -1,19 +1,12 @@
-import { type Component } from "dreamland/core";
+import { type FC } from "dreamland/core";
 
-export const Counter: Component<
-	{},
-	{
-		counter: number;
-	}
-> = function () {
-	this.counter = 0;
+export function Counter(this: FC<{}, { count: number }>) {
+	this.count = 0;
 
 	return (
 		<div>
 			<h2>Counter!</h2>
-			<button on:click={() => this.counter++}>
-				{use(this.counter)} clicks
-			</button>
+			<button on:click={() => this.count++}>{use(this.count)} clicks</button>
 		</div>
 	);
-};
+}

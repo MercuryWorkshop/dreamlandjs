@@ -1,0 +1,110 @@
+export let title = ["Migrating", "From v0.1.x"];
+export let order = 100;
+
+## Component Syntax Revamp
+
+Component syntax has changed drastically, using proper function syntax instead of anonymous functions assigned to variables:
+- `Component` has two generic arguments: `Props` (stays the same as the old syntax) and `This` (maps to `Public & Private` in the old syntax)
+- The new `FC` type is used as the `this` type on components, specifying `Props` and `This`.
+- `cx` and `root` keys are no longer allowed to be used as props or internal state.
+- `cx` has been removed as an argument. It is now on `this`.
+- `root` and `children` have been moved from `cx` to `this`. `root` is still initialized after the initial component execution.
+	- `children` has better types now, accurately representing that it will always be an array with elements being the type you specify in Props/This
+- `DLElement` has been removed. Use `ComponentInstance` with a proper `Component` type instead.
+- `ComponentContext` now takes a `Component` type to align with the other `Component*` helpers.
+
+Here are some examples:
+```tsx
+// old
+const App: Component = function () {
+	return (
+		<div>
+			<NavBar />
+			<div class="red">this text is red!</div>
+		</div>
+	);
+};
+App.style = css`
+	:scope {
+		height: 100vh;
+	}
+	.red {
+		color: red;
+	}
+`;
+
+// new
+function App(this: FC) {
+	return (
+		<div>
+			<NavBar />
+			<div class="red">this text is red!</div>
+		</div>
+	);
+};
+App.style = css`
+	:scope {
+		height: 100vh;
+	}
+	.red {
+		color: red;
+	}
+`;
+
+// old
+let ChartCard: Component<{}, { chart: HTMLCanvasElement }> = function (cx) {
+	cx.mount = () => {
+		// mount the chart on the client once the canvas is constructed
+		let chart = new Chart(this.chart as HTMLCanvasElement, {
+			/* ... */
+		});
+
+		// update the chart on data changes ...
+	}
+
+	return (
+		<div>
+			<h1>Chart</h1>
+			<canvas this={use(this.chart)} />
+		</div>
+	);
+};
+
+// new
+function ChartCard(this: FC<{}, {
+	chart: HTMLCanvasElement
+}>) {
+	this.cx.mount = () => {
+		// mount the chart on the client once the canvas is constructed
+		let chart = new Chart(this.chart as HTMLCanvasElement, {
+			/* ... */
+		});
+
+		// update the chart on data changes ...
+	};
+
+	return (
+		<div>
+			<h1>Chart</h1>
+			<canvas this={use(this.chart)} />
+		</div>
+	);
+};
+```
+
+
+## Reactivity
+
+`use(x).andThen(yes, no)` is now `use(x).and(yes).or(no)`
+
+```tsx
+// old
+{
+	use(this.mobile).andThen(<Mobile />, <Desktop />);
+}
+
+// new
+{
+	use(this.mobile).and(<Mobile />).or(<Desktop />);
+}
+```

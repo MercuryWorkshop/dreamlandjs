@@ -1,6 +1,5 @@
 import {
 	ComponentContext,
-	DLElement,
 	DomImpl,
 	DREAMLAND,
 	getDomImpl,
@@ -28,14 +27,15 @@ export let hydrate = (
 
 	let els: [number, HTMLElement][] = [];
 
-	let rootIdx = +ssr.getAttribute(SSR_ID);
+	let rootIdx = +ssr.getAttribute(SSR_ID)!;
 	let idx = -1;
 	let getInternal = (idx: number) => {
 		let selector = `[${SSR_ID}="${idx}"]`;
-		let ret: HTMLElement =
+		let ret =
 			rootIdx == idx
 				? ssr
-				: ssr.querySelector(selector) || head.querySelector(selector);
+				: ssr.querySelector<HTMLElement>(selector) ||
+					head.querySelector<HTMLElement>(selector);
 		if (ret) els.push([idx, ret]);
 		return ret;
 	};
@@ -47,15 +47,15 @@ export let hydrate = (
 		return getInternal(parent)?.childNodes?.[offset];
 	};
 	let hydrateCx = (cx: ComponentContext<any>) => {
-		let ssr = data.n[cx?.root?.getAttribute?.(SSR_ID)];
+		let ssr = data.n[cx?.state?.root?.getAttribute?.(SSR_ID) as any as number];
 		if (ssr) {
 			hydrateState(data, ssr as SsrObject, cx.state);
 		}
 	};
-	let hydrating = (x) => x.hasAttribute(SSR_ID);
+	let hydrating = (x: HTMLElement) => x.hasAttribute(SSR_ID);
 
 	for (let [parent, offset, len] of data.t) {
-		let text = getInternal(parent).childNodes[offset] as Text;
+		let text = getInternal(parent)!.childNodes[offset] as Text;
 		if (text.length !== len) text.splitText(len);
 	}
 
@@ -73,7 +73,8 @@ export let hydrate = (
 		() => data.i[idx + 1] || old[4](),
 		hydrating,
 		(init, cx) => {
-			if (cx?.root instanceof old[1] && !hydrating(cx.root)) hydrateCx(cx);
+			if (cx?.state?.root instanceof old[1] && !hydrating(cx.state?.root))
+				hydrateCx(cx);
 		},
 	] as const satisfies DomImpl;
 	setDomImpl(vdom);

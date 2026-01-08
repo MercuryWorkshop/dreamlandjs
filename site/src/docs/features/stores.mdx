@@ -25,7 +25,7 @@ You can also provide an object containing optionally async `read` and `write` fu
 import { createStore } from "dreamland/core";
 
 let backing = {
-	async read(ident: string): Promise<string | null> {
+	async read(ident: string): Promise<string | undefined> {
 		// read from IDB or fetch externally...
 	},
 	async write(ident: string, value: string): Promise<void> {

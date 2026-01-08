@@ -1,14 +1,14 @@
-import { css, jsx, type Component } from "dreamland/core";
+import { css, jsx, type FC } from "dreamland/core";
 import { examples, type Example } from "../../examples";
 
-export let ExampleView: Component<{ example: Example }> = function () {
+export function ExampleView(this: FC<{ example: Example }>) {
 	return (
 		<div data-example={this.example.id}>
 			<div class="code">{jsx(this.example.code, {})}</div>
 			<div class="example">{jsx(this.example.component, {})}</div>
 		</div>
 	);
-};
+}
 ExampleView.style = css`
 	:scope {
 		flex: 0 0 100%;
@@ -49,7 +49,7 @@ ExampleView.style = css`
 	}
 `;
 
-export let ExamplesCarousel: Component = function () {
+export function ExamplesCarousel(this: FC) {
 	return (
 		<div>
 			{examples.map((x) => (
@@ -57,7 +57,7 @@ export let ExamplesCarousel: Component = function () {
 			))}
 		</div>
 	);
-};
+}
 ExamplesCarousel.style = css`
 	:scope {
 		display: flex;

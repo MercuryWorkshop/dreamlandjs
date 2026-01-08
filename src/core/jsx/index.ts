@@ -13,7 +13,6 @@ import {
 	ComponentChild,
 	ComponentContext,
 	ComponentInstance,
-	DLElement,
 	DLElementNameToElement,
 } from "./definitions";
 import { isPointer, maybeListen, setConstrainer } from "../state/pointers";
@@ -22,7 +21,7 @@ import { DREAMLAND, MAP, NO_CHANGE } from "../consts";
 import { DelegateListener } from "../delegate";
 import { findLIS, isArray, isNode } from "../utils";
 
-export let currentCssIdent: string | null = null;
+export let currentCssIdent: string | undefined;
 export let callDelegateListeners = (
 	value: any,
 	listeners: DelegateListener<any>[]
@@ -37,7 +36,7 @@ export let callDelegateListeners = (
 let mapChild = (
 	child: ComponentChild,
 	parent: Node,
-	cssIdent: string,
+	cssIdent?: string,
 	identOverride?: string
 ): Node[] => {
 	if (child == null) {
@@ -45,7 +44,7 @@ let mapChild = (
 	} else if (isPointer(child)) {
 		let start = new_Comment("[");
 		let end = new_Comment("]");
-		let current: Node[] = null!;
+		let current: Node[];
 
 		maybeListen(child, start, (val: ComponentChild) => {
 			if (current && !start.parentNode) return;
@@ -54,9 +53,7 @@ let mapChild = (
 			// pretty sure it's not possible to put a pointer child in not a htmlelement
 			if (!hydrating?.(parent as HTMLElement) && current) {
 				let old = MAP(current.map((x, i) => [x, i]));
-				let staticNodes = mapped
-					.filter((x) => old.has(x))
-					.map((x) => old.get(x));
+				let staticNodes = mapped.map((x) => old.get(x)!).filter((x) => x);
 				let LIS = MAP(findLIS(staticNodes).map((x) => [current[x], ,]));
 				let anchor: Node = start;
 
@@ -74,7 +71,11 @@ let mapChild = (
 			current = mapped;
 		});
 
-		return [start, ...(hydrating?.(parent as HTMLElement) ? [] : current), end];
+		return [
+			start,
+			...(hydrating?.(parent as HTMLElement) ? [] : current!),
+			end,
+		];
 	} else if (isNode(child)) {
 		let list: DOMTokenList;
 		let apply = (child: any) => {
@@ -85,7 +86,7 @@ let mapChild = (
 				if (arr.find((x) => x == CSS_COMPONENT)) return;
 
 				if (!other) {
-					list.add(identOverride || cssIdent);
+					list.add(identOverride || cssIdent!);
 				} else if (identOverride && other !== identOverride) {
 					list.remove(other);
 					list.add(identOverride);
@@ -104,7 +105,7 @@ let mapChild = (
 	}
 };
 
-let CREATE_ELEMENT = "createElement";
+let CREATE_ELEMENT = "createElement" as const;
 
 interface CssInfo {
 	_id: string;
@@ -112,9 +113,9 @@ interface CssInfo {
 }
 
 let componentCssInfo: Map<Component, CssInfo> = MAP();
-let cxs = [];
+let cxs: ComponentContext<Component<any, any>>[] = [];
 
-function _jsx<T extends Component<any, any, any>>(
+function _jsx<T extends Component<any, any>>(
 	init: T,
 	props: Record<string, any> | null,
 	key?: string
@@ -125,7 +126,7 @@ function _jsx<T extends string>(
 	key?: string
 ): DLElementNameToElement<T>;
 function _jsx(
-	init: Component<any, any, any> | string,
+	init: Component<any, any> | string,
 	_props: Record<string, any> | null,
 	key?: string
 ): HTMLElement {
@@ -134,7 +135,7 @@ function _jsx(
 			throw new Error("invalid component");
 	}
 
-	let { children: _children, ...props } = _props;
+	let { children: _children, ...props } = _props!;
 	if (key) props.key = key;
 	_children ||= [];
 	let children = isArray(_children) ? _children : [_children];
@@ -142,7 +143,7 @@ function _jsx(
 	let el: HTMLElement;
 
 	if (typeof init === "function") {
-		let state = createState({}) as Stateful<any>;
+		let state = createState({ children }) as Stateful<any>;
 
 		ssrTransform?.(init);
 
@@ -165,7 +166,7 @@ function _jsx(
 			}
 		}
 
-		let cssInfo: CssInfo | null = componentCssInfo.get(init);
+		let cssInfo: CssInfo | undefined = componentCssInfo.get(init);
 		if (init.style) {
 			let style = init.style;
 			let styleEl = DOCUMENT[CREATE_ELEMENT]("style");
@@ -200,27 +201,27 @@ function _jsx(
 
 		let cx = {
 			state,
-			children,
 			id: cssInfo?._id,
 		} as ComponentContext<any>;
 
 		setConstrainer(state);
 
 		let oldIdent = currentCssIdent;
+		state.cx = cx;
 		currentCssIdent = cssInfo?._id;
-		el = init.call(state, cx);
+		el = init.call(state);
 		currentCssIdent = oldIdent;
-		cx.root = el;
+		state.root = el;
 
 		setConstrainer(false);
 
 		if (isNode(el)) {
 			dev: {
-				if ((el as DLElement<any>).$ && cssInfo)
+				if ((el as ComponentInstance<any>).$ && cssInfo)
 					throw new Error("Wrapper components cannot have CSS");
 			}
 
-			(el as DLElement<any>).$ = cx;
+			(el as ComponentInstance<any>).$ = cx;
 
 			el.classList.add(CSS_COMPONENT);
 
@@ -248,7 +249,7 @@ function _jsx(
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
 		let xmlns = props?.xmlns;
-		el = DOCUMENT[CREATE_ELEMENT + (xmlns ? "NS" : "")](
+		el = (DOCUMENT as any)[CREATE_ELEMENT + (xmlns ? "NS" : "")](
 			xmlns || init,
 			xmlns && init,
 			props,
@@ -287,7 +288,7 @@ function _jsx(
 					}
 				);
 			} else if (attr === "class") {
-				let old = [];
+				let old: string[] = [];
 
 				maybeListen(val, el, (val: string) => {
 					let classes = val.split(" ").filter((x) => x.length);
@@ -310,7 +311,7 @@ function _jsx(
 			} else if (attr.startsWith("attr:")) {
 				let key = attr.substring(5);
 				maybeListen(val, el, (val: boolean) => {
-					if (!hydrating?.(el)) el[key] = val;
+					if (!hydrating?.(el)) (el as any)[key] = val;
 				});
 			} else if (attr == "style" && typeof val == "object" && !isPointer(val)) {
 				for (let k in val) {
@@ -337,7 +338,7 @@ function _jsx(
 	return el;
 }
 
-function _h<T extends Component<any, any, any>>(
+function _h<T extends Component<any, any>>(
 	init: T,
 	props: Record<string, any> | null,
 	...children: ComponentChild[]
@@ -348,7 +349,7 @@ function _h<T extends string>(
 	...children: ComponentChild[]
 ): DLElementNameToElement<T>;
 function _h(
-	init: Component<any, any, any> | string,
+	init: Component<any, any> | string,
 	props: Record<string, any> | null,
 	...children: ComponentChild[]
 ): HTMLElement {
@@ -357,10 +358,15 @@ function _h(
 }
 
 export let h = _h;
-export let jsx = _jsx;
+export let jsx: typeof _jsx & {
+	[DREAMLAND]: () => void;
+	[NO_CHANGE]: () => ComponentContext<Component<any, any>>[];
+} = _jsx as any;
 export let addDREAMLAND = () => {
 	jsx[DREAMLAND] = () => (componentCssInfo = MAP());
 	jsx[NO_CHANGE] = () => cxs.splice(0, cxs.length);
 };
 
-export let Fragment = (cx: any) => cx.children;
+export let Fragment: Component<{ children?: ComponentChild }> = function () {
+	return this.children as any as JSX.Element;
+};

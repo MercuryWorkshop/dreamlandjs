@@ -1,10 +1,8 @@
-import { css, type Component, type ComponentChild } from "dreamland/core";
+import { css, type FC, type ComponentChild } from "dreamland/core";
 
-const Button: Component<{
-	children: ComponentChild;
-}> = function (cx) {
-	return <button on:click={() => alert()}>{cx.children}</button>;
-};
+function Button(this: FC<{ children: ComponentChild }>) {
+	return <button on:click={() => alert()}>{this.children}</button>;
+}
 Button.style = css`
 	:scope {
 		background: var(--accent);
@@ -14,10 +12,10 @@ Button.style = css`
 	}
 `;
 
-export const StyledPage: Component = function () {
+export function StyledPage(this: FC) {
 	return (
 		<div>
 			<Button>Click!</Button>
 		</div>
 	);
-};
+}

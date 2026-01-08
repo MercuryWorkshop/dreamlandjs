@@ -1,5 +1,6 @@
 import { ComponentContext, DomImpl } from "dreamland/core";
 
+// @ts-expect-error rrweb-cssom doesn't have types
 import { CSSOM } from "rrweb-cssom";
 
 import {
@@ -13,10 +14,10 @@ import renderToString from "dom-serializer";
 import { CSS_IDENT, SSR_ID } from "../common/consts";
 
 export class Node {
-	_id: number;
-	nodeType: number;
+	_id!: number;
+	nodeType!: number;
 
-	parent: Node;
+	parent?: Node;
 	childNodes: Node[] = [];
 
 	appendChild(node: Node) {
@@ -55,7 +56,7 @@ export class Node {
 
 	get nextSibling() {
 		let self = this.parent?.childNodes?.findIndex((x) => x === this);
-		return this.parent?.childNodes[self + 1];
+		return this.parent?.childNodes[self! + 1];
 	}
 }
 
@@ -86,7 +87,7 @@ class ClassList extends Array {
 export class Element extends Node {
 	nodeType: number = 1;
 
-	namespace?: string = null;
+	namespace?: string;
 
 	type: string;
 	attributes: Map<string, string> = new Map();
@@ -115,6 +116,7 @@ export class Element extends Node {
 	}
 
 	replaceWith(el: Element) {
+		if (!this.parent) throw new Error("element has no parent");
 		let idx = this.parent.childNodes.findIndex((x) => x === this);
 		this.parent.childNodes[idx] = el;
 	}

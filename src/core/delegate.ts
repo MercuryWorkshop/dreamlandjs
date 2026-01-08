@@ -2,7 +2,7 @@ import { callDelegateListeners, currentCssIdent } from "./jsx/index";
 
 export interface DelegateListener<T> {
 	_callback: (value: T) => void;
-	_cssIdent: string | null;
+	_cssIdent?: string;
 }
 
 export type Delegate<T> = {

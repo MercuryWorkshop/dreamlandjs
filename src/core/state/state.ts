@@ -19,7 +19,7 @@ export type Stateful<T extends object> = T & {
 };
 
 let getInternal = (stateful: Stateful<any>): InternalStateful =>
-	internalStatefuls.get(stateful);
+	internalStatefuls.get(stateful)!;
 let callListeners = (
 	internal: InternalStateful,
 	prop: ObjectProp,
@@ -27,7 +27,7 @@ let callListeners = (
 ) => {
 	internal._listeners.map((x) => x(newValue, prop));
 	(internal._weaks = internal._weaks.filter(deref)).map((x) =>
-		deref(x)(newValue, prop)
+		deref(x)!(newValue, prop)
 	);
 };
 

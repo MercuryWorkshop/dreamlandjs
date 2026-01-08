@@ -25,8 +25,8 @@ For example, you can create a delegate in the parent component and then pass it 
 ```tsx
 import { createDelegate } from "dreamland/core";
 
-let Ripples: Component<{ create: Delegate<MouseEvent> }> = function (cx) {
-	cx.mount = () => {
+function Ripples(this: FC<{ create: Delegate<MouseEvent> }>) {
+	this.cx.mount = () => {
 		this.create.listen((e: MouseEvent) => {
 			// create ripple...
 		});
@@ -35,7 +35,7 @@ let Ripples: Component<{ create: Delegate<MouseEvent> }> = function (cx) {
 	return <div />;
 };
 
-let Button: Component = function () {
+function Button(this: FC) {
 	let ripple = createDelegate<MouseEvent>();
 
 	return (

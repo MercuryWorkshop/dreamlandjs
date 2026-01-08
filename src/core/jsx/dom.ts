@@ -4,27 +4,29 @@ import { Component, ComponentContext } from "./definitions";
 
 export let CSS_IDENT = "dlcss-";
 
+type NodeConstructor = (text?: string) => any;
+type CssUidGenerator = () => string;
+type IsHydrating = ((el: HTMLElement) => boolean) | undefined;
+type SsrTransformCallback =
+	| (<T extends Component<any, any>>(init: T, cx?: ComponentContext<T>) => void)
+	| undefined;
+
 export let DOCUMENT = GLOBAL.document;
 export let node: typeof Node = GLOBAL.Node;
-export let new_Text = (text?: string) => new Text(text);
-export let new_Comment = (text?: string) => new Comment(text);
-export let genCssUid = () => CSS_IDENT + genuid();
-export let hydrating: (el: HTMLElement) => boolean | undefined = () => false;
-export let ssrTransform:
-	| ((init: Component<any, any, any>, cx?: ComponentContext<any>) => void)
-	| undefined;
+export let new_Text: NodeConstructor = (text) => new Text(text);
+export let new_Comment: NodeConstructor = (text) => new Comment(text);
+export let genCssUid: CssUidGenerator = () => CSS_IDENT + genuid();
+export let hydrating: IsHydrating = () => false;
+export let ssrTransform: SsrTransformCallback;
 
 export type DomImpl = [
 	any,
 	any,
-	(text?: string) => any,
-	(text?: string) => any,
-	() => string,
-	((el: HTMLElement) => boolean) | undefined,
-	(
-		| ((init: Component<any, any, any>, cx?: ComponentContext<any>) => void)
-		| undefined
-	),
+	NodeConstructor,
+	NodeConstructor,
+	CssUidGenerator,
+	IsHydrating,
+	SsrTransformCallback,
 ];
 
 export let setDomImpl = ([

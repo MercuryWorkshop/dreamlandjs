@@ -48,7 +48,7 @@ let _devSsr = (options: DevSsrPluginOptions): PluginOption => ({
 
 			return html;
 		} catch (e) {
-			server.ssrFixStacktrace(e);
+			server.ssrFixStacktrace(e as Error);
 			throw e;
 		}
 	},

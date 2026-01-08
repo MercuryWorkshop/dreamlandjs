@@ -6,7 +6,8 @@
 		"declarationDir": "dist/types",
 		"rootDir": "src",
 		"moduleResolution": "bundler",
-		"stripInternal": true
+		"stripInternal": true,
+		"strict": true
 	},
 	"include": ["src"],
 	"exclude": ["dist"]

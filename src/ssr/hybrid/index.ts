@@ -1,14 +1,14 @@
 /*
 // regular dl2 component syntax
 // autoimported via the importmap stuff or manually mounted with `mount("selector or array of els", DropdownController)`
-export let DropdownController: Component<{}, {
+export function DropdownController(this: FC<{}, {
 	hidden: boolean,
-}> = function(cx) {
+}>) {
 	this.hidden = true;
 
-	cx.mount = () => {
-		// cx.root points to the controller root
-		console.log(cx.root.outerHTML);
+	this.cx.mount = () => {
+		// this.root points to the controller root
+		console.log(this.root.outerHTML);
 	}
 
 	// return a bunch of mount points as a Fragment
@@ -28,7 +28,7 @@ import { SSR, SSR_ID } from "../common/consts";
 
 export let mountOne = (
 	root: HTMLElement,
-	component: Component<any, any, any>
+	component: Component<any, any>
 ): void => {
 	let lookup = (ty: string, id: string) =>
 		root.querySelector(`${ty}[${SSR_ID}='${id}'`);
@@ -36,7 +36,7 @@ export let mountOne = (
 	let old = getDomImpl();
 	let vdom = [
 		{
-			createElement(ty: string, _, props: any) {
+			createElement(ty: string, _: any, props: any) {
 				let ssr = props[SSR];
 				props[SSR] = false;
 				if (ssr) return lookup(ty, ssr.id);
@@ -56,7 +56,7 @@ export let mountOne = (
 		(init, cx) => {
 			if (init === component) {
 				if (cx) {
-					cx.root = root;
+					cx.state.root = root;
 				} else if (init.style) {
 					dev: {
 						throw new Error("Hybrid SSR controllers do not support CSS");
@@ -75,7 +75,7 @@ export let mountOne = (
 
 export let mount = (
 	roots: string | HTMLElement[],
-	component: Component<any, any, any>
+	component: Component<any, any>
 ) => {
 	(typeof roots == "string"
 		? [...document.querySelectorAll<HTMLElement>(roots)]

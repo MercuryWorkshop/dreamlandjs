@@ -1,4 +1,4 @@
-import { css, type Component } from "dreamland/core";
+import { css, type FC } from "dreamland/core";
 import { Monaco } from "./monaco";
 import { compile } from "./rollup";
 
@@ -46,14 +46,16 @@ let compiled = (code: string) => `
 </html>
 `;
 
-export let Playground: Component<
-	{},
-	{
-		code: string;
-		transpiled: string;
-		output: string;
-	}
-> = function () {
+export function Playground(
+	this: FC<
+		{},
+		{
+			code: string;
+			transpiled: string;
+			output: string;
+		}
+	>
+) {
 	this.code = code;
 	this.transpiled = "";
 	this.output = compiling;
@@ -81,7 +83,7 @@ export let Playground: Component<
 			<iframe srcdoc={use(this.output)} />
 		</div>
 	);
-};
+}
 Playground.style = css`
 	:scope {
 		width: 100%;

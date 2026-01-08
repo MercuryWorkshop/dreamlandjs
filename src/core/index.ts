@@ -12,13 +12,12 @@ export { createDelegate, Delegate } from "./delegate";
 export { css } from "./css";
 
 export {
-	DLElement,
-	Component,
 	ComponentChild,
-	ComponentContext,
+	Component,
+	FC,
 	ComponentState,
+	ComponentContext,
 	ComponentInstance,
-	DLElementNameToElement,
 	JSX,
 } from "./jsx/definitions";
 export { h, jsx, Fragment } from "./jsx";

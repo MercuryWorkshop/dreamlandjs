@@ -1,4 +1,4 @@
-import { css, type Component } from "dreamland/core";
+import { css, type FC } from "dreamland/core";
 
 // rollup hack
 import "../playground/setup";
@@ -7,11 +7,15 @@ import { setTitle } from "../main";
 import { Link } from "../../../dist/router";
 import { Hero } from "../utils";
 
-export let PlaygroundHost: Component<
-	{},
-	{ host?: HTMLElement },
-	{ "on:routeshown": () => void }
-> = function () {
+export function PlaygroundHost(
+	this: FC<
+		{},
+		{
+			host?: HTMLElement;
+			"on:routeshown": () => void;
+		}
+	>
+) {
 	this["on:routeshown"] = async () => {
 		if (!import.meta.env.SSR) {
 			let playground = await import("../playground/playground");
@@ -40,7 +44,7 @@ export let PlaygroundHost: Component<
 			</div>
 		</div>
 	);
-};
+}
 PlaygroundHost.style = css`
 	:scope {
 		width: 100%;

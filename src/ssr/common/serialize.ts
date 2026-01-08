@@ -2,7 +2,6 @@ import { Pointer, DREAMLAND, NO_CHANGE } from "dreamland/core";
 import { SsrData, SsrObject, SsrPointer, SsrValue } from "./types";
 
 export let Json = JSON;
-let STRINGIFY = Json.stringify;
 
 export let serializeState = (
 	data: SsrData,
@@ -15,7 +14,7 @@ export let serializeState = (
 		else return arr.push(val) - 1;
 	};
 
-	let exportPtr = (ptr: Pointer<any>) => {
+	let exportPtr = (ptr: Pointer<any>): SsrPointer => {
 		let zipped = ptr[DREAMLAND]();
 		return zipped ? zipped.map(exportPtr) : { v: _val(ptr.value) };
 	};
@@ -52,9 +51,11 @@ export let serializeState = (
 		}
 	};
 
-	let _serialize = (object: object): SsrObject => {
+	let _serialize = (object: any, root?: boolean): SsrObject => {
 		let out: SsrObject = [];
 		for (let k in object) {
+			if (root && ["cx", "root"].includes(k)) continue;
+
 			let v = object[k];
 			let val = _val(v);
 
@@ -63,7 +64,7 @@ export let serializeState = (
 		return out;
 	};
 
-	return _serialize(object);
+	return _serialize(object, true);
 };
 
 export let hydrateState = (data: SsrData, state: SsrObject, target: any) => {

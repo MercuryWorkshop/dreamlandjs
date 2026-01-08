@@ -98,7 +98,7 @@ export let initializeStep = (
 	} satisfies InternalPointer<any>);
 };
 
-type Truthy<T> = Exclude<T, false | 0 | "" | null | undefined>;
+type Truthy<T> = NonNullable<Exclude<T, false | 0 | "" | null | undefined>>;
 type Falsy<T> = Extract<T, false | 0 | "" | null | undefined>;
 
 export class Pointer<T> {
@@ -111,7 +111,7 @@ export class Pointer<T> {
 
 	// @internal
 	get _ptr(): InternalPointer<T> {
-		return internalPointers.get(this);
+		return internalPointers.get(this)!;
 	}
 
 	// @internal
@@ -125,8 +125,8 @@ export class Pointer<T> {
 			ptr._state;
 
 		if (step._state !== old) {
-			if (old) _stateListenRemove(old, step._callbackRef);
-			_stateListen(step._state, step._callbackRef);
+			if (old) _stateListenRemove(old, step._callbackRef!);
+			_stateListen(step._state, step._callbackRef!);
 		}
 	}
 
@@ -149,7 +149,7 @@ export class Pointer<T> {
 	_callListeners() {
 		let ptr = this._ptr;
 		ptr._listeners.map((x) => x(this.value));
-		(ptr._weaks = ptr._weaks.filter(deref)).map((x) => deref(x)(this.value));
+		(ptr._weaks = ptr._weaks.filter(deref)).map((x) => deref(x)!(this.value));
 	}
 
 	// @internal
@@ -182,6 +182,9 @@ export class Pointer<T> {
 		} else if (ptr._type == PointerType.Zipped) {
 			return ptr._ptrs.map((x) => x.value) as any;
 		}
+		dev: {
+			throw "unreachable";
+		}
 	}
 
 	// @internal
@@ -207,8 +210,8 @@ export class Pointer<T> {
 		this._set(val);
 	}
 
-	[DREAMLAND](): ReadonlyArray<Pointer<any>> | null {
-		return (this._ptr as InternalZippedPointer<T>)._ptrs || null;
+	[DREAMLAND](): ReadonlyArray<Pointer<any>> | undefined {
+		return (this._ptr as InternalZippedPointer<T>)._ptrs;
 	}
 
 	[TOPRIMITIVE]() {
@@ -244,7 +247,7 @@ export class Pointer<T> {
 
 	and<R>(then: R | ((val: Truthy<T>) => R)): Pointer<Falsy<T> | R> {
 		return this.map(
-			(val) =>
+			(val): Falsy<T> | R =>
 				(val as Falsy<T>) &&
 				(typeof then === "function"
 					? (then as (val: Truthy<T>) => R)(val as Truthy<T>)
@@ -283,7 +286,7 @@ export class Pointer<T> {
 
 	constrain(to: any) {
 		if (!constraints.has(to)) constraints.set(to, []);
-		constraints.get(to).push(this);
+		constraints.get(to)!.push(this);
 		return this;
 	}
 	unconstrain(to: any) {
@@ -294,7 +297,7 @@ export class Pointer<T> {
 export let isPointer = (val: any): val is Pointer<any> =>
 	val instanceof Pointer;
 export let unwrapValue = <T>(val: Pointer<T> | T): T =>
-	isPointer(val) ? val.value : val;
+	isPointer(val) ? val.value : (val as T);
 export let maybeListen = <T>(
 	val: Pointer<T> | T,
 	constrain: any,

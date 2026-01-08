@@ -1,4 +1,4 @@
-import { css, type Component } from "dreamland/core";
+import { css, type FC } from "dreamland/core";
 
 // @ts-expect-error dl:frameworks untyped
 import _frameworks from "dl:frameworks";
@@ -14,7 +14,7 @@ let bundles = frameworks.map(([name, size]) => ({
 	relative: (size - min) / (max - min),
 }));
 
-export let BundleSize: Component = function () {
+export function BundleSize(this: FC) {
 	return (
 		<div>
 			{bundles.map(({ name, size, relative }) => (
@@ -31,7 +31,7 @@ export let BundleSize: Component = function () {
 			))}
 		</div>
 	);
-};
+}
 BundleSize.style = css`
 	:scope {
 		display: grid;

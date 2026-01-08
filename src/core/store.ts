@@ -1,14 +1,14 @@
 import { ASSIGN, GLOBAL } from "./consts";
 import { createState, isStateful, Stateful, stateListen } from "./state/state";
 
-let delegates = [];
+let delegates: (() => void)[] = [];
 
 type StoreSyncBacking = {
-	read: (ident: string) => string | null;
+	read: (ident: string) => string | undefined;
 	write: (ident: string, data: string) => void;
 };
 type StoreAsyncBacking = {
-	read: (ident: string) => Promise<string | null>;
+	read: (ident: string) => Promise<string | undefined>;
 	write: (ident: string, data: string) => Promise<void>;
 };
 
@@ -45,7 +45,7 @@ function _createStore<T extends object>(
 
 	if (backing === "localstorage") {
 		backing = {
-			read: (ident) => LOCALSTORAGE[ident] || null,
+			read: (ident) => LOCALSTORAGE[ident],
 			write: (ident, data) => (LOCALSTORAGE[ident] = data),
 		};
 	}
@@ -88,14 +88,14 @@ function _createStore<T extends object>(
 			let val = source[key];
 			if (isStateful(val) && isAuto) stateListen(val, saveHook);
 			if (val instanceof Object && key in target) {
-				ASSIGN(val, deepMerge(target[key], val));
+				ASSIGN(val, deepMerge((target as any)[key], val));
 			}
 		}
 
 		ASSIGN(target, source);
 	};
 
-	let finish = (data: string): Stateful<T> => {
+	let finish = (data?: string): Stateful<T> => {
 		if (data) {
 			deepMerge(
 				target,

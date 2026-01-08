@@ -31,14 +31,14 @@ Then you can use dreamland like normal JS with a bundler:
 	import { css } from "dreamland/core";
 	import { html } from "dreamland/js-runtime";
 
-	let App = function () {
-		this.counter = 0;
+	function App() {
+		this.count = 0;
 
 		return html`
 			<div>
 				<h1>:3</h1>
-				<button on:click=${() => this.counter++}>
-					Count: ${use(this.counter)}
+				<button on:click=${() => this.count++}>
+					Count: ${use(this.count)}
 				</button>
 			</div>
 		`;
