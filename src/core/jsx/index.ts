@@ -279,6 +279,7 @@ function _jsx(
 			} else if (attr === "value" || attr === "checked") {
 				maybeListen(
 					val,
+					el,
 					(val: any) => {
 						setAttr(attr, val);
 						(el as any).value = val;
