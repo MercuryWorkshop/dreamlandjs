@@ -19,7 +19,7 @@ import { useTrap, UseTrapMap, useTrapMap } from "./use";
 let constraints: WeakMap<any, Pointer<any>[]> = WEAKMAP();
 let internalPointers: WeakMap<Pointer<any>, InternalPointer<any>> = WEAKMAP();
 
-let DEFAULT_CONSTRAINER: any | false | undefined;
+export let DEFAULT_CONSTRAINER: any | false | undefined;
 export let setConstrainer = (constrainer: typeof DEFAULT_CONSTRAINER) => DEFAULT_CONSTRAINER = constrainer;
 
 const enum PointerType {

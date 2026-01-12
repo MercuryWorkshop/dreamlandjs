@@ -15,7 +15,7 @@ import {
 	ComponentInstance,
 	DLElementNameToElement,
 } from "./definitions";
-import { isPointer, maybeListen, setConstrainer } from "../state/pointers";
+import { DEFAULT_CONSTRAINER, isPointer, maybeListen, setConstrainer } from "../state/pointers";
 import { createState, stateProxy, Stateful } from "../state/state";
 import { DREAMLAND, MAP, NO_CHANGE } from "../consts";
 import { DelegateListener } from "../delegate";
@@ -28,9 +28,12 @@ export let callDelegateListeners = (
 ): void =>
 	listeners.map((x) => {
 		let oldIdent = currentCssIdent;
+		let oldConstrainer = DEFAULT_CONSTRAINER;
+		setConstrainer(x._constrainer);
 		currentCssIdent = x._cssIdent;
 		x._callback(value);
 		currentCssIdent = oldIdent;
+		setConstrainer(oldConstrainer)
 	}) as any as void;
 
 let mapChild = (
@@ -204,8 +207,8 @@ function _jsx(
 			id: cssInfo?._id,
 		} as ComponentContext<any>;
 
+		let constrainer = DEFAULT_CONSTRAINER;
 		setConstrainer(state);
-
 		let oldIdent = currentCssIdent;
 		state.cx = cx;
 		currentCssIdent = cssInfo?._id;
@@ -213,7 +216,7 @@ function _jsx(
 		currentCssIdent = oldIdent;
 		state.root = el;
 
-		setConstrainer(false);
+		setConstrainer(constrainer);
 
 		if (isNode(el)) {
 			dev: {
@@ -244,7 +247,7 @@ function _jsx(
 
 		if (isNode(el) && hydrating?.(el)) cxs.push(cx);
 		else if (hydrating) cx.mount?.();
-		setConstrainer(false);
+		setConstrainer(constrainer);
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
