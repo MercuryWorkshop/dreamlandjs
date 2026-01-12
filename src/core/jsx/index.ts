@@ -298,7 +298,7 @@ function _jsx(
 					old = classes;
 				});
 			} else if (attr.startsWith("on:")) {
-				el.addEventListener(attr.substring(3), (e) => val(e));
+				if (val) el.addEventListener(attr.substring(3), (e) => val(e));
 			} else if (attr.startsWith("class:")) {
 				let name = attr.substring(6);
 
