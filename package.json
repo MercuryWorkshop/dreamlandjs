@@ -16,6 +16,7 @@
 		"watch": "rollup -cw --config-dev",
 		"format": "prettier -w .",
 		"lint": "eslint",
+		"test": "node --expose-gc --experimental-transform-types tests/harness.ts tests/core/",
 		"prepack": "npm run build"
 	},
 	"exports": {

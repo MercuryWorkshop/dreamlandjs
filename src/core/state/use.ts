@@ -15,34 +15,35 @@ export let useTrapMap: UseTrapMap = MAP();
 
 export let useTrap = false;
 
-let resetTrap = () => {
+let initializeSteps = (map: UseTrapMap, ...steps: any) => {
+	let prims = steps.map((x: any) => [x, x[TOPRIMITIVE]()]);
 	useTrap = false;
 	useTrapMap = MAP();
-};
+	return prims.map(([a, b]: any) => {
+		let initialized = initializeStep(map, b);
+		return isPointer(initialized) ? initialized: a;
+	});
+}
 
 let usestr = (
-	map: UseTrapMap,
 	template: TemplateStringsArray,
 	params: any[]
 ) => {
 	let state = createState({}) as Stateful<{ _string: string }>;
 	let flattened = [];
-	let primitives = params.map((x) => x[TOPRIMITIVE]());
-	resetTrap();
 
 	for (let i in template) {
 		flattened.push(template[i]);
 		if (params[i]) {
 			let val = params[i];
-			let prop = initializeStep(map, primitives[i]);
 
-			if (isPointer(prop)) {
+			if (isPointer(val)) {
 				let i = flattened.length;
-				prop.constrain(state).listen((val) => {
+				val.constrain(state).listen((val) => {
 					flattened[i] = val;
 					state._string = flattened.join("");
 				});
-				flattened.push(prop.value);
+				flattened.push(val.value);
 			} else {
 				flattened.push(val);
 			}
@@ -66,25 +67,14 @@ export let defineUse = () => {
 
 				usestr: {
 					if (isArray(magicPtr) && "raw" in magicPtr)
-						return usestr(map, magicPtr, params);
+						return usestr(magicPtr, initializeSteps(map, ...params));
 				}
 
-				let init = (x: { [Symbol.toPrimitive]: () => symbol }) => {
-					dev: {
-						if (isPointer(x)) throw "Illegal invocation";
-					}
-					let initted = initializeStep(map, x[TOPRIMITIVE]());
-					dev: {
-						if (!isPointer(initted)) throw "Illegal invocation";
-					}
-					return initted;
-				};
+				let [init, ...rest] = initializeSteps(map, magicPtr, ...params);
 
-				magicPtr = init(magicPtr as { [Symbol.toPrimitive]: () => symbol });
-				resetTrap();
 				return params.length
-					? (magicPtr as Pointer<any>).zip(...params.map(init))
-					: magicPtr;
+					? init.zip(...rest)
+					: init;
 			};
 		},
 		configurable: true,
