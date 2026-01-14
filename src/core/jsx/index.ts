@@ -36,13 +36,15 @@ export let callDelegateListeners = (
 		setConstrainer(oldConstrainer)
 	}) as any as void;
 
+let isBlacklisted = (val: any): val is null | undefined | boolean => [null, undefined, false, true].includes(val);
+
 let mapChild = (
 	child: ComponentChild,
 	parent: Node,
 	cssIdent?: string,
 	identOverride?: string
 ): Node[] => {
-	if (child == null) {
+	if (isBlacklisted(child)) {
 		return [new_Comment()];
 	} else if (isPointer(child)) {
 		let start = new_Comment("[");
@@ -104,7 +106,7 @@ let mapChild = (
 	} else if (isArray(child)) {
 		return child.flatMap((x) => mapChild(x, parent, cssIdent, identOverride));
 	} else {
-		return [new_Text(child as any)];
+		return [new_Text(child as string)];
 	}
 };
 

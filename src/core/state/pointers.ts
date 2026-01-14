@@ -294,8 +294,7 @@ export class Pointer<T> {
 	}
 }
 
-export let isPointer = (val: any): val is Pointer<any> =>
-	val instanceof Pointer;
+export let isPointer = <T>(val: Pointer<T> | T): val is Pointer<T> => val instanceof Pointer;
 export let unwrapValue = <T>(val: Pointer<T> | T): T =>
 	isPointer(val) ? val.value : (val as T);
 export let maybeListen = <T>(
