@@ -27,14 +27,14 @@ import dreamlandFiles from "./dreamland";
 	},
 };
 
-let typescript = monaco.languages.typescript.typescriptDefaults;
+let typescript = monaco.typescript.typescriptDefaults;
 
 typescript.setCompilerOptions({
-	jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
+	jsx: monaco.typescript.JsxEmit.ReactJSX,
 	jsxImportSource: "dreamland",
 	moduleResolution: 3 as any /* NodeNext */,
-	module: monaco.languages.typescript.ModuleKind.ESNext,
-	target: monaco.languages.typescript.ScriptTarget.ESNext,
+	module: monaco.typescript.ModuleKind.ESNext,
+	target: monaco.typescript.ScriptTarget.ESNext,
 	verbatimModuleSyntax: true,
 });
 
@@ -58,11 +58,11 @@ typescript.setExtraLibs([
 
 type TypeScriptWorkerInit = (
 	...uris: monaco.Uri[]
-) => Promise<monaco.languages.typescript.TypeScriptWorker>;
+) => Promise<monaco.typescript.TypeScriptWorker>;
 let tsReady: Promise<TypeScriptWorkerInit> = (async () => {
 	let tryOnce = async () => {
 		try {
-			return await monaco.languages.typescript.getTypeScriptWorker();
+			return await monaco.typescript.getTypeScriptWorker();
 		} catch (err) {
 			if ((err as string)?.includes("TypeScript not registered!")) {
 				return;
