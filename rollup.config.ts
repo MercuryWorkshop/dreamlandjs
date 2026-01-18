@@ -210,6 +210,7 @@ export default (args: Record<string, boolean>) => {
 		...cfg({
 			input: ["src/ssr", "client/index.ts"],
 			output: "ssr.client",
+			hoistProperties: true,
 			visualize: true,
 		}),
 		...cfg({

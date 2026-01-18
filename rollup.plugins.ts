@@ -173,7 +173,47 @@ export const propertyHoister = () => {
 					s.overwrite(start, end, replace);
 				}
 
-				s.prepend(`let ${declarations.join(",")};`);
+				let lastImportIndex = 0;
+				for (let i = 0; i < code.length; i++) {
+					if (/\s/.test(code[i])) continue;
+					if (code.startsWith("//", i)) {
+						const idx = code.indexOf("\n", i);
+						i = idx === -1 ? code.length : idx;
+						continue;
+					}
+					if (code.startsWith("/*", i)) {
+						const idx = code.indexOf("*/", i);
+						i = idx === -1 ? code.length : idx + 1;
+						continue;
+					}
+					if (code.startsWith("import", i)) {
+						const next = code[i + 6];
+						if (!next || !/[a-zA-Z0-9_$]/.test(next)) {
+							let inQuote: string | null = null;
+							let depth = 0;
+							for (let j = i; j < code.length; j++) {
+								const ch = code[j];
+								if (inQuote) {
+									if (ch === "\\" && code[j + 1]) j++;
+									else if (ch === inQuote) inQuote = null;
+								} else {
+									if (ch === "'" || ch === '"') inQuote = ch;
+									else if (ch === "{" || ch === "(") depth++;
+									else if (ch === "}" || ch === ")") depth--;
+									else if (ch === ";" && depth === 0) {
+										lastImportIndex = j + 1;
+										i = j;
+										break;
+									}
+								}
+							}
+							continue;
+						}
+					}
+					break;
+				}
+
+				s.appendRight(lastImportIndex, `let ${declarations.join(",")};`);
 
 				return {
 					code: s.toString(),
