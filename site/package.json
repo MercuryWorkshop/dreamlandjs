@@ -18,10 +18,10 @@
 		"react-dom": "^19.2.3",
 		"rehype-starry-night": "^2.2.0",
 		"solid-js": "^1.9.10",
-		"svelte": "^5.46.1",
-		"terser": "^5.44.1",
+		"svelte": "^5.46.4",
+		"terser": "^5.46.0",
 		"typescript": "~5.9.3",
-		"vite": "^7.3.0"
+		"vite": "^7.3.1"
 	},
 	"dependencies": {
 		"@literals/rollup-plugin-html-css-minifier": "^3.0.1",
