@@ -20,7 +20,8 @@ let constraints: WeakMap<any, Pointer<any>[]> = WEAKMAP();
 let internalPointers: WeakMap<Pointer<any>, InternalPointer<any>> = WEAKMAP();
 
 export let DEFAULT_CONSTRAINER: any | false | undefined;
-export let setConstrainer = (constrainer: typeof DEFAULT_CONSTRAINER) => DEFAULT_CONSTRAINER = constrainer;
+export let setConstrainer = (constrainer: typeof DEFAULT_CONSTRAINER) =>
+	(DEFAULT_CONSTRAINER = constrainer);
 
 const enum PointerType {
 	Regular = 0,
@@ -294,7 +295,8 @@ export class Pointer<T> {
 	}
 }
 
-export let isPointer = <T>(val: Pointer<T> | T): val is Pointer<T> => val instanceof Pointer;
+export let isPointer = <T>(val: Pointer<T> | T): val is Pointer<T> =>
+	val instanceof Pointer;
 export let unwrapValue = <T>(val: Pointer<T> | T): T =>
 	isPointer(val) ? val.value : (val as T);
 export let maybeListen = <T>(

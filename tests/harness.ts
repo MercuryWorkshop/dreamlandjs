@@ -35,10 +35,10 @@ export class Check extends BaseCheck {
 	assertEq<T>(a: T, b: T) {
 		if (a === b) {
 			this.details = `${a} === ${b}`;
-			this.pass()
+			this.pass();
 		} else {
 			this.details = `${a} !== ${b}`;
-			this.fail()
+			this.fail();
 		}
 	}
 
@@ -60,10 +60,8 @@ export class GCCheck extends BaseCheck {
 	}
 
 	get state(): TestResult {
-		if (this.ref.deref())
-			return TestResult.Passed;
-		else
-			return TestResult.GcFailed;
+		if (this.ref.deref()) return TestResult.Passed;
+		else return TestResult.GcFailed;
 	}
 }
 
@@ -111,9 +109,9 @@ export interface FinishedTest {
 }
 
 export interface TestRunnerCallbacks {
-	collected?: (files: { file: string, name: string }[]) => void,
-	pre?: (file: string, name: string) => void,
-	post?: (test: FinishedTest) => void,
+	collected?: (files: { file: string; name: string }[]) => void;
+	pre?: (file: string, name: string) => void;
+	post?: (test: FinishedTest) => void;
 }
 
 let currentFile = "<no file>";
@@ -140,12 +138,14 @@ export function checkGC<T extends WeakKey>(name: string, val: T): T {
 }
 
 async function collectTests(folders: string[]) {
-	folders = await Promise.all(folders.map(x => realpath(x)));
+	folders = await Promise.all(folders.map((x) => realpath(x)));
 
 	let testList: CollectedTest[] = [];
 	tests = testList;
 	for (let folder of folders) {
-		for await (let entry of glob(["js", "ts"].map(x => folder + "/**/*." + x))) {
+		for await (let entry of glob(
+			["js", "ts"].map((x) => folder + "/**/*." + x)
+		)) {
 			let displayEntry = entry.replace(folder, "").slice(1);
 
 			currentFile = displayEntry;
@@ -158,10 +158,13 @@ async function collectTests(folders: string[]) {
 	return testList;
 }
 
-export async function runTests(folders: string[], callbacks?: TestRunnerCallbacks): Promise<FinishedTest[]> {
+export async function runTests(
+	folders: string[],
+	callbacks?: TestRunnerCallbacks
+): Promise<FinishedTest[]> {
 	let tests = await collectTests(folders);
 
-	callbacks?.collected?.(tests.map(x => ({ file: x.file, name: x.name })));
+	callbacks?.collected?.(tests.map((x) => ({ file: x.file, name: x.name })));
 
 	let finished = [];
 	for (let testDesc of tests) {
@@ -188,11 +191,19 @@ export async function runTests(folders: string[], callbacks?: TestRunnerCallback
 
 		induceGC();
 
-		let checkResult = test.checks.toSorted((a, b) => resultToSortNum(b.state) - resultToSortNum(a.state))[0]?.state || TestResult.Invalid;
-		if (!result)
-			result = checkResult;
+		let checkResult =
+			test.checks.toSorted(
+				(a, b) => resultToSortNum(b.state) - resultToSortNum(a.state)
+			)[0]?.state || TestResult.Invalid;
+		if (!result) result = checkResult;
 
-		let finishedTest: FinishedTest = { file: test.file, name: test.name, result, checks: test.checks, error } satisfies FinishedTest;
+		let finishedTest: FinishedTest = {
+			file: test.file,
+			name: test.name,
+			result,
+			checks: test.checks,
+			error,
+		} satisfies FinishedTest;
 		callbacks?.post?.(finishedTest);
 		finished.push(finishedTest);
 	}
@@ -213,18 +224,20 @@ if (fileURLToPath(import.meta.url) === argv[1]) {
 			},
 			post({ result, error, checks }) {
 				stdout.write(result.toUpperCase() + "\n");
-				let failed = checks.filter(x => x.state !== TestResult.Passed);
+				let failed = checks.filter((x) => x.state !== TestResult.Passed);
 				if (failed.length) {
 					stdout.write("\tFailed checks:\n");
 					for (let check of failed) {
 						let details = check.details ? ` (${check.details})` : "";
-						stdout.write(`\t\t${check.name}...${check.state.toUpperCase()}${details}\n`)
+						stdout.write(
+							`\t\t${check.name}...${check.state.toUpperCase()}${details}\n`
+						);
 					}
 				}
 				if (result === TestResult.Threw) {
 					stdout.write(`\tThrown error: ${error}\n`);
 				}
-			}
+			},
 		});
 
 		let map = tests.reduce((acc, x) => {
@@ -233,12 +246,17 @@ if (fileURLToPath(import.meta.url) === argv[1]) {
 			else acc.set(x.result, [x]);
 			return acc;
 		}, new Map<TestResult, FinishedTest[]>());
-		let results = [...map.entries()].sort(([a], [b]) => resultToSortNum(a) - resultToSortNum(b)).map(([a, b]) => `${b.length} ${a}`).join(" ");
+		let results = [...map.entries()]
+			.sort(([a], [b]) => resultToSortNum(a) - resultToSortNum(b))
+			.map(([a, b]) => `${b.length} ${a}`)
+			.join(" ");
 
 		stdout.write(`\nResults: ${results}\n`);
 		let invalid = map.get(TestResult.Invalid);
 		if (invalid) {
-			stdout.write(`Please fix these tests: ${invalid.map(x => `${x.file}/${x.name}`).join(" ")}\n`);
+			stdout.write(
+				`Please fix these tests: ${invalid.map((x) => `${x.file}/${x.name}`).join(" ")}\n`
+			);
 		}
 	})();
 }

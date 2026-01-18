@@ -4,7 +4,7 @@ import { DEFAULT_CONSTRAINER } from "./state/pointers";
 export interface DelegateListener<T> {
 	_callback: (value: T) => void;
 	_cssIdent?: string;
-	_constrainer: any; 
+	_constrainer: any;
 }
 
 export type Delegate<T> = {
@@ -22,7 +22,7 @@ export let createDelegate = <T>(): Delegate<T> => {
 		listeners.push({
 			_callback,
 			_cssIdent: currentCssIdent,
-			_constrainer: DEFAULT_CONSTRAINER
+			_constrainer: DEFAULT_CONSTRAINER,
 		});
 	};
 

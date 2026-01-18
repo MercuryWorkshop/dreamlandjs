@@ -21,14 +21,11 @@ let initializeSteps = (map: UseTrapMap, ...steps: any) => {
 	useTrapMap = MAP();
 	return prims.map(([a, b]: any) => {
 		let initialized = initializeStep(map, b);
-		return isPointer(initialized) ? initialized: a;
+		return isPointer(initialized) ? initialized : a;
 	});
-}
+};
 
-let usestr = (
-	template: TemplateStringsArray,
-	params: any[]
-) => {
+let usestr = (template: TemplateStringsArray, params: any[]) => {
 	let state = createState({}) as Stateful<{ _string: string }>;
 	let flattened = [];
 
@@ -72,9 +69,7 @@ export let defineUse = () => {
 
 				let [init, ...rest] = initializeSteps(map, magicPtr, ...params);
 
-				return params.length
-					? init.zip(...rest)
-					: init;
+				return params.length ? init.zip(...rest) : init;
 			};
 		},
 		configurable: true,

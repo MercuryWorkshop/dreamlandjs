@@ -15,7 +15,12 @@ import {
 	ComponentInstance,
 	DLElementNameToElement,
 } from "./definitions";
-import { DEFAULT_CONSTRAINER, isPointer, maybeListen, setConstrainer } from "../state/pointers";
+import {
+	DEFAULT_CONSTRAINER,
+	isPointer,
+	maybeListen,
+	setConstrainer,
+} from "../state/pointers";
 import { createState, stateProxy, Stateful } from "../state/state";
 import { DREAMLAND, MAP, NO_CHANGE } from "../consts";
 import { DelegateListener } from "../delegate";
@@ -33,10 +38,11 @@ export let callDelegateListeners = (
 		currentCssIdent = x._cssIdent;
 		x._callback(value);
 		currentCssIdent = oldIdent;
-		setConstrainer(oldConstrainer)
+		setConstrainer(oldConstrainer);
 	}) as any as void;
 
-let isBlacklisted = (val: any): val is null | undefined | boolean => [null, undefined, false, true].includes(val);
+let isBlacklisted = (val: any): val is null | undefined | boolean =>
+	[null, undefined, false, true].includes(val);
 
 let mapChild = (
 	child: ComponentChild,
