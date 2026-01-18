@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { defineConfig } from "rollup";
+import type { RollupOptions } from "rollup";
 
 import strip from "@rollup/plugin-strip";
 import terser from "@rollup/plugin-terser";
@@ -12,12 +13,12 @@ import MagicString from "magic-string";
 let DEV = false;
 let USESTR = true;
 
-const onwarn = (warning, warn) => {
+const onwarn = (warning: any, warn: (warning: any) => void) => {
 	if (warning.code === "CIRCULAR_DEPENDENCY") return;
 	warn(warning);
 };
 
-const common = (include, output, unsafe) => {
+const common = (include: string, output: string | false | undefined, unsafe: boolean) => {
 	let tsconfig = import.meta.dirname + "/tsconfig.json";
 	if (fs.existsSync(include + "/tsconfig.json")) {
 		tsconfig = include + "/tsconfig.json";
@@ -62,7 +63,7 @@ const common = (include, output, unsafe) => {
 						module: true,
 						ie8: false,
 						safari10: false,
-						ecma: 2022,
+						ecma: 2020,
 					}),
 				]),
 		...(output
@@ -79,6 +80,15 @@ const common = (include, output, unsafe) => {
 	];
 };
 
+interface CfgOptions {
+	input: [string, string?];
+	output: string;
+	defs?: boolean;
+	plugins?: any[];
+	visualize?: boolean;
+	unsafeTerser?: boolean;
+}
+
 const cfg = ({
 	input: entry,
 	output,
@@ -86,7 +96,7 @@ const cfg = ({
 	plugins,
 	visualize,
 	unsafeTerser,
-}) => {
+}: CfgOptions): RollupOptions[] => {
 	plugins ||= [];
 	defs ??= true;
 	unsafeTerser ??= true;
@@ -99,7 +109,7 @@ const cfg = ({
 		// only needed because of declare global
 		plugins.push({
 			name: "stripBetweenComment",
-			transform(source) {
+			transform(source: string) {
 				const startComment = "USESTR.START";
 				const endComment = "USESTR.END";
 				const pattern = new RegExp(
@@ -123,7 +133,7 @@ const cfg = ({
 	);
 
 	const input = `${entry[0]}/${entry[1] || "index.ts"}`;
-	const out = [
+	const out: RollupOptions[] = [
 		defineConfig({
 			input,
 			output: [{ file: `dist/${output}.js`, sourcemap: true }],
@@ -154,7 +164,7 @@ const cfg = ({
 	return out;
 };
 
-export default (args) => {
+export default (args: Record<string, boolean>) => {
 	if (args["config-dev"]) DEV = true;
 	if (args["config-nousestr"]) USESTR = false;
 
@@ -185,13 +195,13 @@ export default (args) => {
 			plugins: [
 				{
 					name: "cssom-monkeypatch",
-					resolveId(source) {
+					resolveId(source: string) {
 						if (source === "rrweb-cssom") {
 							return source;
 						}
 						return null;
 					},
-					load(source) {
+					load(source: string) {
 						if (source === "rrweb-cssom") {
 							let code = fs.readFileSync(
 								"node_modules/rrweb-cssom/build/CSSOM.js"
