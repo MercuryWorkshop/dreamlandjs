@@ -147,6 +147,7 @@ function _jsx(
 	}
 
 	let { children: _children, ...props } = _props!;
+	if (init === Fragment) return _children;
 	if (key) props.key = key;
 	_children ||= [];
 	let children = isArray(_children) ? _children : [_children];
@@ -379,6 +380,6 @@ export let addDREAMLAND = () => {
 	jsx[NO_CHANGE] = () => cxs.splice(0, cxs.length);
 };
 
-export let Fragment: Component<{ children?: ComponentChild }> = function () {
-	return this.children as any as JSX.Element;
-};
+export let Fragment = ((_: any) => 0) as any as Component<{
+	children?: ComponentChild;
+}>;
