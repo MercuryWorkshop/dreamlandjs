@@ -17,24 +17,27 @@ const onwarn: WarningHandlerWithDefault = (warning, warn) => {
 	warn(warning);
 };
 
-const common = (
-	include: string,
-	output: string | false | undefined,
-	unsafe: boolean
-) => {
+interface CommonConfig {
+	typeRoot: string;
+	visualizerPath?: string;
+	runTerser: boolean;
+	unsafe: boolean;
+}
+
+function common({ typeRoot, visualizerPath, runTerser, unsafe }: CommonConfig) {
 	let tsconfig = import.meta.dirname + "/tsconfig.json";
-	if (fs.existsSync(include + "/tsconfig.json")) {
-		tsconfig = include + "/tsconfig.json";
+	if (fs.existsSync(typeRoot + "/tsconfig.json")) {
+		tsconfig = typeRoot + "/tsconfig.json";
 	}
 
 	return [
 		nodeResolve(),
 		typescript({
-			include: include + "/**/*",
+			include: typeRoot + "/**/*",
 			filterRoot: process.cwd(),
 			tsconfig,
 		}),
-		...(DEV
+		...(DEV || !runTerser
 			? []
 			: [
 					terser({
@@ -69,19 +72,19 @@ const common = (
 						ecma: 2020,
 					}),
 				]),
-		...(output
+		...(visualizerPath
 			? [
 					visualizer({
-						filename: `dist/${output}.size.html`,
+						filename: `dist/${visualizerPath}.size.html`,
 						sourcemap: true,
 						gzipSize: true,
 						brotliSize: true,
-						title: `Dreamland ${output} Size`,
+						title: `Dreamland ${visualizerPath} Size`,
 					}),
 				]
 			: []),
 	];
-};
+}
 
 interface CfgOptions {
 	input: [string, string?];
@@ -89,6 +92,7 @@ interface CfgOptions {
 	defs?: boolean;
 	plugins?: any[];
 	visualize?: boolean;
+	minify?: boolean;
 	unsafeTerser?: boolean;
 	hoistProperties?: boolean;
 }
@@ -99,12 +103,14 @@ const cfg = ({
 	defs,
 	plugins,
 	visualize,
-	unsafeTerser,
+	minify,
+	unsafeTerser: unsafe,
 	hoistProperties,
 }: CfgOptions): RollupOptions[] => {
 	plugins ||= [];
 	defs ??= true;
-	unsafeTerser ??= true;
+	minify ??= true;
+	unsafe ??= true;
 	hoistProperties ??= false;
 
 	let stripLabels = [DEV ? "prod" : "dev"];
@@ -130,7 +136,12 @@ const cfg = ({
 			output: [{ file: `dist/${output}.js`, sourcemap: true }],
 			plugins: [
 				...(hoistProperties ? [propertyHoister()] : []),
-				common(entry[0], visualize && output, unsafeTerser),
+				common({
+					runTerser: minify,
+					typeRoot: entry[0],
+					visualizerPath: visualize ? output : undefined,
+					unsafe,
+				}),
 				...plugins,
 			],
 			external: ["dreamland/core", "dreamland/ssr/server"],
@@ -204,7 +215,7 @@ export default (args: Record<string, boolean>) => {
 					},
 				},
 			],
-			visualize: true,
+			minify: false,
 			unsafeTerser: false,
 		}),
 		...cfg({
