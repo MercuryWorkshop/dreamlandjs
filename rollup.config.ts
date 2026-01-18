@@ -1,6 +1,5 @@
 import fs from "node:fs";
-import { defineConfig } from "rollup";
-import type { RollupOptions } from "rollup";
+import type { RollupOptions, WarningHandlerWithDefault } from "rollup";
 
 import strip from "@rollup/plugin-strip";
 import terser from "@rollup/plugin-terser";
@@ -8,17 +7,21 @@ import typescript from "@rollup/plugin-typescript";
 import dts from "rollup-plugin-dts";
 import nodeResolve from "@rollup/plugin-node-resolve";
 import { visualizer } from "rollup-plugin-visualizer";
-import MagicString from "magic-string";
+import { propertyHoister, stripBetweenComments } from "./rollup.plugins.ts";
 
 let DEV = false;
 let USESTR = true;
 
-const onwarn = (warning: any, warn: (warning: any) => void) => {
+const onwarn: WarningHandlerWithDefault = (warning, warn) => {
 	if (warning.code === "CIRCULAR_DEPENDENCY") return;
 	warn(warning);
 };
 
-const common = (include: string, output: string | false | undefined, unsafe: boolean) => {
+const common = (
+	include: string,
+	output: string | false | undefined,
+	unsafe: boolean
+) => {
 	let tsconfig = import.meta.dirname + "/tsconfig.json";
 	if (fs.existsSync(include + "/tsconfig.json")) {
 		tsconfig = include + "/tsconfig.json";
@@ -87,6 +90,7 @@ interface CfgOptions {
 	plugins?: any[];
 	visualize?: boolean;
 	unsafeTerser?: boolean;
+	hoistProperties?: boolean;
 }
 
 const cfg = ({
@@ -96,10 +100,12 @@ const cfg = ({
 	plugins,
 	visualize,
 	unsafeTerser,
+	hoistProperties,
 }: CfgOptions): RollupOptions[] => {
 	plugins ||= [];
 	defs ??= true;
 	unsafeTerser ??= true;
+	hoistProperties ??= false;
 
 	let stripLabels = [DEV ? "prod" : "dev"];
 
@@ -107,22 +113,7 @@ const cfg = ({
 		stripLabels.push("usestr");
 
 		// only needed because of declare global
-		plugins.push({
-			name: "stripBetweenComment",
-			transform(source: string) {
-				const startComment = "USESTR.START";
-				const endComment = "USESTR.END";
-				const pattern = new RegExp(
-					`([\\t ]*\\/\\* ?${startComment} ?\\*\\/)[\\s\\S]*?(\\/\\* ?${endComment} ?\\*\\/[\\t ]*\\n?)`,
-					"g"
-				);
-				const code = source.replace(pattern, "");
-				return {
-					code,
-					map: new MagicString(code).generateMap({ hires: true }),
-				};
-			},
-		});
+		plugins.push(stripBetweenComments("USESTR.START", "USESTR.END"));
 	}
 	plugins.push(
 		strip({
@@ -134,32 +125,31 @@ const cfg = ({
 
 	const input = `${entry[0]}/${entry[1] || "index.ts"}`;
 	const out: RollupOptions[] = [
-		defineConfig({
+		{
 			input,
 			output: [{ file: `dist/${output}.js`, sourcemap: true }],
 			plugins: [
+				...(hoistProperties ? [propertyHoister()] : []),
 				common(entry[0], visualize && output, unsafeTerser),
 				...plugins,
 			],
 			external: ["dreamland/core", "dreamland/ssr/server"],
 			onwarn,
-		}),
+		},
 	];
 	if (defs) {
-		out.push(
-			defineConfig({
-				input:
-					"dist/types/" +
-					input
-						.substring("src/".length)
-						.replace(".tsx", ".ts")
-						.replace(".ts", ".d.ts"),
-				output: [{ file: `dist/${output}.d.ts`, format: "es" }],
-				plugins: [dts()],
-				external: ["dreamland/core", "dreamland/ssr/server"],
-				onwarn,
-			})
-		);
+		out.push({
+			input:
+				"dist/types/" +
+				input
+					.substring("src/".length)
+					.replace(".tsx", ".ts")
+					.replace(".ts", ".d.ts"),
+			output: [{ file: `dist/${output}.d.ts`, format: "es" }],
+			plugins: [dts()],
+			external: ["dreamland/core", "dreamland/ssr/server"],
+			onwarn,
+		});
 	}
 	return out;
 };
@@ -168,20 +158,18 @@ export default (args: Record<string, boolean>) => {
 	if (args["config-dev"]) DEV = true;
 	if (args["config-nousestr"]) USESTR = false;
 
-	return defineConfig([
+	return [
 		...cfg({
 			input: ["src/core"],
 			output: "core",
+			hoistProperties: true,
 			plugins: [
 				{
 					name: "copyConstDefs",
 					writeBundle: () =>
-						new Promise((r) =>
-							fs.copyFile(
-								"src/core/consts.d.ts",
-								"dist/types/core/consts.d.ts",
-								r
-							)
+						fs.promises.copyFile(
+							"src/core/consts.d.ts",
+							"dist/types/core/consts.d.ts"
 						),
 				},
 			],
@@ -232,5 +220,5 @@ export default (args: Record<string, boolean>) => {
 		...cfg({ input: ["src/router", "index.tsx"], output: "router" }),
 		...cfg({ input: ["src/motion"], output: "motion" }),
 		...cfg({ input: ["src/vite"], output: "vite" }),
-	]);
+	] satisfies RollupOptions[];
 };

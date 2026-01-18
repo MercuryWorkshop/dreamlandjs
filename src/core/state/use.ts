@@ -1,4 +1,4 @@
-import { MAP, TOPRIMITIVE } from "../consts";
+import { GLOBAL, MAP, TOPRIMITIVE } from "../consts";
 import { isArray } from "../utils";
 import {
 	initializeStep,
@@ -53,7 +53,7 @@ let usestr = (template: TemplateStringsArray, params: any[]) => {
 };
 
 export let defineUse = () => {
-	Object.defineProperty(globalThis, "use", {
+	Object.defineProperty(GLOBAL, "use", {
 		get() {
 			useTrap = true;
 			return (

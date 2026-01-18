@@ -114,7 +114,7 @@ function _createStore<T extends object>(
 		if (isAuto) {
 			stateListen(state, saveHook);
 		} else if (autosave === "beforeunload") {
-			addEventListener(autosave, save);
+			GLOBAL.addEventListener(autosave, save);
 		}
 
 		return state;
