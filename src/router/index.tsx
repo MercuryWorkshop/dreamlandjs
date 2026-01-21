@@ -5,40 +5,44 @@ import {
 	h,
 	Fragment,
 	DREAMLAND,
-	ComponentInstance,
 	FC,
+    Stateful,
+    ComponentInstance,
+    createState,
 } from "dreamland/core";
 
-export type RouteParams = Record<string, string> & {
+export type RouteParams = Stateful<Record<string, string>> & {
 	// @internal
 	[DREAMLAND]?: string;
 };
 
-export type ShowElement =
-	| ComponentInstance<
-			Component<
-				{
-					outlet?: HTMLElement;
-					"on:routeshown"?: (path: string) => void;
+interface _RouterState {
+	params: RouteParams;
+	path: string;
+	outlet: HTMLElement;
+}
+export type RouterState = Stateful<_RouterState>;
 
-					[index: string]: any;
-				},
-				any
-			>
-	  >
-	| HTMLElement;
+export type LayoutComponent = Component<{ routerState: RouterState }>;
+
+export type ShowElement = ComponentInstance<Component<{ routerParams: RouteParams }>> | HTMLElement;
 export type ShowTarget =
 	| ShowElement
 	| ((path: string, params: RouteParams) => ShowElement);
 
 interface RouteInternal {
 	_path?: string;
+	_layout?: LayoutComponent;
+	_layoutInstance?: ComponentInstance<LayoutComponent>;
 	_show?: ShowTarget;
 	_children: RouteInternal[];
 }
 let validateRoute = (route: RouteInternal) => {
 	let hasIndex = false;
-	if (route._children)
+	if (route._children) {
+		if (route._show)
+			throw new Error("A route can't both show a page and have child pages. Use an index page.");
+
 		for (let child of route._children) {
 			if (!child._path && !child._children) {
 				if (hasIndex)
@@ -47,6 +51,7 @@ let validateRoute = (route: RouteInternal) => {
 			}
 			validateRoute(child);
 		}
+	}
 };
 function _getShow(
 	route: RouteInternal,
@@ -77,35 +82,10 @@ function _getShow(
 }
 let getShow = _getShow;
 
-let isComponent = <T extends Component<any, any>>(
-	x: ComponentInstance<T> | HTMLElement
-): x is ComponentInstance<T> => (x as any).$;
-
-let populateComponent = (
-	el: ShowElement,
-	required: boolean,
-	path: string,
-	params: RouteParams,
-	outlet?: HTMLElement
-) => {
-	if (isComponent(el)) {
-		// has an outlet
-		let state = el.$.state;
-
-		for (let param in params) {
-			state[param] = params[param];
-		}
-
-		state.outlet = outlet;
-		state["on:routeshown"]?.(path);
-	} else if (required) {
-		dev: {
-			throw new Error(
-				`Unable to navigate to ${path}, route's show target was not a component`
-			);
-		}
-	}
-};
+function _isComponent<T extends Component<any, any>>(x: ComponentInstance<T> | HTMLElement): x is ComponentInstance<T> {
+	return (x as any).$;
+}
+let isComponent = _isComponent;
 
 let matchRoute = (
 	segment: string,
@@ -148,44 +128,44 @@ let _route = (
 			.splice(0, routePath.length)
 			.every((x, i) => matchRoute(x, routePath[i], params))
 	) {
+		let el: ShowElement | undefined;
 		if (
 			(!segments.length ||
 				(segments[0] === "" && indexRoute) ||
-				params[DREAMLAND]) &&
-			route._show
+				params[DREAMLAND])
+			&& !route._children.length
 		) {
 			if (params[DREAMLAND]) {
 				params["*"] = params[DREAMLAND].slice(10);
 				delete params[DREAMLAND];
 			}
+
 			// route matches fully
-			let el = getShow(route, true, path, params);
+			el = getShow(route, true, path, params);
 
-			populateComponent(el, false, path, params);
-
-			return el;
+			if (isComponent(el))
+				el.$.state.routerParams = params;
 		} else {
 			// matched, continue searching for children
-			let paramsCopy = { ...params };
-
-			let el: ShowElement | undefined;
-
 			for (let child of route._children || []) {
 				el = _route(child, path, [...segments], params);
 				if (el) break;
 			}
-
-			if (el) {
-				let show = getShow(route, false, path, paramsCopy);
-
-				if (show) {
-					populateComponent(show, true, path, params, el);
-					return show;
-				}
-
-				return el;
-			}
 		}
+
+		if (el && route._layout) {
+			let state = createState({ params, path, outlet: el });
+
+			if (!route._layoutInstance) {
+				route._layoutInstance = <route._layout routerState={state} /> as ComponentInstance<LayoutComponent>;
+			} else {
+				route._layoutInstance.$.state.routerState = state;
+			}
+
+			return route._layoutInstance;
+		}
+
+		return el;
 	}
 };
 
@@ -193,12 +173,14 @@ export function Route(
 	this: FC<{
 		path?: string;
 		show?: ShowTarget;
+		layout?: LayoutComponent;
 		children?: ComponentChild;
 	}>
 ) {
 	return {
 		_path: this.path,
 		_show: this.show,
+		_layout: this.layout,
 		_children: this.children as any as RouteInternal[],
 	} satisfies RouteInternal as any;
 }
@@ -269,7 +251,7 @@ export function Router(
 			routes,
 			realPath,
 			[...segments],
-			{}
+			createState({})
 		);
 
 		this._el = el;
