@@ -169,7 +169,7 @@ export let hydrate = async (
 	] as const satisfies DomImpl;
 	setDomImpl(vdom);
 	jsx[DREAMLAND]();
-	let root = component();
+	let root = await component();
 	setDomImpl(old);
 
 	jsx[NO_CHANGE]().map((x) => {

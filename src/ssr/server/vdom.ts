@@ -35,6 +35,7 @@ export class Node {
 	}
 
 	insertBefore(node: Node, anchor: Node) {
+		node.parent = this;
 		this.childNodes.splice(
 			this.childNodes.findIndex((x) => x === anchor),
 			0,

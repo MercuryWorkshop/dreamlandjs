@@ -1,8 +1,7 @@
 import { css, type FC } from "dreamland/core";
-import { Link } from "dreamland/router";
+import { Link, RouterState } from "dreamland/router";
 
 import { docs, groups, type DocGroup, type DocPage } from "../docs";
-import { setTitle } from "../main";
 import { Hero, MdiIcon } from "../utils";
 import { mdiMenu } from "@mdi/js";
 
@@ -112,12 +111,11 @@ Sidebar.style = css`
 
 export function DocsLayout(
 	this: FC<
-		{ outlet?: HTMLElement },
+		{ routerState: RouterState },
 		{
 			doc?: DocPage;
 			menu: boolean;
 			jsbroken: boolean;
-			"on:routeshown"?: (path: string) => void;
 		}
 	>
 ) {
@@ -126,11 +124,12 @@ export function DocsLayout(
 
 	this.cx.mount = () => (this.jsbroken = false);
 
-	this["on:routeshown"] = (path: string) => {
-		let page = docs.find((x) => path.replace("/docs/", "") === x.path);
-		this.doc = page;
-		setTitle(page?.title);
-	};
+	use(this.routerState.path).constrain(this).listen((path) => {
+		if (!this.routerState.loading) {
+			let page = docs.find((x) => path.replace("/docs/", "") === x.path);
+			this.doc = page;
+		}
+	})
 
 	let contentClicked = (e: MouseEvent) => {
 		if (this.menu) {
@@ -171,7 +170,7 @@ export function DocsLayout(
 					{use(this.doc).and((x) => (
 						<h1>{x.title}</h1>
 					))}
-					{use(this.outlet)}
+					{use(this.routerState.outlet)}
 				</div>
 			</div>
 		</div>

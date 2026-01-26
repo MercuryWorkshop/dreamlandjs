@@ -6,40 +6,44 @@ import {
 	Fragment,
 	DREAMLAND,
 	FC,
-    Stateful,
-    ComponentInstance,
-    createState,
+	ComponentInstance,
+	NO_CHANGE,
 } from "dreamland/core";
 
-export type RouteParams = Stateful<Record<string, string>> & {
+export type RouteParams = Record<string, string> & {
 	// @internal
 	[DREAMLAND]?: string;
+	[NO_CHANGE]: true;
 };
 
-interface _RouterState {
+export interface RouterState {
 	params: RouteParams;
 	path: string;
-	outlet: HTMLElement;
+	outlet?: HTMLElement;
+	loading: boolean;
+	[NO_CHANGE]: true;
 }
-export type RouterState = Stateful<_RouterState>;
 
 export type LayoutComponent = Component<{ routerState: RouterState }>;
 
-export type ShowElement = ComponentInstance<Component<{ routerParams: RouteParams }>> | HTMLElement;
+export type ShowElement = ComponentInstance<Component<{}, { routerParams: RouteParams }>> | HTMLElement;
+type _MaybeShowEl = ShowElement | undefined;
+type _MaybePromiseShowEl = Promise<_MaybeShowEl> | _MaybeShowEl;
 export type ShowTarget =
-	| ShowElement
-	| ((path: string, params: RouteParams) => ShowElement);
+	| _MaybePromiseShowEl
+	| (() => _MaybePromiseShowEl);
 
 interface RouteInternal {
 	_path?: string;
 	_layout?: LayoutComponent;
 	_layoutInstance?: ComponentInstance<LayoutComponent>;
 	_show?: ShowTarget;
+	_showInstance?: ShowElement;
 	_children: RouteInternal[];
 }
 let validateRoute = (route: RouteInternal) => {
 	let hasIndex = false;
-	if (route._children) {
+	if (route._children.length) {
 		if (route._show)
 			throw new Error("A route can't both show a page and have child pages. Use an index page.");
 
@@ -53,34 +57,6 @@ let validateRoute = (route: RouteInternal) => {
 		}
 	}
 };
-function _getShow(
-	route: RouteInternal,
-	required: false,
-	path: string,
-	params: RouteParams
-): ShowElement | undefined;
-function _getShow(
-	route: RouteInternal,
-	required: true,
-	path: string,
-	params: RouteParams
-): ShowElement;
-function _getShow(
-	route: RouteInternal,
-	required: boolean,
-	path: string,
-	params: RouteParams
-): ShowElement | undefined {
-	let show = route._show;
-	dev: {
-		if (required && !show)
-			throw new Error(
-				`Unable to navigate to ${path}, route had no show target`
-			);
-	}
-	return show instanceof Function ? show(path, params) : show;
-}
-let getShow = _getShow;
 
 function _isComponent<T extends Component<any, any>>(x: ComponentInstance<T> | HTMLElement): x is ComponentInstance<T> {
 	return (x as any).$;
@@ -109,7 +85,7 @@ let _route = (
 	path: string,
 	segments: string[],
 	params: RouteParams
-): ShowElement | undefined => {
+): RouteInternal[] => {
 	let routePath: string[] = [];
 	let indexRoute = false;
 	if (route._path) {
@@ -122,13 +98,14 @@ let _route = (
 		indexRoute = true;
 	}
 
+	let ret: RouteInternal[] = [];
+
 	if (
 		!routePath.length ||
 		segments
 			.splice(0, routePath.length)
 			.every((x, i) => matchRoute(x, routePath[i], params))
 	) {
-		let el: ShowElement | undefined;
 		if (
 			(!segments.length ||
 				(segments[0] === "" && indexRoute) ||
@@ -139,34 +116,94 @@ let _route = (
 				params["*"] = params[DREAMLAND].slice(10);
 				delete params[DREAMLAND];
 			}
-
 			// route matches fully
-			el = getShow(route, true, path, params);
-
-			if (isComponent(el))
-				el.$.state.routerParams = params;
+			ret = [route];
 		} else {
 			// matched, continue searching for children
 			for (let child of route._children || []) {
-				el = _route(child, path, [...segments], params);
-				if (el) break;
+				ret = _route(child, path, [...segments], params);
+				if (ret.length) break;
 			}
+			if (ret.length)
+				ret.unshift(route);
 		}
-
-		if (el && route._layout) {
-			let state = createState({ params, path, outlet: el });
-
-			if (!route._layoutInstance) {
-				route._layoutInstance = <route._layout routerState={state} /> as ComponentInstance<LayoutComponent>;
-			} else {
-				route._layoutInstance.$.state.routerState = state;
-			}
-
-			return route._layoutInstance;
-		}
-
-		return el;
 	}
+
+	return ret;
+};
+
+async function _getShow(
+	_instance: ShowElement | undefined,
+	show: ShowTarget,
+	params: RouteParams,
+): Promise<ShowElement | undefined> {
+	let instance = _instance || await (show instanceof Function ? show() : show);
+	if (!instance) return;
+
+	if (isComponent(instance))
+		instance.$.state.routerParams = params;
+	return instance;
+}
+let getShow = _getShow;
+
+let _handleLayout = (route: RouteInternal, ret: ReconcileRet | undefined, path: string, params: RouteParams, last?: RouteInternal): ReconcileRet | undefined => {
+	if (route._layout) {
+		let state: RouterState = { params, path, loading: true, [NO_CHANGE]: true, } satisfies RouterState;
+		let instance = route._layoutInstance || <route._layout routerState={state} /> as ComponentInstance<LayoutComponent>;
+		route._layoutInstance = instance;
+		let instanceState = instance.$.state;
+		state.outlet = instanceState.routerState.outlet;
+		instanceState.routerState = state;
+
+		let dep: Promise<_MaybeShowEl>;
+
+		if (ret?._layout) {
+			if (last === route) {
+				state.outlet = ret._layout;
+				instanceState.routerState = state;
+			}
+			dep = ret._dep.then(_ => ret._layout);
+		} else if (ret?._el) {
+			dep = ret._el;
+		} else {
+			dep = Promise.resolve(ret);
+		}
+
+		return {
+			_layout: instance, _dep: dep.then(el => {
+				if (el) {
+					state.outlet = el;
+					state.loading = false;
+					instanceState.routerState = state;
+				}
+			})
+		};
+	}
+	return ret;
+}
+
+type Disjoint<T1, T2> =
+	| ({ [P in keyof T2]?: never } & { [P in keyof T1]: T1[P] })
+	| ({ [P in keyof T1]?: never } & { [P in keyof T2]: T2[P] });
+type ReconcileRet = Disjoint<{ _el: Promise<_MaybeShowEl> }, { _layout: ComponentInstance<LayoutComponent>, _dep: Promise<any> }>;
+let _reconcile = (_last: RouteInternal[], _current: RouteInternal[], path: string, params: RouteParams): ReconcileRet | undefined => {
+	let last = _last.pop(), current = _current.pop();
+	if (!current) return;
+
+	let ret;
+	if (current._show) {
+		ret = { _el: getShow(current._showInstance, current._show, params).then(x => current._showInstance = x) };
+	} else if (_current.length) {
+		ret = _reconcile(_last, _current, path, { ...params });
+	} else {
+		dev: {
+			throw new Error(
+				`Unable to navigate, route had no show target`
+			);
+		}
+	}
+
+	return _handleLayout(current, ret, path, { ...params }, last);
 };
 
 export function Route(
@@ -221,11 +258,11 @@ export function Router(
 			children: HTMLElement | HTMLElement[];
 		},
 		{
-			// @internal
-			_el?: HTMLElement;
+			el?: ShowElement;
+			_lastPath: RouteInternal[];
 
-			route: (path?: string, origin?: string) => string | undefined;
-			navigate: (path: string) => string | undefined;
+			route: (path?: string, origin?: string) => Promise<string | undefined>;
+			navigate: (path: string) => Promise<string | undefined>;
 			ssgables: () => [string, string][];
 		}
 	>
@@ -234,32 +271,38 @@ export function Router(
 	router = this;
 
 	let routes = { _children: this.children as any as RouteInternal[] };
+	let routing = false;
 	dev: {
 		validateRoute(routes);
 	}
 
-	this.route = (
-		path: string = location.pathname,
-		origin: string = location.origin
-	): string | undefined => {
+	this._lastPath = [];
+
+	this.route = async (path = location.pathname, origin = location.origin) => {
+		if (routing) return;
+
+		routing = true;
 		let realPath = new URL(path, origin).pathname;
 		if (realPath.endsWith(".html"))
 			realPath = realPath.slice(0, realPath.length - 5);
 		let segments = realPath.split("/").slice(1);
+		let params = { [NO_CHANGE]: true } as const;
+		let routePath = _route(routes, realPath, segments, params);
+		let reconciled = _reconcile(this._lastPath.reverse(), [...routePath].reverse(), realPath, params);
 
-		let el: HTMLElement | undefined = _route(
-			routes,
-			realPath,
-			[...segments],
-			createState({})
-		);
+		if (reconciled?._el) this.el = await reconciled._el;
+		else if (reconciled?._layout) {
+			this.el = reconciled._layout;
+			await reconciled._dep;
+		} else {
+			this.el = reconciled;
+		}
 
-		this._el = el;
-
-		if (el) return realPath;
+		routing = false;
+		if (this.el) return realPath;
 	};
-	this.navigate = (path) => {
-		let ret = this.route(path);
+	this.navigate = async (path) => {
+		let ret = await this.route(path);
 		if (ret) history.pushState(null, "", ret);
 		return ret;
 	};
@@ -292,5 +335,5 @@ export function Router(
 		});
 	};
 
-	return <>{use(this._el)}</>;
+	return <>{use(this.el)}</>;
 }

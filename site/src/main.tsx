@@ -1,33 +1,48 @@
-import { createState, type FC, type Stateful } from "dreamland/core";
-import { Route, router, Router } from "dreamland/router";
+import { ComponentInstance, stateProxy, FC, css } from "dreamland/core";
+import { Route, router, Router, RouterState } from "dreamland/router";
 import { MainPage } from "./pages/main";
 import { jsx } from "dreamland/jsx-runtime";
 import { docs } from "./docs";
 import { DocsLayout } from "./pages/docs";
-import { PlaygroundHost } from "./pages/playground";
+import { PlaygroundHost, showPlayground } from "./pages/playground";
 
-let page: Stateful<{
-	title: string;
-	url?: string;
-}> = createState({
-	title: "dreamland.js",
-});
+declare global {
+	interface DLComponentContextExtraProps {
+		pageTitle: string;
+	}
+}
 
-export let setTitle = (val?: string | undefined) =>
-	(page.title = (val ? val + " | " : "") + "dreamland.js");
+function FancyLoader(this: FC<{ routerState: RouterState }>) {
+	return (
+		<div>
+			<div class="loading">{use(this.routerState.loading).and("loading...")}</div>
+			{use(this.routerState.outlet)}
+		</div>
+	)
+}
+FancyLoader.style = css`
+	:scope {
+		height: 100%;
+		position: relative;
+	}
 
-function App(this: FC<{}, { title: HTMLTitleElement }>) {
+	.loading {
+		position: absolute;
+		top: 0;
+		left: 0;
+	}
+`;
+
+let routePromise: Promise<any>;
+function App(this: FC<{ url?: string }, { el: ComponentInstance<any> }>) {
+	let title = use(this.el).map(x => { let title = x?.$?.pageTitle; return (title ? title + " | " : "") + "dreamland.js" });
+
 	this.cx.init = () => {
-		use(page.title)
-			.constrain(this)
-			.listen((title) => {
-				this.title.innerText = title;
-			});
-
+		stateProxy(this, "el", use(router.el as ComponentInstance<any>));
 		if (import.meta.env.SSR) {
-			router.route(page.url, "http://127.0.0.1:5173");
+			routePromise = router.route(this.url, "http://127.0.0.1:5173");
 		} else {
-			router.route();
+			routePromise = router.route();
 		}
 	};
 
@@ -35,24 +50,27 @@ function App(this: FC<{}, { title: HTMLTitleElement }>) {
 		<>
 			<div id="app">
 				<Router>
-					<Route show={<MainPage />} />
-					<Route path="playground" show={<PlaygroundHost />} />
-					<Route path="docs" show={<DocsLayout />}>
-						{docs.map(({ path, component }) => {
-							return <Route path={path} show={() => jsx(component, {})} />;
-						})}
+					<Route layout={FancyLoader}>
+						<Route show={<MainPage />} />
+						<Route path="docs" layout={DocsLayout}>
+							{docs.map(({ path, component }) => {
+								return <Route path={path} show={async () => {await new Promise(r => setTimeout(r, 1000)); return jsx(component, {})}} />;
+							})}
+						</Route>
+						<Route path="playground" layout={PlaygroundHost} show={showPlayground} />
 					</Route>
 				</Router>
 			</div>
 			<>
-				<title this={use(this.title)}></title>
-				<meta property="og:title" content={use(page.title)} />
+				<title attr:innerText={title}></title>
+				<meta property="og:title" content={title} />
 			</>
 		</>
 	);
 }
 
-export default (path?: string) => {
-	page.url = path;
-	return <App />;
+export default async (url?: string) => {
+	let app = <App url={url} />;
+	await routePromise;
+	return app;
 };

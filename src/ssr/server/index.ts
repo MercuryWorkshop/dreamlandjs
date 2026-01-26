@@ -12,13 +12,13 @@ export interface RenderedComponent {
 	component: DomElement;
 }
 
-export function render(component: () => any): RenderedComponent {
+export async function render(component: () => Promise<any> | any): Promise<RenderedComponent> {
 	let old = getDomImpl();
 	let vdom = newVDom();
 
 	setDomImpl(vdom);
 	jsx[DREAMLAND]();
-	let ret = component();
+	let ret = await component();
 	setDomImpl(old);
 
 	let root: Element,
@@ -66,6 +66,9 @@ export function render(component: () => any): RenderedComponent {
 			);
 		} else if ((el instanceof Comment || el instanceof Text) && el.parent) {
 			node = [el.parent._id, el.parent.childNodes.indexOf(el)];
+			dev: {
+				node.push(el.data);
+			}
 		}
 		data.n[el._id] = node!;
 	}

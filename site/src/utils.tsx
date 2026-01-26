@@ -1,4 +1,4 @@
-import { css, type FC, type ComponentChild } from "dreamland/core";
+import { css, type FC, type ComponentChild, NO_CHANGE } from "dreamland/core";
 import normal from "./logo/normal.svg";
 
 // @ts-expect-error dl:bundle doesn't have types
@@ -18,8 +18,9 @@ export function ExternalLink(
 	);
 }
 
-export function MdiIcon(this: FC<{ icon: string; viewBox?: string }>) {
+export function MdiIcon(this: FC<{ icon: string; viewBox?: string }, { [NO_CHANGE]: true }>) {
 	this.viewBox ??= "0 0 24 24";
+	this[NO_CHANGE] = true;
 
 	return (
 		<svg xmlns="http://www.w3.org/2000/svg" viewBox={this.viewBox}>
