@@ -67,7 +67,7 @@ class ClassList extends Array {
 	}
 
 	add(...classes: string[]) {
-		this.push(...classes);
+		this.push(...classes.filter(x => !this.includes(x)));
 	}
 	remove(...classes: string[]) {
 		for (let cls of classes) {
@@ -82,6 +82,10 @@ class ClassList extends Array {
 
 	toString(): string {
 		return this.join(" ");
+	}
+
+	_replace(classes: string[]) {
+		this.splice(0, this.length, ...classes);
 	}
 }
 
@@ -105,14 +109,14 @@ export class Element extends Node {
 		this.namespace = namespace;
 	}
 
-	addEventListener() {}
+	addEventListener() { }
 
 	setAttribute(key: string, value: any) {
-		if (key === "class") this.classList.push(...value.split(" "));
+		if (key === "class") this.classList._replace(value.split(" "));
 		this.attributes.set(key, "" + value);
 	}
 	removeAttribute(key: string) {
-		if (key === "class") this.classList = new ClassList();
+		if (key === "class") this.classList._replace([]);
 		this.attributes.delete(key);
 	}
 

@@ -5,9 +5,12 @@ import { devSsr, cssMinifier } from "dreamland/vite";
 import type { Node } from "@types/estree-jsx";
 import mdx from "@mdx-js/rollup";
 import rehypeStarryNight from "rehype-starry-night";
+import remarkFrontmatter from "remark-frontmatter";
 import { compile, ProcessorOptions } from "@mdx-js/mdx";
 import { all as grammars } from "@wooorm/starry-night";
 import { SKIP, visit } from "estree-util-visit";
+import { read as readVFile } from "to-vfile";
+import { matter } from "vfile-matter";
 
 import { readFile } from "node:fs/promises";
 
@@ -73,6 +76,7 @@ let mdxConfig = (recma: any[] = []) =>
 	({
 		outputFormat: "program",
 		jsxImportSource: "dreamland",
+		remarkPlugins: [remarkFrontmatter],
 		rehypePlugins: [[rehypeStarryNight, { grammars }]],
 		recmaPlugins: [recmaUseThis, ...recma],
 		stylePropertyNameCase: "css",
@@ -95,6 +99,18 @@ export default defineConfig({
 			entry: "/src/main-server.ts",
 		}),
 		mdx(mdxConfig()),
+		{
+			name: "mdx-frontmatter",
+			enforce: "pre",
+			async load(_id) {
+				let [id, query] = _id.split("?");
+				if (query === "frontmatter=true") {
+					let vfile = await readVFile(id);
+					matter(vfile);
+					return { code: `export let frontmatter = ${JSON.stringify(vfile.data.matter)}`, };
+				}
+			}
+		},
 		{
 			name: "dl-framework-bundle",
 			enforce: "pre",

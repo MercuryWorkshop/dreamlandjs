@@ -21,13 +21,16 @@
 		"solid-js": "^1.9.11",
 		"svelte": "^5.50.0",
 		"terser": "^5.46.0",
+		"to-vfile": "^8.0.0",
 		"typescript": "~5.9.3",
-		"vite": "^7.3.1"
+		"vfile-matter": "^5.0.1",
+		"vite": "^7.3.1",
+		"@mdx-js/rollup": "^3.1.1",
+		"@literals/rollup-plugin-html-css-minifier": "^3.0.1",
+		"remark-frontmatter": "^5.0.0"
 	},
 	"dependencies": {
-		"@literals/rollup-plugin-html-css-minifier": "^3.0.1",
 		"@mdi/js": "^7.4.47",
-		"@mdx-js/rollup": "^3.1.1",
 		"@rollup/browser": "^4.57.1",
 		"dreamland": "link:..",
 		"monaco-editor": "^0.55.1"

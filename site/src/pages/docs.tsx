@@ -156,7 +156,6 @@ export function DocsLayout(
 			<div class="content" on:click={contentClicked}>
 				<div class="menu">
 					<Hero />
-					<div class="expand" />
 					<button
 						on:click={(e: MouseEvent) => {
 							e.stopPropagation();
@@ -238,15 +237,12 @@ DocsLayout.style = css`
 		max-width: 60rem;
 	}
 
-	.expand {
-		flex: 1;
-	}
-
 	@media (max-width: 65rem) {
 		.menu {
 			display: flex;
+			justify-content: space-between;
 		}
-		.jsbroken .menu {
+		.jsbroken .menu button {
 			visibility: hidden;
 		}
 

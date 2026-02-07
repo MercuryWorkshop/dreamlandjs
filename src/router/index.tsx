@@ -21,6 +21,7 @@ export interface RouterState {
 	path: string;
 	outlet?: HTMLElement;
 	loading: boolean;
+	initial: boolean;
 	[NO_CHANGE]: true;
 }
 
@@ -146,9 +147,9 @@ async function _getShow(
 }
 let getShow = _getShow;
 
-let _handleLayout = (route: RouteInternal, ret: ReconcileRet | undefined, path: string, params: RouteParams, last?: RouteInternal): ReconcileRet | undefined => {
+let _handleLayout = (route: RouteInternal, ret: ReconcileRet | undefined, path: string, params: RouteParams, initial: boolean): ReconcileRet | undefined => {
 	if (route._layout) {
-		let state: RouterState = { params, path, loading: true, [NO_CHANGE]: true, } satisfies RouterState;
+		let state: RouterState = { params, path, loading: true, initial, [NO_CHANGE]: true, } satisfies RouterState;
 		let instance = route._layoutInstance || <route._layout routerState={state} /> as ComponentInstance<LayoutComponent>;
 		route._layoutInstance = instance;
 		let instanceState = instance.$.state;
@@ -158,10 +159,6 @@ let _handleLayout = (route: RouteInternal, ret: ReconcileRet | undefined, path: 
 		let dep: Promise<_MaybeShowEl>;
 
 		if (ret?._layout) {
-			if (last === route) {
-				state.outlet = ret._layout;
-				instanceState.routerState = state;
-			}
 			dep = ret._dep.then(_ => ret._layout);
 		} else if (ret?._el) {
 			dep = ret._el;
@@ -186,15 +183,15 @@ type Disjoint<T1, T2> =
 	| ({ [P in keyof T2]?: never } & { [P in keyof T1]: T1[P] })
 	| ({ [P in keyof T1]?: never } & { [P in keyof T2]: T2[P] });
 type ReconcileRet = Disjoint<{ _el: Promise<_MaybeShowEl> }, { _layout: ComponentInstance<LayoutComponent>, _dep: Promise<any> }>;
-let _reconcile = (_last: RouteInternal[], _current: RouteInternal[], path: string, params: RouteParams): ReconcileRet | undefined => {
-	let last = _last.pop(), current = _current.pop();
+let _reconcile = (_current: RouteInternal[], path: string, params: RouteParams, initial: boolean): ReconcileRet | undefined => {
+	let current = _current.pop();
 	if (!current) return;
 
 	let ret;
 	if (current._show) {
-		ret = { _el: getShow(current._showInstance, current._show, params).then(x => current._showInstance = x) };
+		ret = { _el: getShow(current._showInstance, current._show, { ...params }).then(x => current._showInstance = x) };
 	} else if (_current.length) {
-		ret = _reconcile(_last, _current, path, { ...params });
+		ret = _reconcile(_current, path, { ...params }, initial);
 	} else {
 		dev: {
 			throw new Error(
@@ -203,7 +200,7 @@ let _reconcile = (_last: RouteInternal[], _current: RouteInternal[], path: strin
 		}
 	}
 
-	return _handleLayout(current, ret, path, { ...params }, last);
+	return _handleLayout(current, ret, path, params, initial);
 };
 
 export function Route(
@@ -264,9 +261,12 @@ export function Router(
 			route: (path?: string, origin?: string) => Promise<string | undefined>;
 			navigate: (path: string) => Promise<string | undefined>;
 			ssgables: () => [string, string][];
+			[NO_CHANGE]: true,
 		}
 	>
 ) {
+	this[NO_CHANGE] = true;
+
 	// eslint-disable-next-line @typescript-eslint/no-this-alias
 	router = this;
 
@@ -288,7 +288,8 @@ export function Router(
 		let segments = realPath.split("/").slice(1);
 		let params = { [NO_CHANGE]: true } as const;
 		let routePath = _route(routes, realPath, segments, params);
-		let reconciled = _reconcile(this._lastPath.reverse(), [...routePath].reverse(), realPath, params);
+		let reconciled = _reconcile([...routePath].reverse(), realPath, params, !this._lastPath.length);
+		this._lastPath = routePath;
 
 		if (reconciled?._el) this.el = await reconciled._el;
 		else if (reconciled?._layout) {

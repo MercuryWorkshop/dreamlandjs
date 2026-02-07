@@ -1,8 +1,7 @@
 import { ComponentInstance, stateProxy, FC, css } from "dreamland/core";
 import { Route, router, Router, RouterState } from "dreamland/router";
-import { MainPage } from "./pages/main";
 import { jsx } from "dreamland/jsx-runtime";
-import { docs } from "./docs";
+import { docComponents } from "./docs";
 import { DocsLayout } from "./pages/docs";
 import { PlaygroundHost, showPlayground } from "./pages/playground";
 
@@ -12,12 +11,10 @@ declare global {
 	}
 }
 
-function FancyLoader(this: FC<{ routerState: RouterState }, { initialLoad: boolean }>) {
-	this.initialLoad = true;
-	use(this.routerState.loading).constrain(this).listen(x => { if (x && !import.meta.env.SSR) this.initialLoad = false });
+function FancyLoader(this: FC<{ routerState: RouterState }, { loads: number }>) {
 	return (
 		<div>
-			<div class="loader" class:initial={use(this.initialLoad)} class:loading={use(this.routerState.loading)}><div class="bar" /></div>
+			<div class="loader" class:initial={use(this.routerState.initial)} class:loading={use(this.routerState.loading)}><div class="bar" /></div>
 			{use(this.routerState.outlet)}
 		</div>
 	)
@@ -25,8 +22,6 @@ function FancyLoader(this: FC<{ routerState: RouterState }, { initialLoad: boole
 FancyLoader.style = css`
 	:scope {
 		height: 100%;
-		--timing: linear(0, .175, .32, .44, .54, .62 17.2%, .73, .81, .87 36.1%, .926, .96 55.6%, .99, 1);
-		--duration: 15s;
 	}
 
 	.loader {
@@ -35,35 +30,33 @@ FancyLoader.style = css`
 		top: 0;
 		left: 0;
 		width: 100%;
-		height: 4px;
+		height: 2px;
 	}
 	.loader.initial { display: none; }
 
 	.bar {
 		width: 0;
 		height: 100%;
-		background: linear-gradient(90deg, #3b82f6, #8b5cf6);
-		box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+		background: var(--accent);
 		opacity: 0;
 		transition: opacity 0.3s ease;
 	}
 
 	.loading .bar {
 		opacity: 1;
-		animation: progress var(--duration) var(--timing) infinite;
-	}
-
-	@keyframes progress {
-		0% { width: 0%; }
-		90% { width: 90%; }
-		100% { width: 100%; }
+		animation: 15s linear(0, .175, .32, .44, .54, .62 17.2%, .73, .81, .87 36.1%, .926, .96 55.6%, .99, 1) 1 forwards fancyloader-progress;
 	}
 
 	.loader:not(.loading) .bar {
-		animation: completeAndFade 0.5s ease-out forwards;
+		animation: fancyloader-complete 0.5s ease-out forwards;
 	}
 
-	@keyframes completeAndFade {
+	@keyframes fancyloader-progress {
+		0% { width: 0%; }
+		100% { width: 100%; }
+	}
+
+	@keyframes fancyloader-complete {
 		0% { width: var(--final-width, 90%); opacity: 1; }
 		90% { width: 100%; opacity: 1; }
 		100% { width: 100%; opacity: 0; }
@@ -88,10 +81,10 @@ function App(this: FC<{ url?: string }, { el: ComponentInstance<any> }>) {
 			<div id="app">
 				<Router>
 					<Route layout={FancyLoader}>
-						<Route show={<MainPage />} />
+						<Route show={() => import("./pages/main").then(r => <r.default />)} />
 						<Route path="docs" layout={DocsLayout}>
-							{docs.map(({ path, component }) => {
-								return <Route path={path} show={async () => {await new Promise(r => setTimeout(r, 1000)); return jsx(component, {})}} />;
+							{docComponents.map(([path, component]) => {
+								return <Route path={path} show={async () => jsx(await component(), {})} />;
 							})}
 						</Route>
 						<Route path="playground" layout={PlaygroundHost} show={showPlayground} />

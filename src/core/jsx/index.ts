@@ -62,7 +62,7 @@ let mapChild = (
 			let mapped: Node[] = mapChild(val, parent, cssIdent, child._cssIdent);
 
 			// pretty sure it's not possible to put a pointer child in not a htmlelement
-			if (!hydrating?.(parent as HTMLElement) && current) {
+			if (current) {
 				let old = MAP(current.map((x, i) => [x, i]));
 				let staticNodes = mapped.map((x) => old.get(x)!).filter((x) => x);
 				let LIS = MAP(findLIS(staticNodes).map((x) => [current[x], ,]));
@@ -76,15 +76,14 @@ let mapChild = (
 				});
 
 				current
-					.filter((x) => !mapped.includes(x) && x.parentNode === parent)
-					.map((child) => parent.removeChild(child));
+					.map((x) => !mapped.includes(x) && x.parentNode === parent && parent.removeChild(x));
 			}
 			current = mapped;
 		});
 
 		return [
 			start,
-			...(hydrating?.(parent as HTMLElement) ? [] : current!),
+			...current!,
 			end,
 		];
 	} else if (isNode(child)) {
