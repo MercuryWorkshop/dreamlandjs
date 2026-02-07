@@ -1,58 +1,90 @@
 import { defineConfig } from "vite";
 import { devSsr } from "dreamland/vite";
-import { compile } from "@mdx-js/mdx";
 import { literalsHtmlCssMinifier } from "@literals/rollup-plugin-html-css-minifier";
 
+// @ts-expect-error @types import needed
+import type { Node } from "@types/estree-jsx";
+import mdx from "@mdx-js/rollup";
 import rehypeStarryNight from "rehype-starry-night";
+import { compile, ProcessorOptions } from "@mdx-js/mdx";
 import { all as grammars } from "@wooorm/starry-night";
-import { visit } from "estree-util-visit";
+import { SKIP, visit } from "estree-util-visit";
 
-import { readFile } from "fs/promises";
-import { gzipSync, brotliCompressSync } from "zlib";
+import { readFile } from "node:fs/promises";
 
-import bundleSize from "./util/bundle-size";
+import computeAppBundleSize from "./util/app-bundle-size";
+import { getFrameworkInfo } from "./util/framework-info";
 
-async function compileMdx(content: string, name?: string) {
-	const compiled = await compile(content, {
+let appBundleSize = await computeAppBundleSize();
+let frameworkInfo = await getFrameworkInfo();
+
+function recmaUseThis() {
+	return (tree: any) => {
+		visit(tree, (node) => {
+			if (node.type === "ExportDefaultDeclaration") {
+				let decl = node.declaration;
+				if (
+					decl.type === "FunctionDeclaration" &&
+					decl.params[0]?.type === "AssignmentPattern" &&
+					decl.params[0].left.type === "Identifier" &&
+					decl.params[0].left.name === "props"
+				) {
+					decl.params = [];
+					visit(decl.body, (decl) => {
+						if (decl.type === "Identifier" && decl.name === "props") {
+							decl.name = "this";
+						}
+					});
+				}
+			}
+		});
+	};
+}
+
+function recmaRenameDefault(name: string) {
+	return () => (tree: any) => {
+		visit(tree, (node, key, index, ancestors) => {
+			let parent: any = ancestors.at(-1);
+			if (
+				parent &&
+				key &&
+				index !== undefined &&
+				node.type === "ExportDefaultDeclaration"
+			) {
+				let decl = node.declaration;
+				if (decl.type === "FunctionDeclaration" && decl.id) {
+					decl.id.name = name;
+					let newNode: Node = {
+						type: "ExportNamedDeclaration",
+						specifiers: [],
+						attributes: [],
+						declaration: decl as any,
+					};
+
+					parent[key][index] = newNode;
+
+					return SKIP;
+				}
+			}
+		});
+	};
+}
+
+let mdxConfig = (recma: any[] = []) =>
+	({
 		outputFormat: "program",
 		jsxImportSource: "dreamland",
 		rehypePlugins: [[rehypeStarryNight, { grammars }]],
-		recmaPlugins: [
-			() => (tree) =>
-				visit(tree, (node) => {
-					// this is scuffed but works. no idea why mdx doesn't support using class
-					if (
-						node.type === "CallExpression" &&
-						node.callee.type === "Identifier" &&
-						node.callee.name.startsWith("_jsx") &&
-						node.arguments[1]?.type === "ObjectExpression"
-					) {
-						for (let prop of node.arguments[1].properties) {
-							if (
-								prop.type === "Property" &&
-								prop.key.type === "Identifier" &&
-								prop.key.name === "className"
-							) {
-								prop.key.name = "class";
-							}
-						}
-					}
-				}),
-		],
-	});
+		recmaPlugins: [recmaUseThis, ...recma],
+		stylePropertyNameCase: "css",
+		elementAttributeNameCase: "html",
+	}) satisfies ProcessorOptions;
 
-	return `
-		${compiled.toString().replace("export default", "export")}
-
-		export ${name ? `function ${name}()` : `default function Page()`} {
-			const {wrapper: MDXLayout} = this.components || ({});
-			return (
-				MDXLayout 
-					? _jsx(MDXLayout, { children: [_createMdxContent(this)], ...this })
-					: _createMdxContent(this)
-			)
-		}
-	`;
+async function compileMdx(content: string, name?: string) {
+	return await compile(
+		content,
+		mdxConfig(name ? [recmaRenameDefault(name)] : [])
+	);
 }
 
 export default defineConfig({
@@ -63,6 +95,7 @@ export default defineConfig({
 		devSsr({
 			entry: "/src/main-server.ts",
 		}),
+		mdx(mdxConfig()),
 		{
 			name: "dl-framework-bundle",
 			enforce: "pre",
@@ -71,9 +104,7 @@ export default defineConfig({
 			},
 			async load(id) {
 				if (id === "\0dl:frameworks") {
-					return {
-						code: `export default ${JSON.stringify(await bundleSize())}`,
-					};
+					return `export default ${JSON.stringify(appBundleSize)}`;
 				}
 			},
 		},
@@ -100,40 +131,9 @@ export default defineConfig({
 			},
 			async load(id) {
 				if (id === "\0dl:bundle") {
-					const bundle = await readFile("node_modules/dreamland/dist/core.js");
-					const uncompressed = bundle.byteLength;
-					const gzip = gzipSync(bundle).byteLength;
-					const brotli = brotliCompressSync(bundle).byteLength;
-
-					const ssr = await readFile(
-						"node_modules/dreamland/dist/ssr.client.js"
-					);
-
-					const packageJson = JSON.parse(
-						await readFile("node_modules/dreamland/package.json", "utf-8")
-					);
-
-					return {
-						code: `
-							export let dl = { bundle: "${(uncompressed / 1024).toFixed(1)}", gzip: "${(gzip / 1024).toFixed(1)}", brotli: "${(brotli / 1024).toFixed(1)}" };
-							export let ssr = "${(ssr.byteLength / 1024).toFixed(1)}";
-							export let version = "${packageJson.version}";
-						`,
-					};
-				}
-			},
-		},
-		{
-			name: "mdx-dreamland",
-			enforce: "pre",
-			async load(id) {
-				if (id.endsWith(".mdx")) {
-					const content = await readFile(id, "utf-8");
-
-					return {
-						code: await compileMdx(content),
-						loader: "jsx",
-					};
+					return Object.entries(frameworkInfo)
+						.map((x) => `export let ${x[0]} = ${JSON.stringify(x[1])};`)
+						.join("\n");
 				}
 			},
 		},

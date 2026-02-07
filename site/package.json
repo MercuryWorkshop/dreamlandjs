@@ -11,6 +11,7 @@
 	},
 	"devDependencies": {
 		"@mdx-js/mdx": "^3.1.1",
+		"@types/estree-jsx": "^1.0.5",
 		"@wooorm/starry-night": "^3.8.0",
 		"esbuild": "^0.27.2",
 		"estree-util-visit": "^2.0.0",
@@ -26,6 +27,7 @@
 	"dependencies": {
 		"@literals/rollup-plugin-html-css-minifier": "^3.0.1",
 		"@mdi/js": "^7.4.47",
+		"@mdx-js/rollup": "^3.1.1",
 		"@rollup/browser": "^4.55.1",
 		"dreamland": "link:..",
 		"monaco-editor": "^0.55.1"

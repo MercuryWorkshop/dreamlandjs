@@ -50,9 +50,7 @@ export type Component<
 	This extends BanProps<This> = {},
 > = ComponentFn<Props, This> & { style?: CssInit };
 
-type ComponentCx<
-	StatefulProps extends { [COMMA_TOKEN]?: never } & object,
-> = {
+type ComponentCx<StatefulProps extends { [COMMA_TOKEN]?: never } & object> = {
 	state: Stateful<StatefulProps>;
 	id?: string;
 
@@ -60,8 +58,9 @@ type ComponentCx<
 	mount?: () => void;
 	// Run on client and server
 	init?: () => void;
-
-} & { [K in keyof DLComponentContextExtraProps]?: DLComponentContextExtraProps[K] }
+} & {
+	[K in keyof DLComponentContextExtraProps]?: DLComponentContextExtraProps[K];
+};
 
 export type ComponentFnState<T extends Component<any, any>> =
 	T extends ComponentFn<infer Props, infer This> ? FC<Props, This> : never;
@@ -114,9 +113,7 @@ import DLJSX = JSX;
 
 declare global {
 	// we reserve the right to add new props to ComponentContext at any time without making it a breaking semver version, so be careful
-	interface DLComponentContextExtraProps {
-
-	}
+	interface DLComponentContextExtraProps {}
 
 	// eslint-disable-next-line @typescript-eslint/no-namespace
 	namespace JSX {

@@ -267,7 +267,10 @@ export class Pointer<T> {
 	}
 
 	map<U>(func: (val: T) => U): Pointer<U>;
-	map<U>(func: (val: T) => U, reverse: (val: U) => T | typeof NO_CHANGE): Pointer<U>;
+	map<U>(
+		func: (val: T) => U,
+		reverse: (val: U) => T | typeof NO_CHANGE
+	): Pointer<U>;
 	map<U>(_map: (val: T) => U, _reverse?: (val: U) => T | typeof NO_CHANGE) {
 		return new Pointer({
 			_listeners: [],
