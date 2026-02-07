@@ -75,17 +75,17 @@ let mapChild = (
 					anchor = child;
 				});
 
-				current
-					.map((x) => !mapped.includes(x) && x.parentNode === parent && parent.removeChild(x));
+				current.map(
+					(x) =>
+						!mapped.includes(x) &&
+						x.parentNode === parent &&
+						parent.removeChild(x)
+				);
 			}
 			current = mapped;
 		});
 
-		return [
-			start,
-			...current!,
-			end,
-		];
+		return [start, ...current!, end];
 	} else if (isNode(child)) {
 		let list: DOMTokenList;
 		let apply = (child: any) => {

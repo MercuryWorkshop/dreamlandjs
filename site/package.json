@@ -10,7 +10,9 @@
 		"build": "pnpm run build:client && pnpm run build:server && node prerender.js"
 	},
 	"devDependencies": {
+		"@literals/rollup-plugin-html-css-minifier": "^3.0.1",
 		"@mdx-js/mdx": "^3.1.1",
+		"@mdx-js/rollup": "^3.1.1",
 		"@types/estree-jsx": "^1.0.5",
 		"@wooorm/starry-night": "^3.9.0",
 		"esbuild": "^0.27.3",
@@ -18,16 +20,14 @@
 		"react": "^19.2.4",
 		"react-dom": "^19.2.4",
 		"rehype-starry-night": "^2.2.0",
+		"remark-frontmatter": "^5.0.0",
 		"solid-js": "^1.9.11",
 		"svelte": "^5.50.0",
 		"terser": "^5.46.0",
 		"to-vfile": "^8.0.0",
 		"typescript": "~5.9.3",
 		"vfile-matter": "^5.0.1",
-		"vite": "^7.3.1",
-		"@mdx-js/rollup": "^3.1.1",
-		"@literals/rollup-plugin-html-css-minifier": "^3.0.1",
-		"remark-frontmatter": "^5.0.0"
+		"vite": "^7.3.1"
 	},
 	"dependencies": {
 		"@mdi/js": "^7.4.47",

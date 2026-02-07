@@ -11,13 +11,21 @@ declare global {
 	}
 }
 
-function FancyLoader(this: FC<{ routerState: RouterState }, { loads: number }>) {
+function FancyLoader(
+	this: FC<{ routerState: RouterState }, { loads: number }>
+) {
 	return (
 		<div>
-			<div class="loader" class:initial={use(this.routerState.initial)} class:loading={use(this.routerState.loading)}><div class="bar" /></div>
+			<div
+				class="loader"
+				class:initial={use(this.routerState.initial)}
+				class:loading={use(this.routerState.loading)}
+			>
+				<div class="bar" />
+			</div>
 			{use(this.routerState.outlet)}
 		</div>
-	)
+	);
 }
 FancyLoader.style = css`
 	:scope {
@@ -32,7 +40,9 @@ FancyLoader.style = css`
 		width: 100%;
 		height: 2px;
 	}
-	.loader.initial { display: none; }
+	.loader.initial {
+		display: none;
+	}
 
 	.bar {
 		width: 0;
@@ -44,7 +54,23 @@ FancyLoader.style = css`
 
 	.loading .bar {
 		opacity: 1;
-		animation: 15s linear(0, .175, .32, .44, .54, .62 17.2%, .73, .81, .87 36.1%, .926, .96 55.6%, .99, 1) 1 forwards fancyloader-progress;
+		animation: 15s
+			linear(
+				0,
+				0.175,
+				0.32,
+				0.44,
+				0.54,
+				0.62 17.2%,
+				0.73,
+				0.81,
+				0.87 36.1%,
+				0.926,
+				0.96 55.6%,
+				0.99,
+				1
+			)
+			1 forwards fancyloader-progress;
 	}
 
 	.loader:not(.loading) .bar {
@@ -52,20 +78,36 @@ FancyLoader.style = css`
 	}
 
 	@keyframes fancyloader-progress {
-		0% { width: 0%; }
-		100% { width: 100%; }
+		0% {
+			width: 0%;
+		}
+		100% {
+			width: 100%;
+		}
 	}
 
 	@keyframes fancyloader-complete {
-		0% { width: var(--final-width, 90%); opacity: 1; }
-		90% { width: 100%; opacity: 1; }
-		100% { width: 100%; opacity: 0; }
+		0% {
+			width: var(--final-width, 90%);
+			opacity: 1;
+		}
+		90% {
+			width: 100%;
+			opacity: 1;
+		}
+		100% {
+			width: 100%;
+			opacity: 0;
+		}
 	}
 `;
 
 let routePromise: Promise<any>;
 function App(this: FC<{ url?: string }, { el: ComponentInstance<any> }>) {
-	let title = use(this.el).map(x => { let title = x?.$?.pageTitle; return (title ? title + " | " : "") + "dreamland.js" });
+	let title = use(this.el).map((x) => {
+		let title = x?.$?.pageTitle;
+		return (title ? title + " | " : "") + "dreamland.js";
+	});
 
 	this.cx.init = () => {
 		stateProxy(this, "el", use(router.el as ComponentInstance<any>));
@@ -81,13 +123,24 @@ function App(this: FC<{ url?: string }, { el: ComponentInstance<any> }>) {
 			<div id="app">
 				<Router>
 					<Route layout={FancyLoader}>
-						<Route show={() => import("./pages/main").then(r => <r.default />)} />
+						<Route
+							show={() => import("./pages/main").then((r) => <r.default />)}
+						/>
 						<Route path="docs" layout={DocsLayout}>
 							{docComponents.map(([path, component]) => {
-								return <Route path={path} show={async () => jsx(await component(), {})} />;
+								return (
+									<Route
+										path={path}
+										show={async () => jsx(await component(), {})}
+									/>
+								);
 							})}
 						</Route>
-						<Route path="playground" layout={PlaygroundHost} show={showPlayground} />
+						<Route
+							path="playground"
+							layout={PlaygroundHost}
+							show={showPlayground}
+						/>
 					</Route>
 				</Router>
 			</div>

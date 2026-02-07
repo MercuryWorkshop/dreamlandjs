@@ -15,7 +15,7 @@ export type Node =
 	| [
 			number,
 			number,
-			string?
+			string?,
 	  ] /* text/comment node, 1st number is parent element's ssr id, 2nd is child index, possible debug string */;
 
 export interface SsrData {

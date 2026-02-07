@@ -13,7 +13,7 @@ export function PlaygroundLoading(this: FC) {
 				<b>Loading web IDE...</b>
 			</h2>
 		</div>
-	)
+	);
 }
 PlaygroundLoading.style = css`
 	:scope {
@@ -80,6 +80,6 @@ PlaygroundHost.style = css`
 
 export function showPlayground() {
 	if (!import.meta.env.SSR) {
-		return import("../playground/playground").then(r => <r.default />);
+		return import("../playground/playground").then((r) => <r.default />);
 	}
 }

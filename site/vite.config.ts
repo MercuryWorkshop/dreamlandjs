@@ -91,6 +91,17 @@ async function compileMdx(content: string, name?: string) {
 }
 
 export default defineConfig({
+	build: {
+		rollupOptions: {
+			output: {
+				manualChunks: (id) => {
+					if (id.includes("monaco-editor")) {
+						return "monaco";
+					}
+				},
+			},
+		},
+	},
 	plugins: [
 		cssMinifier({
 			include: ["src/**/*.tsx"],
@@ -107,9 +118,11 @@ export default defineConfig({
 				if (query === "frontmatter=true") {
 					let vfile = await readVFile(id);
 					matter(vfile);
-					return { code: `export let frontmatter = ${JSON.stringify(vfile.data.matter)}`, };
+					return {
+						code: `export let frontmatter = ${JSON.stringify(vfile.data.matter)}`,
+					};
 				}
-			}
+			},
 		},
 		{
 			name: "dl-framework-bundle",

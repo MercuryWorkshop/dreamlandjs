@@ -67,7 +67,7 @@ class ClassList extends Array {
 	}
 
 	add(...classes: string[]) {
-		this.push(...classes.filter(x => !this.includes(x)));
+		this.push(...classes.filter((x) => !this.includes(x)));
 	}
 	remove(...classes: string[]) {
 		for (let cls of classes) {
@@ -109,7 +109,7 @@ export class Element extends Node {
 		this.namespace = namespace;
 	}
 
-	addEventListener() { }
+	addEventListener() {}
 
 	setAttribute(key: string, value: any) {
 		if (key === "class") this.classList._replace(value.split(" "));

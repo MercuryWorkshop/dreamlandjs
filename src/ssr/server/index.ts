@@ -12,7 +12,9 @@ export interface RenderedComponent {
 	component: DomElement;
 }
 
-export async function render(component: () => Promise<any> | any): Promise<RenderedComponent> {
+export async function render(
+	component: () => Promise<any> | any
+): Promise<RenderedComponent> {
 	let old = getDomImpl();
 	let vdom = newVDom();
 

@@ -18,7 +18,9 @@ export function ExternalLink(
 	);
 }
 
-export function MdiIcon(this: FC<{ icon: string; viewBox?: string }, { [NO_CHANGE]: true }>) {
+export function MdiIcon(
+	this: FC<{ icon: string; viewBox?: string }, { [NO_CHANGE]: true }>
+) {
 	this.viewBox ??= "0 0 24 24";
 	this[NO_CHANGE] = true;
 

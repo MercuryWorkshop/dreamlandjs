@@ -124,12 +124,14 @@ export function DocsLayout(
 
 	this.cx.mount = () => (this.jsbroken = false);
 
-	use(this.routerState.path).constrain(this).listen((path) => {
-		if (!this.routerState.loading) {
-			let page = docs.find((x) => path.replace("/docs/", "") === x.path);
-			this.doc = page;
-		}
-	})
+	use(this.routerState.path)
+		.constrain(this)
+		.listen((path) => {
+			if (!this.routerState.loading) {
+				let page = docs.find((x) => path.replace("/docs/", "") === x.path);
+				this.doc = page;
+			}
+		});
 
 	let contentClicked = (e: MouseEvent) => {
 		if (this.menu) {
