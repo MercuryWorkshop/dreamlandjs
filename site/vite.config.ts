@@ -99,6 +99,7 @@ export default defineConfig({
 						return "monaco";
 					}
 				},
+				onlyExplicitManualChunks: true,
 			},
 		},
 	},
