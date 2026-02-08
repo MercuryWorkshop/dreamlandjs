@@ -38,8 +38,9 @@ jobs:
             echo "Version not changed"
             echo "version_changed=false" >> "$GITHUB_OUTPUT"
           fi
+
   build:
-    name: Build Dreamland
+    name: Build, Lint, and Test Dreamland
     runs-on: ubuntu-latest
 
     steps:
@@ -59,6 +60,15 @@ jobs:
 
       - name: Install pnpm dependencies
         run: pnpm install
+
+      - name: Build Dreamland
+        run: pnpm build
+
+      - name: Lint Dreamland
+        run: pnpm lint
+
+      - name: Test Dreamland
+        run: pnpm test
 
       - name: Pack Dreamland
         run: pnpm pack
