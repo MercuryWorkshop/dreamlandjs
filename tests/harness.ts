@@ -21,15 +21,35 @@ export abstract class BaseCheck {
 	constructor(name: string) {
 		this.name = name;
 	}
+
+	// @internal
+	abstract _checkInvariants(): void;
 }
 
 export class Check extends BaseCheck {
+	// @internal
+	_once: boolean = false;
+
 	state: TestResult;
+	calls: number = 0;
 
 	// @internal
 	constructor(name: string) {
 		super(name);
 		this.state = TestResult.Invalid;
+	}
+
+	// @internal
+	_checkInvariants() {
+		if (this._once && this.calls !== 1) {
+			this.fail();
+			this.details = "called more than once";
+		}
+	}
+
+	once(): this {
+		this._once = true;
+		return this;
 	}
 
 	assertEq<T>(a: T, b: T) {
@@ -42,10 +62,16 @@ export class Check extends BaseCheck {
 		}
 	}
 
+	passed(): boolean {
+		return this.state === TestResult.Passed;
+	}
+
 	pass() {
+		this.calls++;
 		this.state = TestResult.Passed;
 	}
 	fail() {
+		this.calls++;
 		this.state = TestResult.Failed;
 	}
 }
@@ -58,6 +84,9 @@ export class GCCheck extends BaseCheck {
 		super(name);
 		this.ref = new WeakRef(obj);
 	}
+
+	// @internal
+	_checkInvariants(): void {}
 
 	get state(): TestResult {
 		if (this.ref.deref()) return TestResult.Passed;
@@ -190,6 +219,8 @@ export async function runTests(
 		currentTest = undefined;
 
 		induceGC();
+
+		test.checks.map((x) => x._checkInvariants());
 
 		let checkResult =
 			test.checks.toSorted(

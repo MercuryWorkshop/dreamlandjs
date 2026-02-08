@@ -63,7 +63,7 @@ test("nested/dynamic", () => {
 		})
 	);
 
-	let ptr = use(state[state.val].val);
+	let ptr = checkGC("Pointer gets freed", use(state[state.val].val));
 	check("Dynamic pointer has correct value before").assertEq(ptr.value, "abc");
 
 	let listen = check("Dynamic pointer listener gets correct value");
@@ -71,6 +71,31 @@ test("nested/dynamic", () => {
 		checkGC("Pointer listener gets freed", (x) => listen.assertEq(x, "bcd"))
 	);
 	state.val = "b";
+
+	check("Dynamic pointer has correct value after").assertEq(ptr.value, "bcd");
+});
+
+test("nested/non-stateful", () => {
+	let state = createState(
+		checkGC("State gets freed", {
+			settings: { prop1: "abc" },
+			prop1: "123",
+		})
+	);
+
+	let ptr = checkGC("Pointer gets freed", use(state.settings.prop1));
+	check("Dynamic pointer has correct value before").assertEq(ptr.value, "abc");
+
+	let listen = check(
+		"Dynamic pointer listener only gets called once state.settings updates"
+	).once();
+	ptr.listen(
+		checkGC("Pointer listener gets freed", (x) => listen.assertEq(x, "bcd"))
+	);
+
+	state.prop1 = "456";
+	state.settings.prop1 = "def";
+	state.settings = { prop1: "bcd" };
 
 	check("Dynamic pointer has correct value after").assertEq(ptr.value, "bcd");
 });
