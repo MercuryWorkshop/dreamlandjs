@@ -17,6 +17,7 @@
 		"format": "prettier -w .",
 		"lint": "eslint",
 		"test": "node --expose-gc --experimental-transform-types tests/harness.ts tests/core/",
+		"all": "pnpm format && pnpm lint && pnpm build && pnpm test && dust -sbo b dist/{core,{js,jsx}-runtime,router,ssr.{client,hybrid,server},motion,vite}.js",
 		"prepack": "npm run build"
 	},
 	"exports": {

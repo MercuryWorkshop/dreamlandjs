@@ -28,7 +28,7 @@ export abstract class BaseCheck {
 
 export class Check extends BaseCheck {
 	// @internal
-	_once: boolean = false;
+	_targetCalls: number = -1;
 
 	state: TestResult;
 	calls: number = 0;
@@ -41,14 +41,19 @@ export class Check extends BaseCheck {
 
 	// @internal
 	_checkInvariants() {
-		if (this._once && this.calls !== 1) {
+		if (this._targetCalls !== -1 && this.calls !== this._targetCalls) {
 			this.fail();
-			this.details = "called more than once";
+			this.details = `call count ${this.calls} != ${this._targetCalls}`;
 		}
 	}
 
+	expectCalls(calls: number): this {
+		this._targetCalls = calls;
+		return this;
+	}
+
 	once(): this {
-		this._once = true;
+		this.expectCalls(1);
 		return this;
 	}
 

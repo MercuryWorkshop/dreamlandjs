@@ -118,15 +118,16 @@ export class Pointer<T> {
 	// @internal
 	_recalculate(i: number, ptr: InternalRegularPointer<T>, step: StateStep) {
 		let old = step._state;
-		let before = ptr._path.slice(0, i);
-		let last = before[i - 1]?._computed || ptr._state;
+		let last = ptr._path[i - 1]?._computed || ptr._state;
 
-		step._computed = followPath(ptr._state, before)[unwrapStep(step)];
+		step._computed = followPath(ptr._state, ptr._path.slice(0, i))[
+			unwrapStep(step)
+		];
 		step._state = isStateful(last) ? last : null;
 
-		if (old) _stateListenRemove(old, step._callbackRef!);
-		if (step._state && step._state !== old) {
-			_stateListen(step._state, step._callbackRef!);
+		if (old !== step._state) {
+			if (old) _stateListenRemove(old, step._callbackRef!);
+			if (step._state) _stateListen(step._state, step._callbackRef!);
 		}
 	}
 

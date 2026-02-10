@@ -6,26 +6,48 @@ test("basic", () => {
 	let state = createState(
 		checkGC("State gets freed", {
 			a: 1,
-			b: 2,
 		})
 	);
 
-	let listenOne = check("Normal listener gets called with correct value");
+	let target = 1;
+	let listenOne = check(
+		"Normal listener always gets called with correct value"
+	).expectCalls(3);
 	checkGC("Pointer1 gets freed", use(state.a))
 		.constrain(listenOne)
 		.listen(
-			checkGC("Normal listener gets freed", (x) => listenOne.assertEq(x, 2))
+			checkGC("Normal listener gets freed", (x) =>
+				listenOne.assertEq(x, target)
+			)
 		);
-	state.a = 2;
+	state.a = target = 2;
+	state.a = target = 3;
+	state.a = target = 4;
+});
 
-	let listenMap = check("Mapped listener gets called with correct value");
-	checkGC("Pointer2 gets freed", use(state.b))
+test("mapped", () => {
+	let state = createState(
+		checkGC("State gets freed", {
+			a: 1,
+		})
+	);
+
+	let target = 1;
+	let listenMap = check(
+		"Mapped listener always gets called with correct value"
+	).expectCalls(3);
+	checkGC("Pointer2 gets freed", use(state.a))
 		.map(checkGC("Mapper gets freed", (x) => "" + x))
 		.constrain(listenMap)
 		.listen(
-			checkGC("Mapped listener gets freed", (x) => listenMap.assertEq(x, "3"))
+			checkGC("Mapped listener gets freed", (x) =>
+				listenMap.assertEq(x, "" + target)
+			)
 		);
-	state.b = 3;
+
+	state.a = target = 2;
+	state.a = target = 3;
+	state.a = target = 4;
 });
 
 test("nested", () => {
@@ -39,11 +61,19 @@ test("nested", () => {
 		})
 	);
 
-	let nestedListen = check("Nested state listener gets called");
+	let target = "abc";
+	let nestedListen = check(
+		"Nested state listener always gets called with correct value"
+	).expectCalls(3);
 	checkGC("Pointer gets freed", use(state.a.b))
 		.constrain(state)
-		.listen(checkGC("Listener gets freed", () => nestedListen.pass()));
-	state.a.b = "bcd";
+		.listen(
+			checkGC("Listener gets freed", (x) => nestedListen.assertEq(x, target))
+		);
+
+	state.a.b = target = "bcd";
+	state.a.b = target = "def";
+	state.a.b = target = "ghi";
 });
 
 test("nested/dynamic", () => {
