@@ -224,20 +224,33 @@ export const propertyHoister = () => {
 	};
 };
 
+export const classToDecl = () => ({
+	name: "stripBetweenComments",
+	transform(source: string) {
+		let code = new MagicString(source);
+		code.replace(/class ([a-zA-Z]*) *{/g, "let $1 = class {");
+		return {
+			code: code.toString(),
+			map: code.generateMap({ hires: true }),
+		};
+	},
+});
+
 export const stripBetweenComments = (
 	startComment: string,
 	endComment: string
 ) => ({
 	name: "stripBetweenComments",
 	transform(source: string) {
+		let code = new MagicString(source);
 		const pattern = new RegExp(
 			`([\\t ]*\\/\\* ?${startComment} ?\\*\\/)[\\s\\S]*?(\\/\\* ?${endComment} ?\\*\\/[\\t ]*\\n?)`,
 			"g"
 		);
-		const code = source.replace(pattern, "");
+		code.replace(pattern, "");
 		return {
-			code,
-			map: new MagicString(code).generateMap({ hires: true }),
+			code: code.toString(),
+			map: code.generateMap({ hires: true }),
 		};
 	},
 });

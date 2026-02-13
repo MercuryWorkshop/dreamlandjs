@@ -134,25 +134,16 @@ let getArgumentPatternByType = (type: symbol) => {
 	}
 };
 
-let gobbleParens = (text: string, offset: number): string => {
-	let nesting = 0;
-	let result = "";
-	for (; offset < text.length; offset++) {
-		let char = text[offset];
-
-		if (char == "(") {
-			++nesting;
-		} else if (char == ")") {
-			--nesting;
-		}
-
-		result += char;
-		if (nesting === 0) {
-			return result;
-		}
-	}
-	return result;
-};
+let gobbleParens = (text: string, offset: number, nesting = 0): string =>
+	text.slice(
+		offset,
+		text
+			.split("")
+			.findIndex(
+				(x, i) =>
+					i >= offset && (nesting += x == "(" ? 1 : x == ")" ? -1 : 0) == 0
+			) + 1 || text.length
+	);
 
 let tokenizeBy = (text: string): Token[] => {
 	if (!text) {
@@ -256,9 +247,9 @@ export let tokenize = (selector: string): Token[] => {
 		while ((offset = selector.indexOf("(", pos)) > -1) {
 			let value = gobbleParens(selector, offset);
 			replacements.push({ _value: value, _offset: offset });
-			selector = `${selector.substring(0, offset)}(${"¶".repeat(
+			selector = `${selector.slice(0, offset)}(${"¶".repeat(
 				value.length - 2
-			)})${selector.substring(offset + value.length)}`;
+			)})${selector.slice(offset + value.length)}`;
 			pos = offset + value.length;
 		}
 	}

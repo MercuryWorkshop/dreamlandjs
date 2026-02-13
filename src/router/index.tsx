@@ -117,7 +117,7 @@ let matchRoute = (
 		return true;
 	} else if (route.startsWith(":")) {
 		// param
-		params[route.substring(1)] = segment;
+		params[route.slice(1)] = segment;
 		return true;
 	} else {
 		return segment === route;

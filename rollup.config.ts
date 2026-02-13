@@ -7,7 +7,11 @@ import typescript from "@rollup/plugin-typescript";
 import dts from "rollup-plugin-dts";
 import nodeResolve from "@rollup/plugin-node-resolve";
 import { visualizer } from "rollup-plugin-visualizer";
-import { propertyHoister, stripBetweenComments } from "./rollup.plugins.ts";
+import {
+	classToDecl,
+	propertyHoister,
+	stripBetweenComments,
+} from "./rollup.plugins.ts";
 
 let DEV = false;
 let USESTR = true;
@@ -183,6 +187,7 @@ export default (args: Record<string, boolean>) => {
 							"dist/types/core/consts.d.ts"
 						),
 				},
+				classToDecl(),
 			],
 			visualize: true,
 		}),

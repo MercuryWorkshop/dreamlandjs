@@ -261,19 +261,18 @@ function _jsx(
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
 		let xmlns = props?.xmlns;
-		el = (DOCUMENT as any)[CREATE_ELEMENT + (xmlns ? "NS" : "")](
-			xmlns || init,
-			xmlns && init,
-			props,
-			children
-		);
-
 		let setAttr = (param: string, val: any) => {
 			if (hydrating?.(el)) return;
 
 			if (val === undefined || val === false) el.removeAttribute(param);
 			else el.setAttribute(param, val);
 		};
+		el = (DOCUMENT as any)[CREATE_ELEMENT + (xmlns ? "NS" : "")](
+			xmlns || init,
+			xmlns && init,
+			props,
+			children
+		);
 
 		for (let child of children) {
 			let ret = mapChild(child, el, currentCssIdent);
@@ -310,9 +309,9 @@ function _jsx(
 					old = classes;
 				});
 			} else if (attr.startsWith("on:")) {
-				if (val) el.addEventListener(attr.substring(3), (e) => val(e));
+				if (val) el.addEventListener(attr.slice(3), (e) => val(e));
 			} else if (attr.startsWith("class:")) {
-				let name = attr.substring(6);
+				let name = attr.slice(6);
 
 				maybeListen(val, el, (val: boolean) => {
 					if (val) {
@@ -322,7 +321,7 @@ function _jsx(
 					}
 				});
 			} else if (attr.startsWith("attr:")) {
-				let key = attr.substring(5);
+				let key = attr.slice(5);
 				maybeListen(val, el, (val: boolean) => {
 					if (!hydrating?.(el)) (el as any)[key] = val;
 				});

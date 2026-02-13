@@ -91,9 +91,8 @@ export let discover = async (
 		for (let key in mod) {
 			let exp = mod[key];
 			if (exp instanceof Function) {
-				let name = exp.name.toLowerCase();
 				mount(
-					`[${SSR}-controller="${name.substring(0, name.length - 10)}"]`,
+					`[${SSR}-controller="${exp.name.toLowerCase().slice(0, -10)}"]`,
 					exp
 				);
 			}
