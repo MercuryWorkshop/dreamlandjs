@@ -9,12 +9,28 @@ import nodeResolve from "@rollup/plugin-node-resolve";
 import { visualizer } from "rollup-plugin-visualizer";
 import {
 	classToDecl,
+	globalHoister,
 	propertyHoister,
+	stringHoister,
 	stripBetweenComments,
 } from "./rollup.plugins.ts";
 
 let DEV = false;
 let USESTR = true;
+let HOISTS = [
+	"Object",
+	"Object.assign",
+	"Symbol",
+	"Symbol.toPrimitive",
+	"Array",
+	"Reflect",
+	"globalThis",
+	"Map",
+	"WeakMap",
+	"WeakRef",
+	"Promise",
+	"Proxy",
+];
 
 const onwarn: WarningHandlerWithDefault = (warning, warn) => {
 	if (warning.code === "CIRCULAR_DEPENDENCY") return;
@@ -26,9 +42,16 @@ interface CommonConfig {
 	visualizerPath?: string;
 	runTerser: boolean;
 	unsafe: boolean;
+	hoist: boolean;
 }
 
-function common({ typeRoot, visualizerPath, runTerser, unsafe }: CommonConfig) {
+function common({
+	typeRoot,
+	visualizerPath,
+	runTerser,
+	unsafe,
+	hoist,
+}: CommonConfig) {
 	let tsconfig = import.meta.dirname + "/tsconfig.json";
 	if (fs.existsSync(typeRoot + "/tsconfig.json")) {
 		tsconfig = typeRoot + "/tsconfig.json";
@@ -41,6 +64,9 @@ function common({ typeRoot, visualizerPath, runTerser, unsafe }: CommonConfig) {
 			filterRoot: process.cwd(),
 			tsconfig,
 		}),
+		...(hoist
+			? [globalHoister(HOISTS), propertyHoister(), stringHoister()]
+			: []),
 		...(DEV || !runTerser
 			? []
 			: [
@@ -97,8 +123,8 @@ interface CfgOptions {
 	plugins?: any[];
 	visualize?: boolean;
 	minify?: boolean;
+	hoist?: boolean;
 	unsafeTerser?: boolean;
-	hoistProperties?: boolean;
 }
 
 const cfg = ({
@@ -108,14 +134,14 @@ const cfg = ({
 	plugins,
 	visualize,
 	minify,
+	hoist,
 	unsafeTerser: unsafe,
-	hoistProperties,
 }: CfgOptions): RollupOptions[] => {
 	plugins ||= [];
 	defs ??= true;
 	minify ??= true;
 	unsafe ??= true;
-	hoistProperties ??= false;
+	hoist ??= false;
 
 	let stripLabels = [DEV ? "prod" : "dev"];
 
@@ -139,12 +165,12 @@ const cfg = ({
 			input,
 			output: [{ file: `dist/${output}.js`, sourcemap: true }],
 			plugins: [
-				...(hoistProperties ? [propertyHoister()] : []),
-				common({
+				...common({
 					runTerser: minify,
 					typeRoot: entry[0],
 					visualizerPath: visualize ? output : undefined,
 					unsafe,
+					hoist,
 				}),
 				...plugins,
 			],
@@ -177,7 +203,7 @@ export default (args: Record<string, boolean>) => {
 		...cfg({
 			input: ["src/core"],
 			output: "core",
-			hoistProperties: true,
+			hoist: true,
 			plugins: [
 				{
 					name: "copyConstDefs",
@@ -226,7 +252,7 @@ export default (args: Record<string, boolean>) => {
 		...cfg({
 			input: ["src/ssr", "client/index.ts"],
 			output: "ssr.client",
-			hoistProperties: true,
+			hoist: true,
 			visualize: true,
 		}),
 		...cfg({
@@ -234,7 +260,11 @@ export default (args: Record<string, boolean>) => {
 			output: "ssr.hybrid",
 			visualize: true,
 		}),
-		...cfg({ input: ["src/router", "index.tsx"], output: "router" }),
+		...cfg({
+			input: ["src/router", "index.tsx"],
+			output: "router",
+			hoist: true,
+		}),
 		...cfg({ input: ["src/motion"], output: "motion" }),
 		...cfg({ input: ["src/vite"], output: "vite" }),
 	] satisfies RollupOptions[];

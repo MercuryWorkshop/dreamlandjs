@@ -1,5 +1,3 @@
-export let SYMBOL = Symbol;
-export let ARRAY = Array;
 export let [
 	// dl
 	DREAMLAND,
@@ -14,11 +12,7 @@ export let [
 	UNIVERSAL_TOKEN,
 	ATTRIBUTE_TOKEN,
 	TYPE_TOKEN,
-] = ARRAY.from(ARRAY(11), SYMBOL);
-export let TOPRIMITIVE = SYMBOL.toPrimitive;
-export let ASSIGN = Object.assign;
-export let GLOBAL = globalThis;
+] = Array.from(Array(11), Symbol);
 export let MAP = (x) => new Map(x);
 export let WEAKMAP = () => new WeakMap();
 export let WEAKREF = (x) => new WeakRef(x);
-export let REFLECT = Reflect;

@@ -1,12 +1,4 @@
-import {
-	ARRAY,
-	DREAMLAND,
-	NO_CHANGE,
-	SYMBOL,
-	TOPRIMITIVE,
-	WEAKMAP,
-	WEAKREF,
-} from "../consts";
+import { DREAMLAND, NO_CHANGE, WEAKMAP, WEAKREF } from "../consts";
 import { deref, ObjectProp } from "../utils";
 import {
 	_stateListen,
@@ -104,7 +96,7 @@ type Falsy<T> = Extract<T, false | 0 | "" | null | undefined>;
 
 export class Pointer<T> {
 	// @internal
-	_id: symbol = SYMBOL();
+	_id: symbol = Symbol();
 	// @internal
 	_listener = this._callListeners.bind(this);
 	// @internal
@@ -215,7 +207,7 @@ export class Pointer<T> {
 		return (this._ptr as InternalZippedPointer<T>)._ptrs;
 	}
 
-	[TOPRIMITIVE]() {
+	[Symbol.toPrimitive]() {
 		if (useTrap) useTrapMap.set(this._id, this);
 		return this._id;
 	}
@@ -285,7 +277,7 @@ export class Pointer<T> {
 		this: Pointer<ArrayLike<U>>,
 		func: (val: U, i: number) => R
 	): Pointer<R[]> {
-		return this.map((x) => ARRAY.from(x).map(func));
+		return this.map((x) => Array.from(x).map(func));
 	}
 
 	constrain(to: any) {

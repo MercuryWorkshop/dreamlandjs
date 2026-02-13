@@ -1,4 +1,4 @@
-import { GLOBAL, MAP, TOPRIMITIVE } from "../consts";
+import { MAP } from "../consts";
 import { isArray } from "../utils";
 import {
 	initializeStep,
@@ -16,7 +16,7 @@ export let useTrapMap: UseTrapMap = MAP();
 export let useTrap = false;
 
 let initializeSteps = (map: UseTrapMap, ...steps: any) => {
-	let prims = steps.map((x: any) => [x, x[TOPRIMITIVE]()]);
+	let prims = steps.map((x: any) => [x, x[Symbol.toPrimitive]()]);
 	useTrap = false;
 	useTrapMap = MAP();
 	return prims.map(([a, b]: any) => {
@@ -53,7 +53,7 @@ let usestr = (template: TemplateStringsArray, params: any[]) => {
 };
 
 export let defineUse = () => {
-	Object.defineProperty(GLOBAL, "use", {
+	Object.defineProperty(globalThis, "use", {
 		get() {
 			useTrap = true;
 			return (

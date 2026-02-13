@@ -1,4 +1,3 @@
-import { GLOBAL } from "../consts";
 import { genuid } from "../css";
 import { Component, ComponentContext } from "./definitions";
 
@@ -11,8 +10,8 @@ type SsrTransformCallback =
 	| (<T extends Component<any, any>>(init: T, cx?: ComponentContext<T>) => void)
 	| undefined;
 
-export let DOCUMENT = GLOBAL.document;
-export let node: typeof Node = GLOBAL.Node;
+export let DOCUMENT = globalThis.document;
+export let node: typeof Node = globalThis.Node;
 export let new_Text: NodeConstructor = (text) => new Text(text);
 export let new_Comment: NodeConstructor = (text) => new Comment(text);
 export let genCssUid: CssUidGenerator = () => CSS_IDENT + genuid();

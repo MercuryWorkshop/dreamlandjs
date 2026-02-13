@@ -35,7 +35,6 @@ import {
 	UNIVERSAL_TOKEN,
 	ATTRIBUTE_TOKEN,
 	TYPE_TOKEN,
-	ASSIGN,
 	MAP,
 } from "../consts";
 import { fatal } from "../utils";
@@ -303,7 +302,7 @@ export let tokenize = (selector: string): Token[] => {
 				fatal();
 			}
 		}
-		ASSIGN(token, match.groups);
+		Object.assign(token, match.groups);
 	}
 
 	return tokens;

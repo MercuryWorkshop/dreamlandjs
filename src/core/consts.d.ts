@@ -1,5 +1,3 @@
-export const SYMBOL: typeof Symbol;
-
 export const DREAMLAND: unique symbol;
 export const NO_CHANGE: unique symbol;
 
@@ -13,11 +11,6 @@ export const UNIVERSAL_TOKEN: unique symbol;
 export const ATTRIBUTE_TOKEN: unique symbol;
 export const TYPE_TOKEN: unique symbol;
 
-export const TOPRIMITIVE: typeof Symbol.toPrimitive;
-export const ASSIGN: typeof Object.assign;
-export const GLOBAL: typeof globalThis;
-export const ARRAY: typeof Array;
 export const MAP: <K, V>(x?: [K, V][]) => Map<K, V>;
 export const WEAKMAP: <K extends object, V>() => WeakMap<K, V>;
 export const WEAKREF: <V extends object>(val: V) => WeakRef<V>;
-export const REFLECT: typeof Reflect;

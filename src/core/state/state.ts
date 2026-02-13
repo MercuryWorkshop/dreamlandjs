@@ -1,4 +1,4 @@
-import { COMMA_TOKEN, REFLECT, SYMBOL, TOPRIMITIVE, WEAKMAP } from "../consts";
+import { COMMA_TOKEN, WEAKMAP } from "../consts";
 import { deref, ObjectProp } from "../utils";
 import { InitializingPointer, Pointer } from "./pointers";
 import { useTrap, useTrapMap } from "./use";
@@ -56,7 +56,7 @@ export let createState = <T extends object>(target: T): Stateful<T> => {
 	let ret = new Proxy(target, {
 		get(target, p, receiver) {
 			if (useTrap) {
-				let sym = SYMBOL();
+				let sym = Symbol();
 				let ptr: InitializingPointer = {
 					_state: ret,
 					_path: [p],
@@ -67,7 +67,7 @@ export let createState = <T extends object>(target: T): Stateful<T> => {
 					{},
 					{
 						get(target, p, receiver) {
-							if (p === TOPRIMITIVE) return () => sym;
+							if (p === Symbol.toPrimitive) return () => sym;
 							ptr._path.push(p);
 							return receiver;
 						},
@@ -77,12 +77,12 @@ export let createState = <T extends object>(target: T): Stateful<T> => {
 
 			return internal._proxies[p]
 				? internal._proxies[p].value
-				: REFLECT.get(target, p, receiver);
+				: Reflect.get(target, p, receiver);
 		},
 		set(target, p, newValue, receiver) {
 			let setRet = internal._proxies[p]
 				? internal._proxies[p]._set(newValue)
-				: REFLECT.set(target, p, newValue, receiver);
+				: Reflect.set(target, p, newValue, receiver);
 			if (setRet) callListeners(internal, p, newValue);
 			// returning setRet would be better here but it would break a lot of strictmode code
 			return true;

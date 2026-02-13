@@ -224,8 +224,576 @@ export const propertyHoister = () => {
 	};
 };
 
+export const stringHoister = () => {
+	return {
+		name: "string-hoister",
+		renderChunk: {
+			order: "pre" as const,
+			handler(code: string) {
+				// Detect existing property hoister declarations to reuse their variables.
+				// The property hoister inserts: let __autofolded_foo="foo",__autofolded_bar="bar";
+				const existingVars = new Map<string, string>(); // "value" -> varName
+				const propHoistMatch = code.match(
+					/let (__autofolded_[a-zA-Z_$][a-zA-Z0-9_$]*="[^"]*"(?:,__autofolded_[a-zA-Z_$][a-zA-Z0-9_$]*="[^"]*")*);/
+				);
+				if (propHoistMatch) {
+					const declStr = propHoistMatch[0].slice(4, -1); // strip "let " and ";"
+					const declRegex =
+						/(__autofolded_[a-zA-Z_$][a-zA-Z0-9_$]*)="([^"]*)"/g;
+					let m;
+					while ((m = declRegex.exec(declStr)) !== null) {
+						// Map both quote styles to the same variable
+						existingVars.set(`"${m[2]}"`, m[1]);
+						existingVars.set(`'${m[2]}'`, m[1]);
+					}
+				}
+
+				// Find all string literal positions and values
+				const stringOccurrences = new Map<string, Array<[number, number]>>();
+
+				for (let i = 0; i < code.length; i++) {
+					const ch = code[i];
+
+					// Skip line comments
+					if (ch === "/" && code[i + 1] === "/") {
+						const end = code.indexOf("\n", i);
+						i = end === -1 ? code.length : end;
+						continue;
+					}
+
+					// Skip block comments
+					if (ch === "/" && code[i + 1] === "*") {
+						const end = code.indexOf("*/", i + 2);
+						i = end === -1 ? code.length : end + 1;
+						continue;
+					}
+
+					// Skip template literals
+					if (ch === "`") {
+						i++;
+						let depth = 0;
+						while (i < code.length) {
+							if (code[i] === "\\" && i + 1 < code.length) {
+								i += 2;
+								continue;
+							}
+							if (code[i] === "$" && code[i + 1] === "{" && depth === 0) {
+								depth++;
+								i += 2;
+								continue;
+							}
+							if (code[i] === "{" && depth > 0) {
+								depth++;
+								i++;
+								continue;
+							}
+							if (code[i] === "}" && depth > 0) {
+								depth--;
+								i++;
+								continue;
+							}
+							if (code[i] === "`" && depth === 0) break;
+							i++;
+						}
+						continue;
+					}
+
+					if (ch !== '"' && ch !== "'") continue;
+
+					const quote = ch;
+					const start = i;
+					i++;
+					let value = "";
+					let valid = true;
+
+					while (i < code.length && code[i] !== quote) {
+						if (code[i] === "\\") {
+							if (i + 1 < code.length) {
+								value += code[i] + code[i + 1];
+								i += 2;
+							} else {
+								valid = false;
+								break;
+							}
+						} else if (code[i] === "\n") {
+							valid = false;
+							break;
+						} else {
+							value += code[i];
+							i++;
+						}
+					}
+
+					if (!valid || i >= code.length) continue;
+
+					const end = i + 1; // include closing quote
+
+					// Skip very short strings (hoisting won't save bytes)
+					if (value.length < 2) continue;
+
+					// Skip import/export paths
+					let skipAsImport = false;
+					let j = start - 1;
+					while (j >= 0 && /\s/.test(code[j])) j--;
+					if (j >= 3 && code.substring(j - 3, j + 1) === "from") {
+						skipAsImport = true;
+					}
+					if (j >= 5 && code.substring(j - 5, j + 1) === "import") {
+						skipAsImport = true;
+					}
+					if (j >= 0 && code[j] === "(") {
+						let k = j - 1;
+						while (k >= 0 && /\s/.test(code[k])) k--;
+						if (k >= 5 && code.substring(k - 5, k + 1) === "import") {
+							skipAsImport = true;
+						}
+					}
+					if (skipAsImport) continue;
+
+					// Skip strings that are part of the property hoister's own declarations
+					if (
+						propHoistMatch &&
+						start >= code.indexOf(propHoistMatch[0]) &&
+						end <= code.indexOf(propHoistMatch[0]) + propHoistMatch[0].length
+					) {
+						continue;
+					}
+
+					const key = quote + value + quote;
+					if (!stringOccurrences.has(key)) {
+						stringOccurrences.set(key, []);
+					}
+					stringOccurrences.get(key)!.push([start, end]);
+				}
+
+				// Calculate which strings to hoist
+				const toHoist: Array<{
+					literal: string;
+					varName: string;
+					positions: Array<[number, number]>;
+					needsDeclaration: boolean;
+				}> = [];
+				const minifiedVarLen = 2;
+
+				let hoistIdx = 0;
+				for (const [literal, positions] of stringOccurrences) {
+					const count = positions.length;
+					const litLen = literal.length;
+
+					// Check if there's an existing property hoister variable for this string
+					const existingVar = existingVars.get(literal);
+
+					if (existingVar) {
+						// No declaration cost - the variable already exists
+						// Savings: each occurrence saves (litLen - minifiedVarLen)
+						const savings = count * (litLen - minifiedVarLen);
+						if (savings > 0) {
+							toHoist.push({
+								literal,
+								varName: existingVar,
+								positions,
+								needsDeclaration: false,
+							});
+						}
+					} else if (count >= 2) {
+						// Need our own declaration
+						const declarationCost = minifiedVarLen + litLen + 2;
+						const savings =
+							count * litLen - (declarationCost + count * minifiedVarLen);
+
+						if (savings > 0) {
+							toHoist.push({
+								literal,
+								varName: `__hoisted_str_${hoistIdx++}`,
+								positions,
+								needsDeclaration: true,
+							});
+						}
+					}
+				}
+
+				if (toHoist.length === 0) return null;
+
+				// Build replacements sorted in reverse order
+				const replacements: Array<[number, number, string]> = [];
+				for (const { varName, positions } of toHoist) {
+					for (const [start, end] of positions) {
+						replacements.push([start, end, varName]);
+					}
+				}
+				replacements.sort((a, b) => b[0] - a[0]);
+
+				// Deduplicate overlapping replacements
+				const seen = new Set<string>();
+				const uniqueReplacements = replacements.filter(([start, end]) => {
+					const key = `${start}-${end}`;
+					if (seen.has(key)) return false;
+					seen.add(key);
+					return true;
+				});
+
+				// Apply with MagicString
+				const s = new MagicString(code);
+				for (const [start, end, replace] of uniqueReplacements) {
+					// If this string is an object property key (next non-whitespace is ':',
+					// and not a ternary or case statement), wrap in [] for computed property syntax
+					let nextChar = end;
+					while (nextChar < code.length && /\s/.test(code[nextChar]))
+						nextChar++;
+					let isObjectKey = false;
+					if (nextChar < code.length && code[nextChar] === ":") {
+						// Check it's not a ternary — look backward for preceding context
+						let prevChar = start - 1;
+						while (prevChar >= 0 && /\s/.test(code[prevChar])) prevChar--;
+						// Object key if preceded by '{', ',', or '(' (destructuring/object literal)
+						if (
+							prevChar >= 0 &&
+							(code[prevChar] === "{" ||
+								code[prevChar] === "," ||
+								code[prevChar] === "(")
+						) {
+							isObjectKey = true;
+						}
+					}
+					if (isObjectKey) {
+						s.overwrite(start, end, `[${replace}]`);
+					} else {
+						s.overwrite(start, end, replace);
+					}
+				}
+
+				// Only add declarations for strings that need them
+				const newDeclarations = toHoist
+					.filter((h) => h.needsDeclaration)
+					.map(({ literal, varName }) => `${varName}=${literal}`);
+
+				if (newDeclarations.length > 0) {
+					// Find insertion point after imports
+					let lastImportIndex = 0;
+					for (let i = 0; i < code.length; i++) {
+						if (/\s/.test(code[i])) continue;
+						if (code.startsWith("//", i)) {
+							const idx = code.indexOf("\n", i);
+							i = idx === -1 ? code.length : idx;
+							continue;
+						}
+						if (code.startsWith("/*", i)) {
+							const idx = code.indexOf("*/", i);
+							i = idx === -1 ? code.length : idx + 1;
+							continue;
+						}
+						if (code.startsWith("import", i)) {
+							const next = code[i + 6];
+							if (!next || !/[a-zA-Z0-9_$]/.test(next)) {
+								let inQuote: string | null = null;
+								let depth = 0;
+								for (let j = i; j < code.length; j++) {
+									const ch = code[j];
+									if (inQuote) {
+										if (ch === "\\" && code[j + 1]) j++;
+										else if (ch === inQuote) inQuote = null;
+									} else {
+										if (ch === "'" || ch === '"') inQuote = ch;
+										else if (ch === "{" || ch === "(") depth++;
+										else if (ch === "}" || ch === ")") depth--;
+										else if (ch === ";" && depth === 0) {
+											lastImportIndex = j + 1;
+											i = j;
+											break;
+										}
+									}
+								}
+								continue;
+							}
+						}
+						break;
+					}
+
+					s.appendRight(lastImportIndex, `let ${newDeclarations.join(",")};`);
+				}
+
+				return {
+					code: s.toString(),
+					map: s.generateMap({ hires: true }),
+				};
+			},
+		},
+	};
+};
+
+export const globalHoister = (patterns: string[]) => {
+	// Sort so compound accesses (e.g. Object.assign) come before their simple
+	// base identifiers (e.g. Object). This ensures the compound form gets
+	// priority during replacement and is not partially matched by the simple one.
+	const sortedPatterns = [...patterns].sort((a, b) => {
+		const aDot = a.includes(".");
+		const bDot = b.includes(".");
+		if (aDot && !bDot) return -1;
+		if (!aDot && bDot) return 1;
+		// Among same type, longer patterns first
+		return b.length - a.length;
+	});
+
+	return {
+		name: "global-hoister",
+		renderChunk: {
+			order: "pre" as const,
+			handler(code: string) {
+				const idChar = /[a-zA-Z0-9_$]/;
+				const minifiedVarLen = 2;
+
+				// For each global, find all replaceable positions
+				const toHoist: Array<{
+					pattern: string;
+					varName: string;
+					positions: Array<[number, number]>;
+				}> = [];
+
+				// Build a set of ranges that are inside strings, comments, or template literals
+				// to avoid replacing inside them
+				const skipRanges: Array<[number, number]> = [];
+				for (let i = 0; i < code.length; i++) {
+					const ch = code[i];
+					if (ch === "/" && code[i + 1] === "/") {
+						const start = i;
+						const end = code.indexOf("\n", i);
+						i = end === -1 ? code.length - 1 : end;
+						skipRanges.push([start, i + 1]);
+						continue;
+					}
+					if (ch === "/" && code[i + 1] === "*") {
+						const start = i;
+						const end = code.indexOf("*/", i + 2);
+						i = end === -1 ? code.length - 1 : end + 1;
+						skipRanges.push([start, i + 1]);
+						continue;
+					}
+					if (ch === '"' || ch === "'") {
+						const start = i;
+						const quote = ch;
+						i++;
+						while (i < code.length && code[i] !== quote) {
+							if (code[i] === "\\") i++;
+							i++;
+						}
+						skipRanges.push([start, i + 1]);
+						continue;
+					}
+					if (ch === "`") {
+						const start = i;
+						i++;
+						let depth = 0;
+						while (i < code.length) {
+							if (code[i] === "\\" && i + 1 < code.length) {
+								i += 2;
+								continue;
+							}
+							if (code[i] === "$" && code[i + 1] === "{" && depth === 0) {
+								depth++;
+								i += 2;
+								continue;
+							}
+							if (code[i] === "{" && depth > 0) {
+								depth++;
+								i++;
+								continue;
+							}
+							if (code[i] === "}" && depth > 0) {
+								depth--;
+								i++;
+								continue;
+							}
+							if (code[i] === "`" && depth === 0) break;
+							i++;
+						}
+						skipRanges.push([start, i + 1]);
+						continue;
+					}
+				}
+
+				const inSkipRange = (pos: number, end: number): boolean => {
+					for (const [s, e] of skipRanges) {
+						if (pos >= s && end <= e) return true;
+						if (s > end) break;
+					}
+					return false;
+				};
+
+				// Track which positions are already claimed by compound patterns
+				const claimed = new Set<string>();
+
+				let globalIdx = 0;
+				for (const pattern of sortedPatterns) {
+					const varName = `__hoisted_global_${globalIdx++}`;
+					const positions: Array<[number, number]> = [];
+					let idx = 0;
+					while ((idx = code.indexOf(pattern, idx)) !== -1) {
+						const end = idx + pattern.length;
+
+						// Check word boundaries
+						if (idx > 0 && idChar.test(code[idx - 1])) {
+							idx++;
+							continue;
+						}
+						// For simple identifiers, check after; for compound (X.Y), the char after should not be an id char
+						if (end < code.length && idChar.test(code[end])) {
+							idx++;
+							continue;
+						}
+
+						// Skip if inside string/comment
+						if (inSkipRange(idx, end)) {
+							idx++;
+							continue;
+						}
+
+						// Skip if already claimed by a compound pattern
+						const key = `${idx}-${end}`;
+						let overlapsClaimed = false;
+						for (let p = idx; p < end; p++) {
+							if (claimed.has(String(p))) {
+								overlapsClaimed = true;
+								break;
+							}
+						}
+						if (overlapsClaimed) {
+							idx++;
+							continue;
+						}
+
+						// Skip if it looks like a declaration (let/const/var/class/function before it)
+						let j = idx - 1;
+						while (j >= 0 && /\s/.test(code[j])) j--;
+						// Check for property access: don't replace x.Object
+						if (j >= 0 && code[j] === ".") {
+							idx++;
+							continue;
+						}
+
+						positions.push([idx, end]);
+						idx = end;
+					}
+
+					if (positions.length > 0) {
+						// Calculate savings
+						const patternLen = pattern.length;
+						const count = positions.length;
+						// Declaration cost: varName=pattern, (before minification the var name is long,
+						// but terser will shorten it. After minification: minifiedVarLen=pattern,)
+						const declarationCost = minifiedVarLen + patternLen + 2;
+						const savings =
+							count * patternLen - (declarationCost + count * minifiedVarLen);
+
+						if (savings > 0) {
+							toHoist.push({ pattern, varName, positions });
+							// Claim these positions
+							for (const [start, end] of positions) {
+								for (let p = start; p < end; p++) {
+									claimed.add(String(p));
+								}
+							}
+						}
+					}
+				}
+
+				if (toHoist.length === 0) return null;
+
+				// Build a map from base identifier -> varName for reuse in compound declarations
+				const baseVarMap = new Map<string, string>();
+				for (const { pattern, varName } of toHoist) {
+					if (!pattern.includes(".")) {
+						baseVarMap.set(pattern, varName);
+					}
+				}
+
+				// Build replacements in reverse order
+				const replacements: Array<[number, number, string]> = [];
+				for (const { varName, positions } of toHoist) {
+					for (const [start, end] of positions) {
+						replacements.push([start, end, varName]);
+					}
+				}
+				replacements.sort((a, b) => b[0] - a[0]);
+
+				const s = new MagicString(code);
+				for (const [start, end, replace] of replacements) {
+					s.overwrite(start, end, replace);
+				}
+
+				// Find insertion point after imports
+				let lastImportIndex = 0;
+				for (let i = 0; i < code.length; i++) {
+					if (/\s/.test(code[i])) continue;
+					if (code.startsWith("//", i)) {
+						const idx = code.indexOf("\n", i);
+						i = idx === -1 ? code.length : idx;
+						continue;
+					}
+					if (code.startsWith("/*", i)) {
+						const idx = code.indexOf("*/", i);
+						i = idx === -1 ? code.length : idx + 1;
+						continue;
+					}
+					if (code.startsWith("import", i)) {
+						const next = code[i + 6];
+						if (!next || !/[a-zA-Z0-9_$]/.test(next)) {
+							let inQuote: string | null = null;
+							let depth = 0;
+							for (let j = i; j < code.length; j++) {
+								const ch = code[j];
+								if (inQuote) {
+									if (ch === "\\" && code[j + 1]) j++;
+									else if (ch === inQuote) inQuote = null;
+								} else {
+									if (ch === "'" || ch === '"') inQuote = ch;
+									else if (ch === "{" || ch === "(") depth++;
+									else if (ch === "}" || ch === ")") depth--;
+									else if (ch === ";" && depth === 0) {
+										lastImportIndex = j + 1;
+										i = j;
+										break;
+									}
+								}
+							}
+							continue;
+						}
+					}
+					break;
+				}
+
+				// Generate declarations with simple identifiers first, so compound
+				// patterns can reference them (e.g. `b=Symbol,a=b.toPrimitive`
+				// instead of `a=Symbol.toPrimitive,b=Symbol`).
+				const simpleDecls: string[] = [];
+				const compoundDecls: string[] = [];
+				for (const { pattern, varName } of toHoist) {
+					if (pattern.includes(".")) {
+						const dotIdx = pattern.indexOf(".");
+						const base = pattern.substring(0, dotIdx);
+						const rest = pattern.substring(dotIdx);
+						const baseVar = baseVarMap.get(base);
+						// If the base is also hoisted, reference its variable
+						compoundDecls.push(
+							`${varName}=${baseVar ? baseVar + rest : pattern}`
+						);
+					} else {
+						simpleDecls.push(`${varName}=${pattern}`);
+					}
+				}
+				const declarations = [...simpleDecls, ...compoundDecls];
+				s.appendRight(lastImportIndex, `let ${declarations.join(",")};`);
+
+				return {
+					code: s.toString(),
+					map: s.generateMap({ hires: true }),
+				};
+			},
+		},
+	};
+};
+
 export const classToDecl = () => ({
-	name: "stripBetweenComments",
+	name: "classToDecl",
 	transform(source: string) {
 		let code = new MagicString(source);
 		code.replace(/class ([a-zA-Z]*) *{/g, "let $1 = class {");
