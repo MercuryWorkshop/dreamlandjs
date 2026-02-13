@@ -268,9 +268,10 @@ export function Link(
 				dev: {
 					if (!router) throw new Error("No router exists");
 				}
-				router.navigate(this.href);
 
 				this["on:click"]?.();
+
+				router.navigate(this.href);
 			}}
 		>
 			{this.children}

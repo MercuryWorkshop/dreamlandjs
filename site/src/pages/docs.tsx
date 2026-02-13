@@ -29,7 +29,7 @@ function Sidebar(this: FC<{ doc?: DocPage; menu: boolean }>) {
 
 	return (
 		<div>
-			<Link href="/">
+			<Link href="/" on:click={() => (this.menu = false)}>
 				<Hero version={true} />
 			</Link>
 			{groups.map(render)}

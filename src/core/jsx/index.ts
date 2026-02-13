@@ -85,7 +85,11 @@ let mapChild = (
 			current = mapped;
 		});
 
-		return [start, ...(hydrating?.(parent as HTMLElement) ? [] : current!), end];
+		return [
+			start,
+			...(hydrating?.(parent as HTMLElement) ? [] : current!),
+			end,
+		];
 	} else if (isNode(child)) {
 		let list: DOMTokenList;
 		let apply = (child: any) => {
