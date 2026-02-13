@@ -248,9 +248,6 @@ export function Router(
 		}
 	>
 ) {
-	dev: {
-		if (router) throw new Error("A router was already created");
-	}
 	// eslint-disable-next-line @typescript-eslint/no-this-alias
 	router = this;
 

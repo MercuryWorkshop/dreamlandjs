@@ -11,8 +11,18 @@ import { SSR_DATA, SSR_ID } from "../common/consts";
 import { hydrateState, Json } from "../common/serialize";
 import { SsrData, SsrObject } from "../common/types";
 
-export let hydrate = (
-	component: () => HTMLElement,
+// single function for all hydration mismatch warnings, easy to breakpoint
+let mismatch: (msg: string) => void;
+let isPruned: (idx: number) => boolean;
+dev: {
+	mismatch = (msg) => {
+		console.warn("[dreamland.js] Hydration mismatch: " + msg);
+	};
+	isPruned = () => false;
+}
+
+export let hydrate = async (
+	component: () => any,
 	ssr: HTMLElement,
 	head: HTMLElement,
 	dataEl: HTMLElement
@@ -24,6 +34,26 @@ export let hydrate = (
 	let textarea = jsx("textarea", {}) as HTMLTextAreaElement;
 	textarea.innerHTML = dataEl.innerText;
 	let data: SsrData = Json.parse(textarea.value);
+
+	dev: {
+		if (data.p) {
+			let ranges = data.p;
+			isPruned = (idx) => {
+				let lo = 0,
+					hi = ranges.length - 1;
+				while (lo <= hi) {
+					let mid = (lo + hi) >> 1;
+					let r = ranges[mid];
+					let start = typeof r === "number" ? r : r[0];
+					let end = typeof r === "number" ? r : r[1];
+					if (idx < start) hi = mid - 1;
+					else if (idx > end) lo = mid + 1;
+					else return true;
+				}
+				return false;
+			};
+		}
+	}
 
 	let els: [number, HTMLElement][] = [];
 
@@ -62,14 +92,74 @@ export let hydrate = (
 	let old = getDomImpl();
 	let vdom = [
 		{
-			createElement: (x: any) => getInternal(++idx) || old[0].createElement(x),
-			createElementNS: (x: any, y: any) =>
-				getInternal(++idx) || old[0].createElementNS(x, y),
+			createElement: (x: any) => {
+				let el = getInternal(++idx);
+				dev: {
+					if (el && el.tagName.toLowerCase() !== x.toLowerCase())
+						mismatch(
+							`expected <${x}> but server rendered <${el.tagName.toLowerCase()}> (${SSR_ID}=${idx})`
+						);
+					if (!el && !isPruned(idx))
+						mismatch(
+							`could not find server-rendered element for <${x}> (${SSR_ID}=${idx})`
+						);
+				}
+				return el || old[0].createElement(x);
+			},
+			createElementNS: (x: any, y: any) => {
+				let el = getInternal(++idx);
+				dev: {
+					if (el && el.tagName.toLowerCase() !== y.toLowerCase())
+						mismatch(
+							`expected <${y}> (ns: ${x}) but server rendered <${el.tagName.toLowerCase()}> (${SSR_ID}=${idx})`
+						);
+					if (!el && !isPruned(idx))
+						mismatch(
+							`could not find server-rendered element for <${y}> (ns: ${x}) (${SSR_ID}=${idx})`
+						);
+				}
+				return el || old[0].createElementNS(x, y);
+			},
 			head: old[0].head,
 		},
 		old[1],
-		(x) => getRelative() || old[2](x),
-		(x) => getRelative() || old[3](x),
+		(x: any) => {
+			let node = getRelative();
+			dev: {
+				if (node && node.nodeType !== 3)
+					mismatch(
+						`expected text node but found node of type ${node.nodeType} (${SSR_ID}=${idx})`
+					);
+				if (
+					node &&
+					node.nodeType === 3 &&
+					x != null &&
+					"" + x !== node.textContent
+				)
+					mismatch(
+						`text content differs - expected "${x}" but server rendered "${node.textContent}" (${SSR_ID}=${idx})`
+					);
+				if (!node && !isPruned(idx))
+					mismatch(
+						`could not find server-rendered text node for "${x}" (${SSR_ID}=${idx})`
+					);
+			}
+			return node || old[2](x);
+		},
+		(x: any) => {
+			let node = getRelative();
+			dev: {
+				if (node && node.nodeType !== 8)
+					mismatch(
+						`expected comment node but found node of type ${node.nodeType} (${SSR_ID}=${idx})`
+					);
+				if (!node && !isPruned(idx))
+					mismatch(
+						`could not find server-rendered comment node (${SSR_ID}=${idx})`
+					);
+			}
+			return node || old[3](x);
+		},
 		() => data.i[idx + 1] || old[4](),
 		hydrating,
 		(init, cx) => {

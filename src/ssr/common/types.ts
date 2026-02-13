@@ -23,4 +23,5 @@ export interface SsrData {
 	n /* nodes */: Record<number, Node>;
 	i /* idents */: Record<number, string>;
 	t /* textFixups */: [number, number, number][];
+	p /* pruned element ranges (dev only) */?: (number | [number, number])[];
 }

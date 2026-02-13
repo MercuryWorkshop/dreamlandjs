@@ -46,6 +46,8 @@ export let serializeState = (
 			return [1, _serialize(val)];
 		} else if (!isNode(val)) {
 			dev: {
+				if (val instanceof Function) return;
+
 				console.warn("[dreamland.js] did not serialize unknown value ", val);
 			}
 		}

@@ -30,12 +30,12 @@ export function render(component: () => any): RenderedComponent {
 		root = ret;
 	}
 
-	let domIds: number[] = [];
-	let domIdents = new Set();
+	let domIds = new Set<number>();
+	let domCssIdents = new Set();
 	let walk = (el: VdomNode) => {
-		domIds.push(el._id);
+		domIds.add(el._id);
 		if (el instanceof Element && el.component) {
-			if (el.component.id) domIdents.add(el.component.id);
+			if (el.component.id) domCssIdents.add(el.component.id);
 		}
 
 		for (let node of el.childNodes) {
@@ -49,12 +49,14 @@ export function render(component: () => any): RenderedComponent {
 		v: [],
 		n: {},
 		i: Object.fromEntries(
-			[...vdom[0].identArr.entries()].filter(([_, i]) => domIdents.has(i))
+			[...vdom[0].identArr.entries()].filter(([_, i]) => domCssIdents.has(i))
 		),
 		t: [],
 	};
 
-	for (let el of vdom[0].elArr.filter((x) => domIds.includes(x._id))) {
+	for (let el of vdom[0].elArr) {
+		if (!domIds.has(el._id)) continue;
+
 		let node: Node | undefined;
 		if (el instanceof Element && el.component) {
 			node = serializeState(
@@ -62,58 +64,72 @@ export function render(component: () => any): RenderedComponent {
 				el.component.state,
 				(x) => x instanceof vdom[1]
 			);
-		}
-		if ((el instanceof Comment || el instanceof Text) && el.parent) {
-			node = [
-				el.parent._id,
-				el.parent.childNodes.findIndex((x) => x._id === el._id),
-			];
+		} else if ((el instanceof Comment || el instanceof Text) && el.parent) {
+			node = [el.parent._id, el.parent.childNodes.indexOf(el)];
 		}
 		data.n[el._id] = node!;
 	}
 
-	let groups: Text[][] = vdom[0].elArr
-		.reduce<VdomNode[][]>((acc, x) => {
-			let lastGroup = acc.at(-1);
-			let last = lastGroup?.at(-1);
-			let lastIdx = last?.parent?.childNodes?.findIndex(
-				(x) => x._id === last!._id
-			);
-			let currentIdx = x.parent?.childNodes?.findIndex((y) => y._id === x._id);
+	let seen = new Set<VdomNode>();
+	for (let el of vdom[0].elArr) {
+		if (!(el instanceof Text) || !el.parent || seen.has(el)) continue;
 
-			return Object.prototype.isPrototypeOf.call(
-				Object.getPrototypeOf(x),
-				last!
-			) && lastIdx! + 1 === currentIdx
-				? (lastGroup!.push(x), acc)
-				: [...acc, [x]];
-		}, [])
-		.filter((x) => x[0] instanceof Text) as Text[][];
+		let siblings = el.parent.childNodes;
+		let start = siblings.indexOf(el);
 
-	for (let group of groups) {
-		if (group[0].parent && group.length > 1) {
-			for (let item of group as Text[]) {
-				if (domIds.includes(item._id)) {
-					data.t.push([
-						item.parent!._id,
-						item.parent!.childNodes.findIndex((x) => x._id === item._id),
-						item.data.length,
-					]);
-				}
+		let run: Text[] = [];
+		for (
+			let j = start;
+			j < siblings.length && siblings[j] instanceof Text;
+			j++
+		) {
+			run.push(siblings[j] as Text);
+			seen.add(siblings[j]);
+		}
+
+		if (run.length < 2) continue;
+
+		for (let j = 0; j < run.length; j++) {
+			if (domIds.has(run[j]._id)) {
+				data.t.push([el.parent._id, start + j, run[j].data.length]);
 			}
 		}
 	}
 
+	dev: {
+		let pruned = vdom[0].elArr
+			.map((x) => x._id)
+			.filter((id) => !domIds.has(id))
+			.sort((a, b) => a - b);
+
+		let ranges: (number | [number, number])[] = [];
+		let start = -1,
+			end = -1;
+		let flush = () => {
+			if (end - start >= 2) ranges.push([start, end]);
+			else for (let i = start; i <= end; i++) ranges.push(i);
+		};
+		for (let id of pruned) {
+			if (start === -1) {
+				start = end = id;
+			} else if (id === end + 1) {
+				end = id;
+			} else {
+				flush();
+				start = end = id;
+			}
+		}
+		if (start !== -1) flush();
+		data.p = ranges;
+	}
+
 	let head = [
 		...extraHead,
-		...vdom[0].head.childNodes.filter((x) => {
-			if (x instanceof Element) {
-				let cssId = x.attributes.get(CSS_IDENT + "id");
-				return domIdents.has(cssId);
-			}
-
-			return false;
-		}),
+		...vdom[0].head.childNodes.filter(
+			(x) =>
+				x instanceof Element &&
+				domCssIdents.has(x.attributes.get(CSS_IDENT + "id"))
+		),
 	].map((x) => x.toStandard()) as DomElement[];
 
 	return {
