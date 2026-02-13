@@ -125,6 +125,8 @@ interface CfgOptions {
 	minify?: boolean;
 	hoist?: boolean;
 	unsafeTerser?: boolean;
+	external?: string[] | true;
+	bundled?: string[];
 }
 
 const cfg = ({
@@ -136,6 +138,8 @@ const cfg = ({
 	minify,
 	hoist,
 	unsafeTerser: unsafe,
+	external: extraExternal,
+	bundled,
 }: CfgOptions): RollupOptions[] => {
 	plugins ||= [];
 	defs ??= true;
@@ -160,6 +164,16 @@ const cfg = ({
 	);
 
 	const input = `${entry[0]}/${entry[1] || "index.ts"}`;
+	const bundledSet = new Set(bundled);
+	const external =
+		extraExternal === true
+			? (id: string) =>
+					id !== input &&
+					!id.startsWith(".") &&
+					!id.startsWith("/") &&
+					!id.startsWith("\0") &&
+					!bundledSet.has(id)
+			: ["dreamland/core", "dreamland/ssr/server", ...(extraExternal || [])];
 	const out: RollupOptions[] = [
 		{
 			input,
@@ -174,7 +188,7 @@ const cfg = ({
 				}),
 				...plugins,
 			],
-			external: ["dreamland/core", "dreamland/ssr/server"],
+			external,
 			onwarn,
 		},
 	];
@@ -188,7 +202,7 @@ const cfg = ({
 					.replace(".ts", ".d.ts"),
 			output: [{ file: `dist/${output}.d.ts`, format: "es" }],
 			plugins: [dts()],
-			external: ["dreamland/core", "dreamland/ssr/server"],
+			external,
 			onwarn,
 		});
 	}
@@ -222,6 +236,8 @@ export default (args: Record<string, boolean>) => {
 		...cfg({
 			input: ["src/ssr", "server/index.ts"],
 			output: "ssr.server",
+			external: true,
+			bundled: ["rrweb-cssom"],
 			plugins: [
 				{
 					name: "cssom-monkeypatch",
@@ -266,6 +282,10 @@ export default (args: Record<string, boolean>) => {
 			hoist: true,
 		}),
 		...cfg({ input: ["src/motion"], output: "motion" }),
-		...cfg({ input: ["src/vite"], output: "vite" }),
+		...cfg({
+			input: ["src/vite"],
+			output: "vite",
+			external: true,
+		}),
 	] satisfies RollupOptions[];
 };

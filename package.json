@@ -91,6 +91,7 @@
 		"domhandler": "^5.0.3",
 		"htm": "^3.1.1",
 		"htmlparser2": "^10.0.0",
+		"lightningcss": "^1.31.1",
 		"rrweb-cssom": "^0.8.0"
 	}
 }

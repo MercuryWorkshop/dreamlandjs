@@ -1,6 +1,5 @@
 import { defineConfig } from "vite";
-import { devSsr } from "dreamland/vite";
-import { literalsHtmlCssMinifier } from "@literals/rollup-plugin-html-css-minifier";
+import { devSsr, cssMinifier } from "dreamland/vite";
 
 // @ts-expect-error @types import needed
 import type { Node } from "@types/estree-jsx";
@@ -89,7 +88,7 @@ async function compileMdx(content: string, name?: string) {
 
 export default defineConfig({
 	plugins: [
-		literalsHtmlCssMinifier({
+		cssMinifier({
 			include: ["src/**/*.tsx"],
 		}),
 		devSsr({

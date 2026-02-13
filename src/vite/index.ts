@@ -2,6 +2,9 @@ import type { Plugin, PluginOption, UserConfig } from "vite";
 import renderToString, { DomSerializerOptions } from "dom-serializer";
 import type { RenderedComponent } from "dreamland/ssr/server";
 
+export { cssMinifier } from "./css-minifier";
+export type { CssMinifierOptions } from "./css-minifier";
+
 export let jsxPlugin = (): Plugin => ({
 	name: "dreamland/vite/jsx",
 	config(config: UserConfig) {
