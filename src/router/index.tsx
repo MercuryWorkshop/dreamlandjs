@@ -30,9 +30,25 @@ export type LayoutComponent = Component<{ routerState: RouterState }>;
 export type ShowElement =
 	| ComponentInstance<Component<{}, { routerParams: RouteParams }>>
 	| HTMLElement;
-type _MaybeShowEl = ShowElement | undefined;
-type _MaybePromiseShowEl = Promise<_MaybeShowEl> | _MaybeShowEl;
+type _MaybePromiseShowEl = Promise<ShowElement> | ShowElement;
 export type ShowTarget = _MaybePromiseShowEl | (() => _MaybePromiseShowEl);
+
+export function Route(
+	this: FC<{
+		path?: string;
+		show?: ShowTarget;
+		layout?: LayoutComponent;
+		cork?: boolean;
+		children?: ComponentChild;
+	}>
+) {
+	return {
+		_path: this.path,
+		_show: this.show,
+		_layout: this.layout,
+		_children: this.children as any as RouteInternal[],
+	} satisfies RouteInternal as any;
+}
 
 interface RouteInternal {
 	_path?: string;
@@ -136,118 +152,78 @@ let _route = (
 	return ret;
 };
 
-async function _getShow(
-	_instance: ShowElement | undefined,
-	show: ShowTarget,
-	params: RouteParams
-): Promise<ShowElement | undefined> {
-	let instance =
-		_instance || (await (show instanceof Function ? show() : show));
-	if (!instance) return;
-
-	if (isComponent(instance)) instance.$.state.routerParams = params;
-	return instance;
-}
-let getShow = _getShow;
-
-let _handleLayout = (
-	route: RouteInternal,
-	ret: ReconcileRet | undefined,
-	path: string,
-	params: RouteParams,
-	initial: boolean
-): ReconcileRet | undefined => {
-	if (route._layout) {
-		let state: RouterState = {
-			params,
-			path,
-			loading: true,
-			initial,
-			[NO_CHANGE]: true,
-		} satisfies RouterState;
-		let instance =
-			route._layoutInstance ||
-			((
-				<route._layout routerState={state} />
-			) as ComponentInstance<LayoutComponent>);
-		route._layoutInstance = instance;
-		let instanceState = instance.$.state;
-		state.outlet = instanceState.routerState.outlet;
-		instanceState.routerState = state;
-
-		let dep: Promise<_MaybeShowEl>;
-
-		if (ret?._layout) {
-			dep = ret._dep.then((_) => ret._layout);
-		} else if (ret?._el) {
-			dep = ret._el;
-		} else {
-			dep = Promise.resolve(ret);
-		}
-
-		return {
-			_layout: instance,
-			_dep: dep.then((el) => {
-				if (el) {
-					state.outlet = el;
-					state.loading = false;
-					instanceState.routerState = state;
-				}
-			}),
-		};
-	}
-	return ret;
-};
-
 type Disjoint<T1, T2> =
 	| ({ [P in keyof T2]?: never } & { [P in keyof T1]: T1[P] })
 	| ({ [P in keyof T1]?: never } & { [P in keyof T2]: T2[P] });
+type LayoutEl = ComponentInstance<LayoutComponent>;
 type ReconcileRet = Disjoint<
-	{ _el: Promise<_MaybeShowEl> },
-	{ _layout: ComponentInstance<LayoutComponent>; _dep: Promise<any> }
+	{ _el: Promise<ShowElement> },
+	{ _layout: LayoutEl; _dep: Promise<LayoutEl> }
 >;
 let _reconcile = (
 	_current: RouteInternal[],
 	path: string,
 	params: RouteParams,
 	initial: boolean
-): ReconcileRet | undefined => {
+): ReconcileRet => {
 	let current = _current.pop();
-	if (!current) return;
+	dev: {
+		if (!current) throw "unreachable";
+	}
 
-	let ret;
+	let ret: ReconcileRet;
 	if (current._show) {
 		ret = {
-			_el: getShow(current._showInstance, current._show, { ...params }).then(
-				(x) => (current._showInstance = x)
-			),
+			_el: (async () => {
+				let show = current._show!;
+				let instance =
+					current._showInstance ||
+					(await (typeof show == "function" ? show() : show));
+
+				if (isComponent(instance)) instance.$.state.routerParams = params;
+				current._showInstance = instance;
+				return instance;
+			})(),
 		};
 	} else if (_current.length) {
-		ret = _reconcile(_current, path, { ...params }, initial);
+		ret = _reconcile(_current, path, params, initial);
 	} else {
 		dev: {
 			throw new Error(`Unable to navigate, route had no show target`);
 		}
 	}
 
-	return _handleLayout(current, ret, path, params, initial);
-};
+	if (current._layout) {
+		let state: RouterState = {
+			params: { ...params },
+			path,
+			loading: true,
+			initial,
+			[NO_CHANGE]: true,
+		} satisfies RouterState;
+		let instance =
+			current._layoutInstance ||
+			((
+				<current._layout routerState={state} />
+			) as ComponentInstance<LayoutComponent>);
+		let instanceState = instance.$.state;
 
-export function Route(
-	this: FC<{
-		path?: string;
-		show?: ShowTarget;
-		layout?: LayoutComponent;
-		children?: ComponentChild;
-	}>
-) {
-	return {
-		_path: this.path,
-		_show: this.show,
-		_layout: this.layout,
-		_children: this.children as any as RouteInternal[],
-	} satisfies RouteInternal as any;
-}
+		current._layoutInstance = instance;
+		state.outlet = instanceState.routerState.outlet;
+		instance.$.state.routerState = state;
+
+		return {
+			_layout: instance,
+			_dep: (ret._dep || ret._el).then((el) => {
+				state.outlet = el;
+				state.loading = false;
+				instanceState.routerState = state;
+				return instance;
+			}),
+		};
+	}
+	return ret!;
+};
 
 export function Link(
 	this: FC<{
@@ -287,9 +263,8 @@ export function Router(
 		},
 		{
 			el?: ShowElement;
-			_lastPath: RouteInternal[];
 
-			route: (path?: string, origin?: string) => Promise<string | undefined>;
+			initial: (path?: string, origin?: string) => Promise<string | undefined>;
 			navigate: (path: string) => Promise<string | undefined>;
 			ssgables: () => [string, string][];
 			[NO_CHANGE]: true;
@@ -307,11 +282,11 @@ export function Router(
 		validateRoute(routes);
 	}
 
-	this._lastPath = [];
-
-	this.route = async (path = location.pathname, origin = location.origin) => {
-		if (routing) return;
-
+	let route = async (
+		initial: boolean,
+		path = location.pathname,
+		origin = location.origin
+	) => {
 		routing = true;
 		let realPath = new URL(path, origin).pathname;
 		if (realPath.endsWith(".html"))
@@ -319,29 +294,42 @@ export function Router(
 		let segments = realPath.split("/").slice(1);
 		let params = { [NO_CHANGE]: true } as const;
 		let routePath = _route(routes, realPath, segments, params);
+
+		if (!routePath.length) {
+			routing = false;
+			throw new Error("Failed to route to " + path);
+		}
+
 		let reconciled = _reconcile(
 			[...routePath].reverse(),
 			realPath,
 			params,
-			!this._lastPath.length
+			initial
 		);
-		this._lastPath = routePath;
 
 		if (reconciled?._el) this.el = await reconciled._el;
 		else if (reconciled?._layout) {
 			this.el = reconciled._layout;
 			await reconciled._dep;
-		} else {
-			this.el = reconciled;
 		}
 
 		routing = false;
-		if (this.el) return realPath;
+		return this.el && realPath;
 	};
 	this.navigate = async (path) => {
-		let ret = await this.route(path);
+		if (routing) return;
+
+		let ret = await route(false, path);
 		if (ret) history.pushState(null, "", ret);
 		return ret;
+	};
+
+	this.initial = (path, origin) => {
+		dev: {
+			if (routing)
+				throw new Error("should not be routing during initial route");
+		}
+		return route(true, path, origin);
 	};
 
 	this.ssgables = () => {
@@ -368,7 +356,7 @@ export function Router(
 
 	this.cx.mount = () => {
 		addEventListener("popstate", () => {
-			this.route();
+			route(false);
 		});
 	};
 

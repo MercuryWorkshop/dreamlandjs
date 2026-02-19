@@ -112,9 +112,9 @@ function App(this: FC<{ url?: string }, { el: ComponentInstance<any> }>) {
 	this.cx.init = () => {
 		stateProxy(this, "el", use(router.el as ComponentInstance<any>));
 		if (import.meta.env.SSR) {
-			routePromise = router.route(this.url, "http://127.0.0.1:5173");
+			routePromise = router.initial(this.url, "http://127.0.0.1:5173");
 		} else {
-			routePromise = router.route();
+			routePromise = router.initial();
 		}
 	};
 

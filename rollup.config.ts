@@ -30,6 +30,7 @@ let HOISTS = [
 	"WeakRef",
 	"Promise",
 	"Proxy",
+	"location",
 ];
 
 const onwarn: WarningHandlerWithDefault = (warning, warn) => {
