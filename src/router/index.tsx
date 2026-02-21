@@ -38,7 +38,6 @@ export function Route(
 		path?: string;
 		show?: ShowTarget;
 		layout?: LayoutComponent;
-		cork?: boolean;
 		children?: ComponentChild;
 	}>
 ) {
@@ -259,12 +258,13 @@ export let router: ComponentState<typeof Router>;
 export function Router(
 	this: FC<
 		{
+			initial?: [string, string] | [string];
 			children: HTMLElement | HTMLElement[];
 		},
 		{
 			el?: ShowElement;
+			promise?: Promise<string | undefined>;
 
-			initial: (path?: string, origin?: string) => Promise<string | undefined>;
 			navigate: (path: string) => Promise<string | undefined>;
 			ssgables: () => [string, string][];
 			[NO_CHANGE]: true;
@@ -319,17 +319,9 @@ export function Router(
 	this.navigate = async (path) => {
 		if (routing) return;
 
-		let ret = await route(false, path);
+		let ret = await (this.promise = route(false, path));
 		if (ret) history.pushState(null, "", ret);
 		return ret;
-	};
-
-	this.initial = (path, origin) => {
-		dev: {
-			if (routing)
-				throw new Error("should not be routing during initial route");
-		}
-		return route(true, path, origin);
 	};
 
 	this.ssgables = () => {
@@ -352,6 +344,14 @@ export function Router(
 			}
 		};
 		return traverse("", routes);
+	};
+
+	this.cx.init = () => {
+		dev: {
+			if (routing) throw "unreachable";
+		}
+		let [path, origin] = this.initial || [];
+		return (this.promise = route(true, path, origin));
 	};
 
 	this.cx.mount = () => {

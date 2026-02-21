@@ -28,23 +28,9 @@ export type DomImpl = [
 	SsrTransformCallback,
 ];
 
-export let setDomImpl = ([
-	Doc,
-	Node,
-	New_Text,
-	New_Comment,
-	GenCssUid,
-	Hydrating,
-	SsrTransform,
-]: DomImpl) => {
-	DOCUMENT = Doc;
-	node = Node;
-	new_Text = New_Text;
-	new_Comment = New_Comment;
-	genCssUid = GenCssUid;
-	hydrating = Hydrating;
-	ssrTransform = SsrTransform;
-};
+export let setDomImpl: (impl: DomImpl) => void = (impl: DomImpl) =>
+	([DOCUMENT, node, new_Text, new_Comment, genCssUid, hydrating, ssrTransform] =
+		impl);
 export let getDomImpl = (): DomImpl => [
 	DOCUMENT,
 	node,

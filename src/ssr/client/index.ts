@@ -4,7 +4,6 @@ import {
 	DREAMLAND,
 	getDomImpl,
 	jsx,
-	NO_CHANGE,
 	setDomImpl,
 } from "dreamland/core";
 import { SSR_DATA, SSR_ID } from "../common/consts";
@@ -167,15 +166,20 @@ export let hydrate = async (
 				hydrateCx(cx);
 		},
 	] as const satisfies DomImpl;
+
+	let dl = jsx[DREAMLAND];
 	setDomImpl(vdom);
-	jsx[DREAMLAND]();
+	dl.css();
 	let root = await component();
+	await Promise.all(dl.is());
 	setDomImpl(old);
 
-	jsx[NO_CHANGE]().map((x) => {
+	dl.cxs().map((x) => {
 		hydrateCx(x);
 		x.mount?.();
 	});
+
+	await Promise.all(dl.ms());
 
 	return root;
 };

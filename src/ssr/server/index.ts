@@ -18,9 +18,11 @@ export async function render(
 	let old = getDomImpl();
 	let vdom = newVDom();
 
+	let dl = jsx[DREAMLAND];
 	setDomImpl(vdom);
-	jsx[DREAMLAND]();
+	dl.css();
 	let ret = await component();
+	await Promise.all([...dl.is(), ...dl.ms()]);
 	setDomImpl(old);
 
 	let root: Element,

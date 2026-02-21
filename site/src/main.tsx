@@ -102,7 +102,6 @@ FancyLoader.style = css`
 	}
 `;
 
-let routePromise: Promise<any>;
 function App(this: FC<{ url?: string }, { el: ComponentInstance<any> }>) {
 	let title = use(this.el).map((x) => {
 		let title = x?.$?.pageTitle;
@@ -111,17 +110,12 @@ function App(this: FC<{ url?: string }, { el: ComponentInstance<any> }>) {
 
 	this.cx.init = () => {
 		stateProxy(this, "el", use(router.el as ComponentInstance<any>));
-		if (import.meta.env.SSR) {
-			routePromise = router.initial(this.url, "http://127.0.0.1:5173");
-		} else {
-			routePromise = router.initial();
-		}
 	};
 
 	return (
 		<>
 			<div id="app">
-				<Router>
+				<Router initial={this.url ? [this.url, "http://127.0.0.1:5173"] : []}>
 					<Route layout={FancyLoader}>
 						<Route
 							show={() => import("./pages/main").then((r) => <r.default />)}
@@ -152,8 +146,4 @@ function App(this: FC<{ url?: string }, { el: ComponentInstance<any> }>) {
 	);
 }
 
-export default async (url?: string) => {
-	let app = <App url={url} />;
-	await routePromise;
-	return app;
-};
+export default async (url?: string) => <App url={url} />;

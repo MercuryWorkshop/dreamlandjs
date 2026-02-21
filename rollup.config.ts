@@ -29,6 +29,7 @@ let HOISTS = [
 	"WeakMap",
 	"WeakRef",
 	"Promise",
+	//	"Promise.all", unsafe transform
 	"Proxy",
 	"location",
 ];
