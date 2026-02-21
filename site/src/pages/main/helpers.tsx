@@ -10,6 +10,7 @@ Columns.style = css`
 		display: flex;
 		align-items: center;
 		gap: 1rem;
+		margin-bottom: 1rem;
 	}
 
 	:scope > :global(*) {
