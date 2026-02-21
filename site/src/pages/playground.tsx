@@ -79,7 +79,5 @@ PlaygroundHost.style = css`
 `;
 
 export function showPlayground() {
-	if (!import.meta.env.SSR) {
-		return import("../playground/playground").then((r) => <r.default />);
-	}
+	return import("../playground/playground").then((r) => <r.default />);
 }

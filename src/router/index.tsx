@@ -38,6 +38,7 @@ export function Route(
 		path?: string;
 		show?: ShowTarget;
 		layout?: LayoutComponent;
+		cork?: boolean;
 		children?: ComponentChild;
 	}>
 ) {
@@ -45,6 +46,7 @@ export function Route(
 		_path: this.path,
 		_show: this.show,
 		_layout: this.layout,
+		_cork: this.cork,
 		_children: this.children as any as RouteInternal[],
 	} satisfies RouteInternal as any;
 }
@@ -53,6 +55,7 @@ interface RouteInternal {
 	_path?: string;
 	_layout?: LayoutComponent;
 	_layoutInstance?: ComponentInstance<LayoutComponent>;
+	_cork?: boolean;
 	_show?: ShowTarget;
 	_showInstance?: ShowElement;
 	_children: RouteInternal[];
@@ -73,6 +76,10 @@ let validateRoute = (route: RouteInternal) => {
 			}
 			validateRoute(child);
 		}
+	}
+
+	if (!route._layout && route._cork) {
+		throw new Error("Corked routing only works on a route with a layout");
 	}
 };
 
@@ -158,7 +165,7 @@ type LayoutEl = ComponentInstance<LayoutComponent>;
 type ReconcileRet = Disjoint<
 	{ _el: Promise<ShowElement> },
 	{ _layout: LayoutEl; _dep: Promise<LayoutEl> }
->;
+> & { _late: () => Promise<void> | void };
 let _reconcile = (
 	_current: RouteInternal[],
 	path: string,
@@ -169,28 +176,32 @@ let _reconcile = (
 	dev: {
 		if (!current) throw "unreachable";
 	}
+	let reconcile = () => {
+		if (current._show) {
+			ret = {
+				_el: (async () => {
+					let show = current._show!;
+					let instance =
+						current._showInstance ||
+						(await (typeof show == "function" ? show() : show));
 
-	let ret: ReconcileRet;
-	if (current._show) {
-		ret = {
-			_el: (async () => {
-				let show = current._show!;
-				let instance =
-					current._showInstance ||
-					(await (typeof show == "function" ? show() : show));
-
-				if (isComponent(instance)) instance.$.state.routerParams = params;
-				current._showInstance = instance;
-				return instance;
-			})(),
-		};
-	} else if (_current.length) {
-		ret = _reconcile(_current, path, params, initial);
-	} else {
-		dev: {
-			throw new Error(`Unable to navigate, route had no show target`);
+					if (isComponent(instance)) instance.$.state.routerParams = params;
+					current._showInstance = instance;
+					return instance;
+				})(),
+				_late() {},
+			};
+		} else if (_current.length) {
+			ret = _reconcile(_current, path, params, initial);
+		} else {
+			dev: {
+				throw new Error(`Unable to navigate, route had no show target`);
+			}
 		}
-	}
+	};
+
+	let ret: ReconcileRet | undefined;
+	if (!current._cork) reconcile();
 
 	if (current._layout) {
 		let state: RouterState = {
@@ -206,6 +217,11 @@ let _reconcile = (
 				<current._layout routerState={state} />
 			) as ComponentInstance<LayoutComponent>);
 		let instanceState = instance.$.state;
+		let finish = (el: ShowElement) => {
+			state.outlet = el;
+			state.loading = false;
+			instanceState.routerState = state;
+		};
 
 		current._layoutInstance = instance;
 		state.outlet = instanceState.routerState.outlet;
@@ -213,12 +229,19 @@ let _reconcile = (
 
 		return {
 			_layout: instance,
-			_dep: (ret._dep || ret._el).then((el) => {
-				state.outlet = el;
-				state.loading = false;
-				instanceState.routerState = state;
-				return instance;
-			}),
+			_dep: ret
+				? (ret._dep || ret._el).then((el) => {
+						finish(el);
+						return instance;
+					})
+				: (async () => instance)(),
+			_late: ret
+				? ret._late
+				: async () => {
+						reconcile();
+						await ret!._late();
+						finish(await (ret!._dep || ret!._el));
+					},
 		};
 	}
 	return ret!;
@@ -258,12 +281,11 @@ export let router: ComponentState<typeof Router>;
 export function Router(
 	this: FC<
 		{
-			initial?: [string, string] | [string];
+			initial?: [string, string] | [string] | [];
 			children: HTMLElement | HTMLElement[];
 		},
 		{
 			el?: ShowElement;
-			promise?: Promise<string | undefined>;
 
 			navigate: (path: string) => Promise<string | undefined>;
 			ssgables: () => [string, string][];
@@ -314,12 +336,13 @@ export function Router(
 		}
 
 		routing = false;
-		return this.el && realPath;
+		return [this.el && realPath, reconciled?._late] as const;
 	};
 	this.navigate = async (path) => {
 		if (routing) return;
 
-		let ret = await (this.promise = route(false, path));
+		let [ret, late] = await route(false, path);
+		late?.();
 		if (ret) history.pushState(null, "", ret);
 		return ret;
 	};
@@ -346,18 +369,26 @@ export function Router(
 		return traverse("", routes);
 	};
 
+	let late: () => Promise<void> | void;
+	let ran: boolean | undefined;
 	this.cx.init = () => {
 		dev: {
 			if (routing) throw "unreachable";
 		}
 		let [path, origin] = this.initial || [];
-		return (this.promise = route(true, path, origin));
+		return route(true, path, origin).then(([_, _late]) => {
+			if (ran) _late();
+			else late = _late;
+		});
 	};
 
 	this.cx.mount = () => {
 		addEventListener("popstate", () => {
 			route(false);
 		});
+		let ret = late?.();
+		ran = true;
+		return ret;
 	};
 
 	return <>{use(this.el)}</>;

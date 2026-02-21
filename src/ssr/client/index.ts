@@ -174,12 +174,13 @@ export let hydrate = async (
 	await Promise.all(dl.is());
 	setDomImpl(old);
 
+	let mounts = [...dl.ms()];
 	dl.cxs().map((x) => {
 		hydrateCx(x);
-		x.mount?.();
+		mounts.push(x.mount?.());
 	});
 
-	await Promise.all(dl.ms());
+	await Promise.all(mounts);
 
 	return root;
 };

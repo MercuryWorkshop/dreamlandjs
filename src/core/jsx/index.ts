@@ -22,7 +22,7 @@ import {
 	setConstrainer,
 } from "../state/pointers";
 import { createState, stateProxy, Stateful } from "../state/state";
-import { DREAMLAND, MAP, NO_CHANGE } from "../consts";
+import { DREAMLAND, MAP } from "../consts";
 import { DelegateListener } from "../delegate";
 import { findLIS, isArray, isNode } from "../utils";
 

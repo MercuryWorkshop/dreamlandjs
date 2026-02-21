@@ -134,6 +134,7 @@ function App(this: FC<{ url?: string }, { el: ComponentInstance<any> }>) {
 							path="playground"
 							layout={PlaygroundHost}
 							show={showPlayground}
+							cork={true}
 						/>
 					</Route>
 				</Router>

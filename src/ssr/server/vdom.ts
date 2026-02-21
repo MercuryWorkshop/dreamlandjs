@@ -22,7 +22,7 @@ export class Node {
 
 	appendChild(node: Node) {
 		node.parent = this;
-		this.childNodes.push(node);
+		if (!this.childNodes.includes(node)) this.childNodes.push(node);
 		return node;
 	}
 	append(node: Node) {
@@ -36,11 +36,12 @@ export class Node {
 
 	insertBefore(node: Node, anchor: Node) {
 		node.parent = this;
-		this.childNodes.splice(
-			this.childNodes.findIndex((x) => x === anchor),
-			0,
-			node
-		);
+		if (!this.childNodes.includes(node))
+			this.childNodes.splice(
+				this.childNodes.findIndex((x) => x === anchor),
+				0,
+				node
+			);
 	}
 
 	toStandard(): DomNode {
