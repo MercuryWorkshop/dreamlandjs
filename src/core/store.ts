@@ -32,13 +32,16 @@ function _createStore<T extends object>(
 ): Stateful<T>;
 function _createStore<T extends object>(
 	target: T,
-	options: {
+	{
+		ident,
+		backing,
+		autosave,
+	}: {
 		ident: string;
 		backing: "localstorage" | StoreSyncBacking | StoreAsyncBacking;
 		autosave: "auto" | "manual" | "beforeunload";
 	}
 ): Stateful<T> | Promise<Stateful<T>> {
-	let { ident, backing, autosave } = options;
 	ident = "dls-" + ident;
 	let isAuto = autosave === "auto";
 
@@ -50,7 +53,7 @@ function _createStore<T extends object>(
 	}
 
 	let last = "";
-	let saving = Promise.all([]) as unknown as Promise<void>;
+	let saving: Promise<void> | undefined;
 	let asyncSave = async () => {
 		await saving;
 

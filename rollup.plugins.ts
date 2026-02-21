@@ -61,6 +61,9 @@ export const propertyHoister = () => {
 					const bracketCount = (
 						code.match(new RegExp(`\\["${escaped}"\\]`, "g")) || []
 					).length;
+					const objectKeyCount = (
+						code.match(new RegExp(`([,{]\\s*)${escaped}(\\s*:)`, "g")) || []
+					).length;
 					const methodMinCount = (
 						code.match(new RegExp(`}${escaped}\\(`, "g")) || []
 					).length;
@@ -75,6 +78,7 @@ export const propertyHoister = () => {
 						dotCount * (propName.length - minifiedVarLen - 1) +
 						optionalCount * (propName.length - minifiedVarLen - 2) +
 						bracketCount * propName.length +
+						objectKeyCount * (propName.length - minifiedVarLen - 2) +
 						methodMinCount * (propName.length - minifiedVarLen - 2) +
 						methodUnminCount * (propName.length - minifiedVarLen - 2) -
 						declarationCost;
@@ -125,6 +129,19 @@ export const propertyHoister = () => {
 							replacements.push([idx, idx + find.length, replace]);
 							idx += find.length;
 						}
+					}
+
+					// Handle object keys: { foo: x } and ,foo: x -> {[__foo]:x}
+					const objectKeyRegex = new RegExp(
+						`([,{]\\s*)${RegExp.escape(propName)}(\\s*:)`,
+						"g"
+					);
+					let objectKeyMatch;
+					while ((objectKeyMatch = objectKeyRegex.exec(code)) !== null) {
+						const [full, prefix, suffix] = objectKeyMatch;
+						const start = objectKeyMatch.index;
+						const end = start + full.length;
+						replacements.push([start, end, `${prefix}[${varName}]${suffix}`]);
 					}
 
 					// Handle unminified methods: methodName(...) {
@@ -552,6 +569,42 @@ export const globalHoister = (patterns: string[]) => {
 				// Build a set of ranges that are inside strings, comments, or template literals
 				// to avoid replacing inside them
 				const skipRanges: Array<[number, number]> = [];
+				const canStartRegex = (index: number): boolean => {
+					let j = index - 1;
+					while (j >= 0 && /\s/.test(code[j])) j--;
+					if (j < 0) return true;
+
+					const prev = code[j];
+					if (prev === ")" || prev === "]" || prev === "}") return false;
+
+					if (idChar.test(prev)) {
+						let k = j;
+						while (k >= 0 && idChar.test(code[k])) k--;
+						const prevWord = code.slice(k + 1, j + 1);
+						if (
+							[
+								"return",
+								"throw",
+								"case",
+								"delete",
+								"void",
+								"typeof",
+								"instanceof",
+								"in",
+								"of",
+								"new",
+								"yield",
+								"await",
+							].includes(prevWord)
+						) {
+							return true;
+						}
+						return false;
+					}
+
+					return true;
+				};
+
 				for (let i = 0; i < code.length; i++) {
 					const ch = code[i];
 					if (ch === "/" && code[i + 1] === "/") {
@@ -566,6 +619,36 @@ export const globalHoister = (patterns: string[]) => {
 						const end = code.indexOf("*/", i + 2);
 						i = end === -1 ? code.length - 1 : end + 1;
 						skipRanges.push([start, i + 1]);
+						continue;
+					}
+					if (ch === "/" && canStartRegex(i)) {
+						const start = i;
+						i++;
+						let inCharClass = false;
+						while (i < code.length) {
+							if (code[i] === "\\" && i + 1 < code.length) {
+								i += 2;
+								continue;
+							}
+							if (code[i] === "[" && !inCharClass) {
+								inCharClass = true;
+								i++;
+								continue;
+							}
+							if (code[i] === "]" && inCharClass) {
+								inCharClass = false;
+								i++;
+								continue;
+							}
+							if (code[i] === "/" && !inCharClass) {
+								i++;
+								while (i < code.length && /[a-z]/i.test(code[i])) i++;
+								break;
+							}
+							i++;
+						}
+						skipRanges.push([start, i]);
+						i--;
 						continue;
 					}
 					if (ch === '"' || ch === "'") {
