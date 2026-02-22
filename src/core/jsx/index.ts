@@ -1,12 +1,4 @@
-import {
-	new_Comment,
-	DOCUMENT,
-	new_Text,
-	genCssUid,
-	CSS_IDENT,
-	hydrating,
-	ssrTransform,
-} from "./dom";
+import { DOCUMENT, genCssUid, CSS_IDENT, hydrating, ssrTransform } from "./dom";
 import { CSS_COMPONENT, genuid } from "../css";
 import {
 	Component,
@@ -24,7 +16,8 @@ import {
 import { createState, stateProxy, Stateful } from "../state/state";
 import { DREAMLAND, MAP } from "../consts";
 import { DelegateListener } from "../delegate";
-import { findLIS, isArray, isNode } from "../utils";
+import { isArray, isNode } from "../utils";
+import { mapChild } from "./child";
 
 export let currentCssIdent: string | undefined;
 export let callDelegateListeners = (
@@ -40,84 +33,6 @@ export let callDelegateListeners = (
 		currentCssIdent = oldIdent;
 		setConstrainer(oldConstrainer);
 	}) as any as void;
-
-let isBlacklisted = (val: any): val is null | undefined | boolean =>
-	[null, undefined, false, true].includes(val);
-
-let mapChild = (
-	child: ComponentChild,
-	parent: Node,
-	cssIdent?: string,
-	identOverride?: string
-): Node[] => {
-	if (isBlacklisted(child)) {
-		return [new_Comment()];
-	} else if (isPointer(child)) {
-		let start = new_Comment("[");
-		let end = new_Comment("]");
-		let current: Node[];
-
-		maybeListen(child, start, (val: ComponentChild) => {
-			if (current && !start.parentNode) return;
-			let mapped: Node[] = mapChild(val, parent, cssIdent, child._cssIdent);
-
-			// pretty sure it's not possible to put a pointer child in not a htmlelement
-			if (!hydrating?.(parent as HTMLElement) && current) {
-				let old = MAP(current.map((x, i) => [x, i]));
-				let staticNodes = mapped.map((x) => old.get(x)!).filter((x) => x);
-				let LIS = MAP(findLIS(staticNodes).map((x) => [current[x], ,]));
-				let anchor: Node = start;
-
-				mapped.map((child) => {
-					if (!old.has(child) || !LIS.has(child)) {
-						parent.insertBefore(child, anchor.nextSibling);
-					}
-					anchor = child;
-				});
-
-				current.map(
-					(x) =>
-						!mapped.includes(x) &&
-						x.parentNode === parent &&
-						parent.removeChild(x)
-				);
-			}
-			current = mapped;
-		});
-
-		return [
-			start,
-			...(hydrating?.(parent as HTMLElement) ? [] : current!),
-			end,
-		];
-	} else if (isNode(child)) {
-		let list: DOMTokenList;
-		let apply = (child: any) => {
-			if ((list = child.classList)) {
-				let arr = [...list];
-				let other = arr.find((x) => x.startsWith(CSS_IDENT));
-
-				if (arr.find((x) => x == CSS_COMPONENT)) return;
-
-				if (!other) {
-					list.add(identOverride || cssIdent!);
-				} else if (identOverride && other !== identOverride) {
-					list.remove(other);
-					list.add(identOverride);
-				}
-
-				[...child.childNodes].map(apply);
-			}
-		};
-		if (identOverride || cssIdent) apply(child);
-
-		return [child];
-	} else if (isArray(child)) {
-		return child.flatMap((x) => mapChild(x, parent, cssIdent, identOverride));
-	} else {
-		return [new_Text(child as string)];
-	}
-};
 
 let CREATE_ELEMENT = "createElement" as const;
 
