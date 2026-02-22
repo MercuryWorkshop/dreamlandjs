@@ -33,7 +33,8 @@ export let mountOne = (
 	let lookup = (ty: string, id: string) =>
 		root.querySelector(`${ty}[${SSR_ID}='${id}'`);
 
-	let old = getDomImpl();
+	let _old = getDomImpl(),
+		old = _old();
 	let vdom = [
 		{
 			createElement(ty: string, _: any, props: any) {
@@ -65,9 +66,9 @@ export let mountOne = (
 			}
 		},
 	] satisfies DomImpl;
-	setDomImpl(vdom);
+	setDomImpl(() => vdom);
 	let x = h(component, {});
-	setDomImpl(old);
+	setDomImpl(_old);
 
 	// @ts-expect-error prevent vite from messing stuff up
 	return x;

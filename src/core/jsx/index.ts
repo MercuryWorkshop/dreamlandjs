@@ -1,4 +1,4 @@
-import { DOCUMENT, genCssUid, CSS_IDENT, hydrating, ssrTransform } from "./dom";
+import { getDom, CSS_IDENT } from "./dom";
 import { CSS_COMPONENT, genuid } from "../css";
 import {
 	Component,
@@ -42,9 +42,6 @@ interface CssInfo {
 }
 
 let componentCssInfo: Map<Component, CssInfo> = MAP();
-let cxs: ComponentContext<Component<any, any>>[] = [];
-let inits: (Promise<void> | void)[] | undefined;
-let mounts: (Promise<void> | void)[] | undefined;
 
 function _jsx<T extends Component<any, any>>(
 	init: T,
@@ -61,6 +58,19 @@ function _jsx(
 	_props: Record<string, any> | null,
 	key?: string
 ): HTMLElement {
+	let [
+		DOCUMENT,
+		,
+		,
+		,
+		genCssUid,
+		hydrating,
+		ssrTransform,
+		cxs = [],
+		inits = [],
+		mounts = [],
+	] = getDom();
+
 	dev: {
 		if (!["string", "function"].includes(typeof init))
 			throw new Error("invalid component");
@@ -75,7 +85,6 @@ function _jsx(
 	let el: HTMLElement;
 
 	if (typeof init === "function") {
-		let tmpret: any;
 		let state = createState({ children }) as Stateful<any>;
 
 		ssrTransform?.(init);
@@ -173,13 +182,11 @@ function _jsx(
 		ssrTransform?.(init, cx);
 
 		setConstrainer(state);
-		tmpret = cx.init?.();
-		inits?.push(tmpret);
+		inits.push(cx.init?.());
 
 		if (isNode(el) && hydrating?.(el)) cxs.push(cx);
 		else if (hydrating) {
-			tmpret = cx.mount?.();
-			mounts?.push(tmpret);
+			mounts.push(cx.mount?.());
 		}
 		setConstrainer(constrainer);
 	} else {
@@ -298,19 +305,12 @@ export let h = _h;
 export let jsx: typeof _jsx & {
 	[DREAMLAND]: {
 		css(): void;
-		cxs(): ComponentContext<Component<any, any>>[];
-		ims(x?: typeof inits, y?: typeof mounts): void;
 	};
 } = _jsx as any;
 export let addDREAMLAND = () => {
 	jsx[DREAMLAND] = {
 		css() {
 			componentCssInfo = MAP();
-		},
-		cxs: () => cxs.splice(0, cxs.length),
-		ims(x, y) {
-			inits = x;
-			mounts = y;
 		},
 	};
 };

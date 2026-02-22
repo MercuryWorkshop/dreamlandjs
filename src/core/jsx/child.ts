@@ -3,7 +3,7 @@ import { CSS_COMPONENT } from "../css";
 import { isPointer, maybeListen } from "../state/pointers";
 import { findLIS, isArray, isNode } from "../utils";
 import { ComponentChild } from "./definitions";
-import { CSS_IDENT, hydrating, new_Comment, new_Text } from "./dom";
+import { CSS_IDENT, getDom } from "./dom";
 
 let isBlacklisted = (val: any): val is null | undefined | boolean =>
 	[null, undefined, false, true].includes(val);
@@ -14,6 +14,8 @@ export let mapChild = (
 	cssIdent?: string,
 	identOverride?: string
 ): Node[] => {
+	let [, , new_Text, new_Comment, , hydrating] = getDom();
+
 	if (isBlacklisted(child)) {
 		return [new_Comment()];
 	} else if (isPointer(child)) {
@@ -24,6 +26,7 @@ export let mapChild = (
 		maybeListen(child, start, (val: ComponentChild) => {
 			if (current && !start.parentNode) return;
 			let mapped: Node[] = mapChild(val, parent, cssIdent, child._cssIdent);
+			let hydrating = getDom()[5];
 
 			// pretty sure it's not possible to put a pointer child in not a htmlelement
 			if (!hydrating?.(parent as HTMLElement) && current) {

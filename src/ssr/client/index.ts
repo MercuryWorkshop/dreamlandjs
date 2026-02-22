@@ -1,4 +1,5 @@
 import {
+	Component,
 	ComponentContext,
 	DomImpl,
 	DREAMLAND,
@@ -88,7 +89,11 @@ export let hydrate = async (
 		if (text.length !== len) text.splitText(len);
 	}
 
-	let old = getDomImpl();
+	let _old = getDomImpl(),
+		old = _old();
+	let cxs: ComponentContext<Component<any, any>>[] = [];
+	let inits: (Promise<any> | any)[] = [];
+	let mounts: typeof inits = [];
 	let vdom = [
 		{
 			createElement: (x: any) => {
@@ -165,26 +170,24 @@ export let hydrate = async (
 			if (cx?.state?.root instanceof old[1] && !hydrating(cx.state?.root))
 				hydrateCx(cx);
 		},
+		cxs,
+		inits,
+		mounts,
 	] as const satisfies DomImpl;
 
 	let dl = jsx[DREAMLAND];
-	let inits: (Promise<any> | any)[] = [];
-	let mounts: typeof inits = [];
-	setDomImpl(vdom);
-	dl.ims(inits, mounts);
+	setDomImpl(() => vdom);
 	dl.css();
 	let root = await component();
 	await Promise.all(inits);
-	setDomImpl(old);
+	setDomImpl(_old);
 
-	dl.cxs().map((x) => {
+	cxs.map((x) => {
 		hydrateCx(x);
 		mounts.push(x.mount?.());
 	});
 
 	await Promise.all(mounts);
-
-	dl.ims();
 
 	return root;
 };

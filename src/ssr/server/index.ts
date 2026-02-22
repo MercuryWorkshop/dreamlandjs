@@ -1,6 +1,13 @@
 import { Element as DomElement, Text as DomText } from "domhandler";
-import { DREAMLAND, getDomImpl, jsx, setDomImpl } from "dreamland/core";
+import {
+	DREAMLAND,
+	jsx,
+	setDomImpl,
+	DomImpl,
+	getDomImpl,
+} from "dreamland/core";
 import { Node as VdomNode, Comment, Text, Element, newVDom } from "./vdom";
+import { AsyncLocalStorage } from "node:async_hooks";
 
 import { CSS_IDENT, SSR_DATA } from "../common/consts";
 import { Node, SsrData } from "../common/types";
@@ -12,37 +19,20 @@ export interface RenderedComponent {
 	component: DomElement;
 }
 
-let renderLock = Promise.resolve();
-
-let withRenderLock = async <T>(run: () => Promise<T>): Promise<T> => {
-	let next = renderLock.then(run, run);
-	renderLock = next.then(
-		() => undefined,
-		() => undefined
-	);
-	return next;
-};
+let storage = new AsyncLocalStorage<DomImpl>();
+let dom = getDomImpl()();
+setDomImpl(() => storage.getStore() || dom);
 
 export async function render(
 	component: () => Promise<any> | any
 ): Promise<RenderedComponent> {
-	return withRenderLock(async () => {
-		let old = getDomImpl();
-		let vdom = newVDom();
-
+	let vdom = newVDom();
+	return storage.run(vdom, async () => {
 		let dl = jsx[DREAMLAND];
-		let promises: (Promise<any> | any)[] = [];
 		let ret: any;
-		setDomImpl(vdom);
-		dl.ims(promises, promises);
 		dl.css();
-		try {
-			ret = await component();
-			await Promise.all(promises);
-		} finally {
-			dl.ims();
-			setDomImpl(old);
-		}
+		ret = await component();
+		await Promise.all(vdom[0].promises);
 
 		let root: Element,
 			extraHead: Element[] = [];

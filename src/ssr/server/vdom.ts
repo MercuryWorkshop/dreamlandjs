@@ -1,4 +1,4 @@
-import { ComponentContext, DomImpl } from "dreamland/core";
+import { Component, ComponentContext, DomImpl } from "dreamland/core";
 
 // @ts-expect-error rrweb-cssom doesn't have types
 import { CSSOM } from "rrweb-cssom";
@@ -35,13 +35,13 @@ export class Node {
 	}
 
 	insertBefore(node: Node, anchor: Node) {
+		this.removeChild(node);
 		node.parent = this;
-		if (!this.childNodes.includes(node))
-			this.childNodes.splice(
-				this.childNodes.findIndex((x) => x === anchor),
-				0,
-				node
-			);
+		this.childNodes.splice(
+			this.childNodes.findIndex((x) => x === anchor),
+			0,
+			node
+		);
 	}
 
 	toStandard(): DomNode {
@@ -249,6 +249,8 @@ export let newVDom = () => {
 
 	let identArr: Map<number, string> = new Map();
 
+	let promises: (Promise<any> | any)[] = [];
+
 	return [
 		{
 			createElement(type: string) {
@@ -260,6 +262,8 @@ export let newVDom = () => {
 
 			elArr,
 			identArr,
+
+			promises,
 
 			head: new Element("head"),
 		},
@@ -273,5 +277,8 @@ export let newVDom = () => {
 		},
 		undefined, // enables "ssr mode"
 		undefined,
+		undefined,
+		promises,
+		promises,
 	] as const satisfies DomImpl;
 };
