@@ -168,19 +168,23 @@ export let hydrate = async (
 	] as const satisfies DomImpl;
 
 	let dl = jsx[DREAMLAND];
+	let inits: (Promise<any> | any)[] = [];
+	let mounts: typeof inits = [];
 	setDomImpl(vdom);
+	dl.ims(inits, mounts);
 	dl.css();
 	let root = await component();
-	await Promise.all(dl.is());
+	await Promise.all(inits);
 	setDomImpl(old);
 
-	let mounts = [...dl.ms()];
 	dl.cxs().map((x) => {
 		hydrateCx(x);
 		mounts.push(x.mount?.());
 	});
 
 	await Promise.all(mounts);
+
+	dl.ims();
 
 	return root;
 };

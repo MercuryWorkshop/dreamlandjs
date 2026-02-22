@@ -128,8 +128,8 @@ interface CssInfo {
 
 let componentCssInfo: Map<Component, CssInfo> = MAP();
 let cxs: ComponentContext<Component<any, any>>[] = [];
-let inits: (Promise<void> | void)[] = [];
-let mounts: (Promise<void> | void)[] = [];
+let inits: (Promise<void> | void)[] | undefined;
+let mounts: (Promise<void> | void)[] | undefined;
 
 function _jsx<T extends Component<any, any>>(
 	init: T,
@@ -160,6 +160,7 @@ function _jsx(
 	let el: HTMLElement;
 
 	if (typeof init === "function") {
+		let tmpret: any;
 		let state = createState({ children }) as Stateful<any>;
 
 		ssrTransform?.(init);
@@ -257,10 +258,14 @@ function _jsx(
 		ssrTransform?.(init, cx);
 
 		setConstrainer(state);
-		inits.push(cx.init?.());
+		tmpret = cx.init?.();
+		inits?.push(tmpret);
 
 		if (isNode(el) && hydrating?.(el)) cxs.push(cx);
-		else if (hydrating) mounts.push(cx.mount?.());
+		else if (hydrating) {
+			tmpret = cx.mount?.();
+			mounts?.push(tmpret);
+		}
 		setConstrainer(constrainer);
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
@@ -379,22 +384,19 @@ export let jsx: typeof _jsx & {
 	[DREAMLAND]: {
 		css(): void;
 		cxs(): ComponentContext<Component<any, any>>[];
-		is(): typeof inits;
-		ms(): typeof mounts;
+		ims(x?: typeof inits, y?: typeof mounts): void;
 	};
 } = _jsx as any;
-let splice =
-	<T>(arr: T[]) =>
-	() =>
-		arr.splice(0, arr.length);
 export let addDREAMLAND = () => {
 	jsx[DREAMLAND] = {
 		css() {
 			componentCssInfo = MAP();
 		},
-		cxs: splice(cxs),
-		is: splice(inits),
-		ms: splice(mounts),
+		cxs: () => cxs.splice(0, cxs.length),
+		ims(x, y) {
+			inits = x;
+			mounts = y;
+		},
 	};
 };
 

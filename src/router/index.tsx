@@ -20,6 +20,7 @@ export interface RouterState {
 	params: RouteParams;
 	path: string;
 	outlet?: HTMLElement;
+	error?: any;
 	loading: boolean;
 	initial: boolean;
 	[NO_CHANGE]: true;
@@ -137,7 +138,8 @@ let _route = (
 			(!segments.length ||
 				(segments[0] === "" && indexRoute) ||
 				params[DREAMLAND]) &&
-			!route._children.length
+			!route._children.length &&
+			route._show
 		) {
 			if (params[DREAMLAND]) {
 				params["*"] = params[DREAMLAND].slice(10);
@@ -217,11 +219,16 @@ let _reconcile = (
 				<current._layout routerState={state} />
 			) as ComponentInstance<LayoutComponent>);
 		let instanceState = instance.$.state;
-		let finish = (el: ShowElement) => {
-			state.outlet = el;
-			state.loading = false;
-			instanceState.routerState = state;
-		};
+		let finish = (ret: ReconcileRet) =>
+			(ret._dep || ret._el)
+				.then(
+					(x) => (state.outlet = x),
+					(x) => (state.error = x)
+				)
+				.finally((_: void) => {
+					state.loading = false;
+					instanceState.routerState = state;
+				});
 
 		current._layoutInstance = instance;
 		state.outlet = instanceState.routerState.outlet;
@@ -229,18 +236,13 @@ let _reconcile = (
 
 		return {
 			_layout: instance,
-			_dep: ret
-				? (ret._dep || ret._el).then((el) => {
-						finish(el);
-						return instance;
-					})
-				: (async () => instance)(),
+			_dep: ret ? finish(ret).then((_) => instance) : (async () => instance)(),
 			_late: ret
 				? ret._late
 				: async () => {
 						reconcile();
 						await ret!._late();
-						finish(await (ret!._dep || ret!._el));
+						await finish(ret!);
 					},
 		};
 	}
@@ -299,7 +301,6 @@ export function Router(
 	router = this;
 
 	let routes = { _children: this.children as any as RouteInternal[] };
-	let routing = false;
 	dev: {
 		validateRoute(routes);
 	}
@@ -309,7 +310,6 @@ export function Router(
 		path = location.pathname,
 		origin = location.origin
 	) => {
-		routing = true;
 		let realPath = new URL(path, origin).pathname;
 		if (realPath.endsWith(".html"))
 			realPath = realPath.slice(0, realPath.length - 5);
@@ -318,7 +318,6 @@ export function Router(
 		let routePath = _route(routes, realPath, segments, params);
 
 		if (!routePath.length) {
-			routing = false;
 			throw new Error("Failed to route to " + path);
 		}
 
@@ -335,12 +334,9 @@ export function Router(
 			await reconciled._dep;
 		}
 
-		routing = false;
 		return [this.el && realPath, reconciled?._late] as const;
 	};
 	this.navigate = async (path) => {
-		if (routing) return;
-
 		let [ret, late] = await route(false, path);
 		late?.();
 		if (ret) history.pushState(null, "", ret);
@@ -372,9 +368,6 @@ export function Router(
 	let late: () => Promise<void> | void;
 	let ran: boolean | undefined;
 	this.cx.init = () => {
-		dev: {
-			if (routing) throw "unreachable";
-		}
 		let [path, origin] = this.initial || [];
 		return route(true, path, origin).then(([_, _late]) => {
 			if (ran) _late();
@@ -384,7 +377,7 @@ export function Router(
 
 	this.cx.mount = () => {
 		addEventListener("popstate", () => {
-			route(false);
+			route(false).then(([_, late]) => late());
 		});
 		let ret = late?.();
 		ran = true;

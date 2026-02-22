@@ -4,8 +4,12 @@ import { examples, type Example } from "../../examples";
 export function ExampleView(this: FC<{ example: Example }>) {
 	return (
 		<div data-example={this.example.id}>
-			<div class="code"><this.example.code /></div>
-			<div class="example"><this.example.component /></div>
+			<div class="code">
+				<this.example.code />
+			</div>
+			<div class="example">
+				<this.example.component />
+			</div>
 		</div>
 	);
 }
