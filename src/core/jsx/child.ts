@@ -14,7 +14,7 @@ export let mapChild = (
 	cssIdent?: string,
 	identOverride?: string
 ): Node[] => {
-	let [, , new_Text, new_Comment, , hydrating] = getDom();
+	let [, , new_Text, new_Comment, , , hydrating] = getDom();
 
 	if (isBlacklisted(child)) {
 		return [new_Comment()];
@@ -26,7 +26,7 @@ export let mapChild = (
 		maybeListen(child, start, (val: ComponentChild) => {
 			if (current && !start.parentNode) return;
 			let mapped: Node[] = mapChild(val, parent, cssIdent, child._cssIdent);
-			let hydrating = getDom()[5];
+			let hydrating = getDom()[6];
 
 			// pretty sure it's not possible to put a pointer child in not a htmlelement
 			if (!hydrating?.(parent as HTMLElement) && current) {

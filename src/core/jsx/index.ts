@@ -1,4 +1,4 @@
-import { getDom, CSS_IDENT } from "./dom";
+import { getDom, CSS_IDENT, CssInfo } from "./dom";
 import { CSS_COMPONENT, genuid } from "../css";
 import {
 	Component,
@@ -7,41 +7,27 @@ import {
 	ComponentInstance,
 	DLElementNameToElement,
 } from "./definitions";
-import {
-	DEFAULT_CONSTRAINER,
-	isPointer,
-	maybeListen,
-	setConstrainer,
-} from "../state/pointers";
+import { isPointer, maybeListen } from "../state/pointers";
 import { createState, stateProxy, Stateful } from "../state/state";
-import { DREAMLAND, MAP } from "../consts";
 import { DelegateListener } from "../delegate";
 import { isArray, isNode } from "../utils";
 import { mapChild } from "./child";
 
-export let currentCssIdent: string | undefined;
+export let currentComponentCx:
+	| ComponentContext<Component<any, any>>
+	| undefined;
 export let callDelegateListeners = (
 	value: any,
 	listeners: DelegateListener<any>[]
 ): void =>
 	listeners.map((x) => {
-		let oldIdent = currentCssIdent;
-		let oldConstrainer = DEFAULT_CONSTRAINER;
-		setConstrainer(x._constrainer);
-		currentCssIdent = x._cssIdent;
+		let old = currentComponentCx;
+		currentComponentCx = x._cx;
 		x._callback(value);
-		currentCssIdent = oldIdent;
-		setConstrainer(oldConstrainer);
+		currentComponentCx = old;
 	}) as any as void;
 
 let CREATE_ELEMENT = "createElement" as const;
-
-interface CssInfo {
-	_id: string;
-	_vars: [string, (props: any) => any][];
-}
-
-let componentCssInfo: Map<Component, CssInfo> = MAP();
 
 function _jsx<T extends Component<any, any>>(
 	init: T,
@@ -64,12 +50,14 @@ function _jsx(
 		,
 		,
 		genCssUid,
+		componentCssInfo,
 		hydrating,
 		ssrTransform,
 		cxs = [],
 		inits = [],
 		mounts = [],
 	] = getDom();
+	let lastCssIdent = currentComponentCx?.id;
 
 	dev: {
 		if (!["string", "function"].includes(typeof init))
@@ -104,7 +92,7 @@ function _jsx(
 			// we add the currentCssIdent (which is of the parent) here since we know that the pointer came from the parent.
 			// this might break if pointers of elements are being passed as props but oh well
 			if (isPointer(child)) {
-				child._cssIdent ||= currentCssIdent;
+				child._cssIdent ||= lastCssIdent;
 			}
 		}
 
@@ -146,16 +134,12 @@ function _jsx(
 			id: cssInfo?._id,
 		} as ComponentContext<any>;
 
-		let constrainer = DEFAULT_CONSTRAINER;
-		setConstrainer(state);
-		let oldIdent = currentCssIdent;
+		let old = currentComponentCx;
 		state.cx = cx;
-		currentCssIdent = cssInfo?._id;
+		currentComponentCx = cx;
 		el = init.call(state);
-		currentCssIdent = oldIdent;
+		currentComponentCx = old;
 		state.root = el;
-
-		setConstrainer(constrainer);
 
 		if (isNode(el)) {
 			dev: {
@@ -181,14 +165,14 @@ function _jsx(
 
 		ssrTransform?.(init, cx);
 
-		setConstrainer(state);
+		currentComponentCx = cx;
 		inits.push(cx.init?.());
 
 		if (isNode(el) && hydrating?.(el)) cxs.push(cx);
 		else if (hydrating) {
 			mounts.push(cx.mount?.());
 		}
-		setConstrainer(constrainer);
+		currentComponentCx = old;
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
@@ -207,7 +191,7 @@ function _jsx(
 		);
 
 		for (let child of children) {
-			let ret = mapChild(child, el, currentCssIdent);
+			let ret = mapChild(child, el, lastCssIdent);
 			ret.map((x) => {
 				if (x.parentNode !== el) el.appendChild(x);
 			});
@@ -268,8 +252,8 @@ function _jsx(
 			}
 		}
 
-		if (currentCssIdent && ![...classList].find((x) => x.startsWith(CSS_IDENT)))
-			classList.add(currentCssIdent);
+		if (lastCssIdent && ![...classList].find((x) => x.startsWith(CSS_IDENT)))
+			classList.add(lastCssIdent);
 
 		// all children would need to also be created with the correct namespace if we were doing this properly
 		// this is annoying and expensive bundle size wise, so it's easier to just force a reparse
@@ -302,18 +286,7 @@ function _h(
 }
 
 export let h = _h;
-export let jsx: typeof _jsx & {
-	[DREAMLAND]: {
-		css(): void;
-	};
-} = _jsx as any;
-export let addDREAMLAND = () => {
-	jsx[DREAMLAND] = {
-		css() {
-			componentCssInfo = MAP();
-		},
-	};
-};
+export let jsx = _jsx;
 
 export let Fragment = ((_: any) => 0) as any as Component<{
 	children?: ComponentChild;

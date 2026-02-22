@@ -275,6 +275,7 @@ export let newVDom = () => {
 			identArr.set(elArr.length, ret);
 			return ret;
 		},
+		new Map(),
 		undefined, // enables "ssr mode"
 		undefined,
 		undefined,

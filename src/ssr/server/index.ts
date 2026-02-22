@@ -28,9 +28,7 @@ export async function render(
 ): Promise<RenderedComponent> {
 	let vdom = newVDom();
 	return storage.run(vdom, async () => {
-		let dl = jsx[DREAMLAND];
 		let ret: any;
-		dl.css();
 		ret = await component();
 		await Promise.all(vdom[0].promises);
 

@@ -1,4 +1,3 @@
-import { addDREAMLAND } from "./jsx";
 import { defineUse } from "./state";
 import "./state";
 
@@ -26,4 +25,3 @@ export { setDomImpl, getDomImpl, DomImpl } from "./jsx/dom";
 export { DREAMLAND, NO_CHANGE } from "./consts";
 
 defineUse();
-addDREAMLAND();

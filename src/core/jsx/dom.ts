@@ -1,3 +1,4 @@
+import { MAP } from "../consts";
 import { genuid } from "../css";
 import { Component, ComponentContext } from "./definitions";
 
@@ -19,6 +20,7 @@ export type DomImpl = [
 	new_Text: NodeConstructor,
 	new_Comment: NodeConstructor,
 	gencssuid: CssUidGenerator,
+	cssinfo: Map<any, any>,
 	hydrating?: IsHydrating,
 	ssrTransform?: SsrTransformCallback,
 	cxs?: CxList,
@@ -26,17 +28,19 @@ export type DomImpl = [
 	mounts?: CbRetList,
 ];
 
+export interface CssInfo {
+	_id: string;
+	_vars: [string, (props: any) => any][];
+}
+let componentCssInfo: Map<Component, CssInfo> = MAP();
 export let getDom: () => DomImpl = () => [
 	globalThis.document,
 	globalThis.Node,
 	(text) => new Text(text),
 	(text) => new Comment(text),
 	() => CSS_IDENT + genuid(),
+	componentCssInfo,
 	() => false,
-	undefined,
-	undefined,
-	undefined,
-	undefined,
 ];
 
 export let getDomImpl = () => getDom;

@@ -2,7 +2,6 @@ import {
 	Component,
 	ComponentContext,
 	DomImpl,
-	DREAMLAND,
 	getDomImpl,
 	jsx,
 	setDomImpl,
@@ -165,6 +164,7 @@ export let hydrate = async (
 			return node || old[3](x);
 		},
 		() => data.i[idx + 1] || old[4](),
+		old[5],
 		hydrating,
 		(init, cx) => {
 			if (cx?.state?.root instanceof old[1] && !hydrating(cx.state?.root))
@@ -175,9 +175,7 @@ export let hydrate = async (
 		mounts,
 	] as const satisfies DomImpl;
 
-	let dl = jsx[DREAMLAND];
 	setDomImpl(() => vdom);
-	dl.css();
 	let root = await component();
 	await Promise.all(inits);
 	setDomImpl(_old);

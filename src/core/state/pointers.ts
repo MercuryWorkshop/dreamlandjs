@@ -1,4 +1,5 @@
 import { DREAMLAND, NO_CHANGE, WEAKMAP, WEAKREF } from "../consts";
+import { currentComponentCx } from "../jsx";
 import { deref, ObjectProp } from "../utils";
 import {
 	_stateListen,
@@ -10,10 +11,6 @@ import { useTrap, UseTrapMap, useTrapMap } from "./use";
 
 let constraints: WeakMap<any, Pointer<any>[]> = WEAKMAP();
 let internalPointers: WeakMap<Pointer<any>, InternalPointer<any>> = WEAKMAP();
-
-export let DEFAULT_CONSTRAINER: any | false | undefined;
-export let setConstrainer = (constrainer: typeof DEFAULT_CONSTRAINER) =>
-	(DEFAULT_CONSTRAINER = constrainer);
 
 const enum PointerType {
 	Regular = 0,
@@ -162,7 +159,7 @@ export class Pointer<T> {
 			internal._ptrs.map((x) => x._listenWeak(WEAKREF(this._listener)));
 		}
 
-		if (DEFAULT_CONSTRAINER) this.constrain(DEFAULT_CONSTRAINER);
+		if (currentComponentCx) this.constrain(currentComponentCx.state);
 	}
 
 	get value(): T {
