@@ -1,9 +1,4 @@
-import { getDom } from "./jsx/dom";
-
 export type ObjectProp = string | symbol;
-
-export let isNode = (el: any): el is Node => el instanceof getDom()[1];
-export let isArray = (val: any): val is Array<any> => val instanceof Array;
 
 export let deref = <T extends object>(x: WeakRef<T>): T | undefined =>
 	x.deref();

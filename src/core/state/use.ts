@@ -1,11 +1,5 @@
 import { MAP } from "../consts";
-import { isArray } from "../utils";
-import {
-	initializeStep,
-	InitializingPointer,
-	isPointer,
-	Pointer,
-} from "./pointers";
+import { initializeStep, InitializingPointer, Pointer } from "./pointers";
 import { createState, Stateful } from "./state";
 
 // epheremal strong reference allowing pointers to be recorded and then looked up later
@@ -21,7 +15,7 @@ let initializeSteps = (map: UseTrapMap, ...steps: any) => {
 	useTrapMap = MAP();
 	return prims.map(([a, b]: any) => {
 		let initialized = initializeStep(map, b);
-		return isPointer(initialized) ? initialized : a;
+		return initialized instanceof Pointer ? initialized : a;
 	});
 };
 
@@ -34,7 +28,7 @@ let usestr = (template: TemplateStringsArray, params: any[]) => {
 		if (params[i]) {
 			let val = params[i];
 
-			if (isPointer(val)) {
+			if (val instanceof Pointer) {
 				let i = flattened.length;
 				val.constrain(state).listen((val) => {
 					flattened[i] = val;
@@ -63,7 +57,7 @@ export let defineUse = () => {
 				let map = useTrapMap;
 
 				usestr: {
-					if (isArray(magicPtr) && "raw" in magicPtr)
+					if (magicPtr instanceof Array && "raw" in magicPtr)
 						return usestr(magicPtr, initializeSteps(map, ...params));
 				}
 

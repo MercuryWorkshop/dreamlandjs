@@ -43,7 +43,6 @@ export let getDom: () => DomImpl = () => [
 	() => false,
 ];
 
-export let getDomImpl = () => getDom;
 export let setDomImpl = (impl: () => DomImpl) => {
 	getDom = impl;
 };

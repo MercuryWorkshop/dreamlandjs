@@ -2,7 +2,7 @@ import {
 	Component,
 	ComponentContext,
 	DomImpl,
-	getDomImpl,
+	domImpl,
 	jsx,
 	setDomImpl,
 } from "dreamland/core";
@@ -88,7 +88,7 @@ export let hydrate = async (
 		if (text.length !== len) text.splitText(len);
 	}
 
-	let _old = getDomImpl(),
+	let _old = domImpl,
 		old = _old();
 	let cxs: ComponentContext<Component<any, any>>[] = [];
 	let inits: (Promise<any> | any)[] = [];
@@ -177,7 +177,9 @@ export let hydrate = async (
 
 	setDomImpl(() => vdom);
 	let root = await component();
-	await Promise.all(inits);
+	while (inits.length) {
+		await Promise.all(inits.splice(0));
+	}
 	setDomImpl(_old);
 
 	cxs.map((x) => {

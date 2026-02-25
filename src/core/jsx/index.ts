@@ -7,10 +7,9 @@ import {
 	ComponentInstance,
 	DLElementNameToElement,
 } from "./definitions";
-import { isPointer, maybeListen } from "../state/pointers";
+import { Pointer, maybeListen } from "../state/pointers";
 import { createState, stateProxy, Stateful } from "../state/state";
 import { DelegateListener } from "../delegate";
-import { isArray, isNode } from "../utils";
 import { mapChild } from "./child";
 
 export let currentComponentCx:
@@ -46,7 +45,7 @@ function _jsx(
 ): HTMLElement {
 	let [
 		DOCUMENT,
-		,
+		NODE,
 		,
 		,
 		genCssUid,
@@ -68,19 +67,25 @@ function _jsx(
 	if (init === Fragment) return _children;
 	if (key) props.key = key;
 	_children ||= [];
-	let children = isArray(_children) ? _children : [_children];
+	let children = _children instanceof Array ? _children : [_children];
 
 	let el: HTMLElement;
+	let setStyle = (ptr: Pointer<any>, style: CSSStyleDeclaration, k: string) =>
+		maybeListen(ptr, el, (v: any) => {
+			if (v === undefined) style.removeProperty(k);
+			else style.setProperty(k, v);
+		});
 
 	if (typeof init === "function") {
 		let state = createState({ children }) as Stateful<any>;
+		let cssInfo: CssInfo | undefined = componentCssInfo.get(init);
 
 		ssrTransform?.(init);
 
 		for (let attr in props) {
 			let val = props[attr];
 
-			if (isPointer(val)) {
+			if (val instanceof Pointer) {
 				stateProxy(state, attr, val);
 			} else {
 				state[attr] = val;
@@ -91,12 +96,11 @@ function _jsx(
 			// any pointers passed as children were unable to inherit the currentCssIdent.
 			// we add the currentCssIdent (which is of the parent) here since we know that the pointer came from the parent.
 			// this might break if pointers of elements are being passed as props but oh well
-			if (isPointer(child)) {
+			if (child instanceof Pointer) {
 				child._cssIdent ||= lastCssIdent;
 			}
 		}
 
-		let cssInfo: CssInfo | undefined = componentCssInfo.get(init);
 		if (init.style) {
 			let style = init.style;
 			let styleEl = DOCUMENT[CREATE_ELEMENT]("style");
@@ -141,7 +145,7 @@ function _jsx(
 		currentComponentCx = old;
 		state.root = el;
 
-		if (isNode(el)) {
+		if (el instanceof NODE) {
 			dev: {
 				if ((el as ComponentInstance<any>).$ && cssInfo)
 					throw new Error("Wrapper components cannot have CSS");
@@ -155,11 +159,7 @@ function _jsx(
 				for (let [varid, func] of cssInfo._vars) {
 					let id = `--${varid}`;
 					let style = el.style;
-
-					maybeListen(func(cx.state), el, (val: any) => {
-						if (val === undefined) style.removeProperty(id);
-						else style.setProperty(id, val);
-					});
+					setStyle(func(cx.state), style, id);
 				}
 		}
 
@@ -168,7 +168,7 @@ function _jsx(
 		currentComponentCx = cx;
 		inits.push(cx.init?.());
 
-		if (isNode(el) && hydrating?.(el)) cxs.push(cx);
+		if (el instanceof NODE && hydrating?.(el)) cxs.push(cx);
 		else if (hydrating) {
 			mounts.push(cx.mount?.());
 		}
@@ -201,6 +201,7 @@ function _jsx(
 
 		for (let attr in props) {
 			let val = props[attr];
+			let oldClasses: string[] = [];
 			if (attr === "this") {
 				val.value = el;
 			} else if (attr === "value" || attr === "checked") {
@@ -216,36 +217,31 @@ function _jsx(
 					}
 				);
 			} else if (attr === "class") {
-				let old: string[] = [];
-
 				maybeListen(val, el, (val: string) => {
+					// document.createElement("div").classList.{add,remove}(...[]) work
+					// document.createElement("div").classList.{add,remove}(...[""]) throw
 					let classes = val.split(" ").filter((x) => x.length);
-					if (old.length) classList.remove(...old);
-					if (classes.length) classList.add(...classes);
-					old = classes;
+					classList.remove(...oldClasses);
+					classList.add(...classes);
+					oldClasses = classes;
 				});
 			} else if (attr.startsWith("on:")) {
-				if (val) el.addEventListener(attr.slice(3), (e) => val(e));
+				el.addEventListener(attr.slice(3), val);
 			} else if (attr.startsWith("class:")) {
-				let name = attr.slice(6);
-
 				maybeListen(val, el, (val: boolean) => {
-					if (val) {
-						classList.add(name);
-					} else {
-						classList.remove(name);
-					}
+					classList[val ? "add" : "remove"](attr.slice(6));
 				});
 			} else if (attr.startsWith("attr:")) {
-				let key = attr.slice(5);
 				maybeListen(val, el, (val: boolean) => {
-					if (!hydrating?.(el)) (el as any)[key] = val;
+					if (!hydrating?.(el)) (el as any)[attr.slice(5)] = val;
 				});
-			} else if (attr == "style" && typeof val == "object" && !isPointer(val)) {
+			} else if (
+				attr == "style" &&
+				typeof val == "object" &&
+				!(val instanceof Pointer)
+			) {
 				for (let k in val) {
-					maybeListen(val[k], el, (v: any) => {
-						el.style.setProperty(k, v);
-					});
+					setStyle(val[k], el.style, k);
 				}
 			} else {
 				maybeListen(val, el, (val) => setAttr(attr, val));

@@ -1,11 +1,5 @@
 import { Element as DomElement, Text as DomText } from "domhandler";
-import {
-	DREAMLAND,
-	jsx,
-	setDomImpl,
-	DomImpl,
-	getDomImpl,
-} from "dreamland/core";
+import { setDomImpl, DomImpl, domImpl } from "dreamland/core";
 import { Node as VdomNode, Comment, Text, Element, newVDom } from "./vdom";
 import { AsyncLocalStorage } from "node:async_hooks";
 
@@ -20,8 +14,8 @@ export interface RenderedComponent {
 }
 
 let storage = new AsyncLocalStorage<DomImpl>();
-let dom = getDomImpl()();
-setDomImpl(() => storage.getStore() || dom);
+let dom = domImpl;
+setDomImpl(() => storage.getStore() || dom());
 
 export async function render(
 	component: () => Promise<any> | any
@@ -30,7 +24,9 @@ export async function render(
 	return storage.run(vdom, async () => {
 		let ret: any;
 		ret = await component();
-		await Promise.all(vdom[0].promises);
+		while (vdom[0].promises.length) {
+			await Promise.all(vdom[0].promises.splice(0));
+		}
 
 		let root: Element,
 			extraHead: Element[] = [];

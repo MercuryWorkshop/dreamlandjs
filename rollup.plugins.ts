@@ -887,6 +887,233 @@ export const classToDecl = () => ({
 	},
 });
 
+export const instanceofHoister = () => ({
+	name: "hoist-instanceof-invocation",
+	renderChunk: {
+		order: "pre" as const,
+		handler(code: string) {
+			if (!code.includes("instanceof")) return null;
+
+			const ast = this.parse(code);
+			const rewritten = new MagicString(code);
+			const replacements: Array<[number, number, string]> = [];
+
+			const visit = (node: any) => {
+				if (!node || typeof node !== "object") return;
+				if (
+					node.type === "BinaryExpression" &&
+					node.operator === "instanceof" &&
+					typeof node.start === "number" &&
+					typeof node.end === "number" &&
+					typeof node.left?.start === "number" &&
+					typeof node.left?.end === "number" &&
+					typeof node.right?.start === "number" &&
+					typeof node.right?.end === "number"
+				) {
+					const left = code.slice(node.left.start, node.left.end);
+					const right = code.slice(node.right.start, node.right.end);
+					replacements.push([
+						node.start,
+						node.end,
+						`__instanceof(${left}, ${right})`,
+					]);
+				}
+
+				for (const value of Object.values(node)) {
+					if (!value) continue;
+					if (Array.isArray(value)) {
+						for (const child of value) {
+							if (child && typeof child === "object") visit(child);
+						}
+					} else if (typeof value === "object") {
+						visit(value);
+					}
+				}
+			};
+
+			visit(ast);
+			if (replacements.length === 0) return null;
+
+			replacements.sort((a, b) => b[0] - a[0]);
+			for (const [start, end, replacement] of replacements) {
+				rewritten.overwrite(start, end, replacement);
+			}
+
+			const helperDecl = "let __instanceof = (a, b) => a instanceof b;";
+			if (!code.includes(helperDecl)) {
+				let lastImportIndex = 0;
+				for (let i = 0; i < code.length; i++) {
+					if (/\s/.test(code[i])) continue;
+					if (code.startsWith("//", i)) {
+						const idx = code.indexOf("\n", i);
+						i = idx === -1 ? code.length : idx;
+						continue;
+					}
+					if (code.startsWith("/*", i)) {
+						const idx = code.indexOf("*/", i);
+						i = idx === -1 ? code.length : idx + 1;
+						continue;
+					}
+					if (code.startsWith("import", i)) {
+						const next = code[i + 6];
+						if (!next || !/[a-zA-Z0-9_$]/.test(next)) {
+							let inQuote: string | null = null;
+							let depth = 0;
+							for (let j = i; j < code.length; j++) {
+								const ch = code[j];
+								if (inQuote) {
+									if (ch === "\\" && code[j + 1]) j++;
+									else if (ch === inQuote) inQuote = null;
+								} else {
+									if (ch === "'" || ch === '"') inQuote = ch;
+									else if (ch === "{" || ch === "(") depth++;
+									else if (ch === "}" || ch === ")") depth--;
+									else if (ch === ";" && depth === 0) {
+										lastImportIndex = j + 1;
+										i = j;
+										break;
+									}
+								}
+							}
+							continue;
+						}
+					}
+					break;
+				}
+				rewritten.appendRight(lastImportIndex, helperDecl);
+			}
+
+			return {
+				code: rewritten.toString(),
+				map: rewritten.generateMap({ hires: true }),
+			};
+		},
+	},
+});
+
+export const typeofHoister = () => ({
+	name: "hoist-typeof-invocation",
+	renderChunk: {
+		order: "pre" as const,
+		handler(code: string) {
+			if (!code.includes("typeof")) return null;
+
+			const ast = this.parse(code);
+			const rewritten = new MagicString(code);
+			const replacements: Array<[number, number, string]> = [];
+
+			const visit = (node: any) => {
+				if (!node || typeof node !== "object") return;
+				if (
+					node.type === "BinaryExpression" &&
+					["==", "===", "!=", "!=="].includes(node.operator) &&
+					typeof node.start === "number" &&
+					typeof node.end === "number" &&
+					typeof node.left?.start === "number" &&
+					typeof node.left?.end === "number" &&
+					typeof node.right?.start === "number" &&
+					typeof node.right?.end === "number"
+				) {
+					const leftIsTypeof =
+						node.left.type === "UnaryExpression" &&
+						node.left.operator === "typeof" &&
+						typeof node.left.argument?.start === "number" &&
+						typeof node.left.argument?.end === "number";
+					const rightIsTypeof =
+						node.right.type === "UnaryExpression" &&
+						node.right.operator === "typeof" &&
+						typeof node.right.argument?.start === "number" &&
+						typeof node.right.argument?.end === "number";
+
+					if (leftIsTypeof || rightIsTypeof) {
+						const isNegated = node.operator === "!=" || node.operator === "!==";
+						const typeofArg = leftIsTypeof
+							? code.slice(node.left.argument.start, node.left.argument.end)
+							: code.slice(node.right.argument.start, node.right.argument.end);
+						const compareArg = leftIsTypeof
+							? code.slice(node.right.start, node.right.end)
+							: code.slice(node.left.start, node.left.end);
+						const helperCall = `__typeof(${typeofArg}, ${compareArg})`;
+						replacements.push([
+							node.start,
+							node.end,
+							isNegated ? `!${helperCall}` : helperCall,
+						]);
+					}
+				}
+
+				for (const value of Object.values(node)) {
+					if (!value) continue;
+					if (Array.isArray(value)) {
+						for (const child of value) {
+							if (child && typeof child === "object") visit(child);
+						}
+					} else if (typeof value === "object") {
+						visit(value);
+					}
+				}
+			};
+
+			visit(ast);
+			if (replacements.length === 0) return null;
+
+			replacements.sort((a, b) => b[0] - a[0]);
+			for (const [start, end, replacement] of replacements) {
+				rewritten.overwrite(start, end, replacement);
+			}
+
+			const helperDecl = "let __typeof = (x, a) => typeof x == a;";
+			if (!code.includes(helperDecl)) {
+				let lastImportIndex = 0;
+				for (let i = 0; i < code.length; i++) {
+					if (/\s/.test(code[i])) continue;
+					if (code.startsWith("//", i)) {
+						const idx = code.indexOf("\n", i);
+						i = idx === -1 ? code.length : idx;
+						continue;
+					}
+					if (code.startsWith("/*", i)) {
+						const idx = code.indexOf("*/", i);
+						i = idx === -1 ? code.length : idx + 1;
+						continue;
+					}
+					if (code.startsWith("import", i)) {
+						const next = code[i + 6];
+						if (!next || !/[a-zA-Z0-9_$]/.test(next)) {
+							let inQuote: string | null = null;
+							let depth = 0;
+							for (let j = i; j < code.length; j++) {
+								const ch = code[j];
+								if (inQuote) {
+									if (ch === "\\" && code[j + 1]) j++;
+									else if (ch === inQuote) inQuote = null;
+								} else {
+									if (ch === "'" || ch === '"') inQuote = ch;
+									else if (ch === "{" || ch === "(") depth++;
+									else if (ch === "}" || ch === ")") depth--;
+									else if (ch === ";" && depth === 0) {
+										lastImportIndex = j + 1;
+										i = j;
+										break;
+									}
+								}
+							}
+							continue;
+						}
+					}
+					break;
+				}
+				rewritten.appendRight(lastImportIndex, helperDecl);
+			}
+
+			return {
+				code: rewritten.toString(),
+				map: rewritten.generateMap({ hires: true }),
+			};
+		},
+	},
+});
+
 export const stripBetweenComments = (
 	startComment: string,
 	endComment: string

@@ -1,7 +1,7 @@
 import { MAP } from "../consts";
 import { CSS_COMPONENT } from "../css";
-import { isPointer, maybeListen } from "../state/pointers";
-import { findLIS, isArray, isNode } from "../utils";
+import { Pointer, maybeListen } from "../state/pointers";
+import { findLIS } from "../utils";
 import { ComponentChild } from "./definitions";
 import { CSS_IDENT, getDom } from "./dom";
 
@@ -14,11 +14,11 @@ export let mapChild = (
 	cssIdent?: string,
 	identOverride?: string
 ): Node[] => {
-	let [, , new_Text, new_Comment, , , hydrating] = getDom();
+	let [, NODE, new_Text, new_Comment, , , hydrating] = getDom();
 
 	if (isBlacklisted(child)) {
 		return [new_Comment()];
-	} else if (isPointer(child)) {
+	} else if (child instanceof Pointer) {
 		let start = new_Comment("[");
 		let end = new_Comment("]");
 		let current: Node[];
@@ -57,7 +57,7 @@ export let mapChild = (
 			...(hydrating?.(parent as HTMLElement) ? [] : current!),
 			end,
 		];
-	} else if (isNode(child)) {
+	} else if (child instanceof (NODE as typeof globalThis.Node)) {
 		let list: DOMTokenList;
 		let apply = (child: any) => {
 			if ((list = child.classList)) {
@@ -79,7 +79,7 @@ export let mapChild = (
 		if (identOverride || cssIdent) apply(child);
 
 		return [child];
-	} else if (isArray(child)) {
+	} else if (child instanceof Array) {
 		return child.flatMap((x) => mapChild(x, parent, cssIdent, identOverride));
 	} else {
 		return [new_Text(child as string)];
