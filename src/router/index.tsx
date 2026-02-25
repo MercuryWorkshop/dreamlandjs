@@ -305,11 +305,13 @@ export function Router(
 		validateRoute(routes);
 	}
 
+	let latestNavId = 0;
 	let route = async (
 		initial: boolean,
 		path = location.pathname,
 		origin = location.origin
 	) => {
+		let currentNavId = ++latestNavId;
 		let realPath = new URL(path, origin).pathname;
 		if (realPath.endsWith(".html"))
 			realPath = realPath.slice(0, realPath.length - 5);
@@ -327,18 +329,22 @@ export function Router(
 			params,
 			initial
 		);
+		let el;
 
-		if (reconciled?._el) this.el = await reconciled._el;
+		if (reconciled?._el) el = await reconciled._el;
 		else if (reconciled?._layout) {
-			this.el = reconciled._layout;
+			el = reconciled._layout;
 			await reconciled._dep;
 		}
+
+		if (currentNavId !== latestNavId) return [];
+		this.el = el;
 
 		return [this.el && realPath, reconciled?._late] as const;
 	};
 	this.navigate = async (path) => {
 		let [ret, late] = await route(false, path);
-		late?.();
+		await late?.();
 		if (ret) history.pushState(null, "", ret);
 		return ret;
 	};
@@ -370,14 +376,14 @@ export function Router(
 	this.cx.init = () => {
 		let [path, origin] = this.initial || [];
 		return route(true, path, origin).then(([_, _late]) => {
-			if (ran) _late();
+			if (ran) return _late?.();
 			else late = _late;
 		});
 	};
 
 	this.cx.mount = () => {
 		addEventListener("popstate", () => {
-			route(false).then(([_, late]) => late());
+			route(false).then(([_, late]) => late?.());
 		});
 		let ret = late?.();
 		ran = true;
