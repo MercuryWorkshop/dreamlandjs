@@ -283,7 +283,7 @@ export let router: ComponentState<typeof Router>;
 export function Router(
 	this: FC<
 		{
-			initial?: [string, string] | [string] | [];
+			initial?: [path: string, origin: string] | [path: string] | [];
 			children: HTMLElement | HTMLElement[];
 		},
 		{

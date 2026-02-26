@@ -115,3 +115,15 @@ function ChartCard(this: FC<{}, {
 	use(this.mobile).and(<Mobile />).or(<Desktop />);
 }
 ```
+
+## Router revamp
+
+Layouts are no longer instantiated by the user.
+Show targets that return functions are now cached instead of being reinstantiated every route invocation.
+`Router.route` is no longer available, and now is automatically called for the initial navigation.
+
+Async routes are now available!
+
+### SSR/prerendering
+Remove any manual `Router.route` calls with custom paths and replace them with the `initial` prop.
+`initial` prop has the type `[path: string, origin: string]` and both must be specified. You can use a fake origin if needed.

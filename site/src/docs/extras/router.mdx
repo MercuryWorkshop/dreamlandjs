@@ -13,7 +13,7 @@ The router is constructed as a JSX component and routes are defined in JSX:
 <div id="app">
 	<Router>
 		<Route show={<MainPage />} />
-		<Route show={<DocsLayout />} path="docs">
+		<Route layout={DocsLayout} path="docs">
 			{docs.map(({ path, component }) => {
 				return <Route path={path} show={() => jsx(component, {})} />;
 			})}
@@ -24,7 +24,7 @@ The router is constructed as a JSX component and routes are defined in JSX:
 
 Once a `Router` component is created, the instance is exposed by the `router` export.
 The `Router` automatically handles the `popstate` event for history navigation.
-It also exposes a `route` function to simply change the current route without touching history and a `navigate` function to both change the current route and commit it to history:
+It also exposes a `navigate` function to change the current route and commit it to history:
 
 ```tsx
 import { router } from "dreamland/router";
@@ -32,17 +32,57 @@ import { router } from "dreamland/router";
 router.navigate("/"); // sent to history
 ```
 
-## Special Routes
+## Advanced route usage
 
-Routes without a `path` are treated as the "index.html" if they don't have any children.
-If they have children, they're treated as a layout and the component in `show` will get the child route's result assigned to `this.outlet`.
+### Dynamic routes
 
-If you assign a function to `this["on:routeshown"]`, it'll get called once the route is shown.
+Route path segments with `:<name>` creates a dynamic prop for that path segment, and `*` consumes all further path segments and puts them in the `*` prop.
+All `show` targets get a prop `routerParams`, an object that has any props from the path segment.
+
+You can't rely on it always existing since the router does not construct the `show` target internally with the `routerParams` prop passed in.
+Instead, the `routerParams` prop is assigned to the component state during routing.
+
+### Layouts
+
+Layouts are special components that get more information about routing and wrap children routes.
+The router constructs the layout component internally, passing the `routerState` prop.
+
+## Async routes (Suspense)
+
+The router also supports `show` props that are functions that return promises, allowing for code splitting and lazy loading.
+The component returned is cached and not reinstantiated.
+
+By default, routing does not show any feedback while waiting for async routes to finish.
+However, layouts can use `routerParams` to show a loading bar or placeholder.
+
+### Corking
+"Corked" routes are routes with a layout that are only fully instantiated on the client and eagerly switch to their layout when navigating in from other pages.
+This allows for clientside only routes for browser-only things like Monaco.
 
 ## SSR integration
 
-dreamland's router is compatible with SSR and hydration, and exposes a `ssgables` function to allow for easy prerendering.
-It returns any route that doesn't have dynamic parameters in it.
+dreamland's router is compatible with SSR and hydration. By default, it'll attempt to route to `[location.pathname, location.origin]`,
+but this can be overridden with the `initial` prop:
+
+```tsx
+import { render } from "dreamland/ssr/server";
+
+function App(this: FC<{ url?: string }>) {
+	return (
+		<div id="app">
+			<Router initial={this.url ? [this.url, "http://127.0.0.1:5173"] : []}>
+				{/* ... */}
+			</Router>
+		</div>
+	)
+}
+
+export default (path) => render(<App url={path} />);
+```
+
+### Prerendering
+
+The router also exposes a `ssgables` function which returns any route that doesn't have dynamic parameters in it to allow for easy prerendering.
 
 ```tsx
 let paths = router.ssgables();
