@@ -46,7 +46,7 @@ let compiled = (code: string) => `
 </html>
 `;
 
-export function Playground(
+export default function Playground(
 	this: FC<
 		{},
 		{

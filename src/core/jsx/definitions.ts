@@ -54,10 +54,10 @@ type ComponentCx<StatefulProps extends { [COMMA_TOKEN]?: never } & object> = {
 	state: Stateful<StatefulProps>;
 	id?: string;
 
-	// Run only on client
-	mount?: () => void;
-	// Run on client and server
-	init?: () => void;
+	// Run on client and server (return value not accessible)
+	init?: () => Promise<any> | any;
+	// Run only on client (return value not accessible)
+	mount?: () => Promise<any> | any;
 } & {
 	[K in keyof DLComponentContextExtraProps]?: DLComponentContextExtraProps[K];
 };

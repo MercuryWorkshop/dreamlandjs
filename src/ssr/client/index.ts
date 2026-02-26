@@ -1,10 +1,9 @@
 import {
+	Component,
 	ComponentContext,
 	DomImpl,
-	DREAMLAND,
-	getDomImpl,
+	domImpl,
 	jsx,
-	NO_CHANGE,
 	setDomImpl,
 } from "dreamland/core";
 import { SSR_DATA, SSR_ID } from "../common/consts";
@@ -89,7 +88,11 @@ export let hydrate = async (
 		if (text.length !== len) text.splitText(len);
 	}
 
-	let old = getDomImpl();
+	let _old = domImpl,
+		old = _old();
+	let cxs: ComponentContext<Component<any, any>>[] = [];
+	let inits: (Promise<any> | any)[] = [];
+	let mounts: typeof inits = [];
 	let vdom = [
 		{
 			createElement: (x: any) => {
@@ -161,21 +164,30 @@ export let hydrate = async (
 			return node || old[3](x);
 		},
 		() => data.i[idx + 1] || old[4](),
+		old[5],
 		hydrating,
 		(init, cx) => {
 			if (cx?.state?.root instanceof old[1] && !hydrating(cx.state?.root))
 				hydrateCx(cx);
 		},
+		cxs,
+		inits,
+		mounts,
 	] as const satisfies DomImpl;
-	setDomImpl(vdom);
-	jsx[DREAMLAND]();
-	let root = component();
-	setDomImpl(old);
 
-	jsx[NO_CHANGE]().map((x) => {
+	setDomImpl(() => vdom);
+	let root = await component();
+	while (inits.length) {
+		await Promise.all(inits.splice(0));
+	}
+	setDomImpl(_old);
+
+	cxs.map((x) => {
 		hydrateCx(x);
-		x.mount?.();
+		mounts.push(x.mount?.());
 	});
+
+	await Promise.all(mounts);
 
 	return root;
 };

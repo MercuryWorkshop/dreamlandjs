@@ -1,4 +1,4 @@
-import { ComponentContext, DomImpl } from "dreamland/core";
+import { Component, ComponentContext, DomImpl } from "dreamland/core";
 
 // @ts-expect-error rrweb-cssom doesn't have types
 import { CSSOM } from "rrweb-cssom";
@@ -22,7 +22,7 @@ export class Node {
 
 	appendChild(node: Node) {
 		node.parent = this;
-		this.childNodes.push(node);
+		if (!this.childNodes.includes(node)) this.childNodes.push(node);
 		return node;
 	}
 	append(node: Node) {
@@ -35,6 +35,8 @@ export class Node {
 	}
 
 	insertBefore(node: Node, anchor: Node) {
+		this.removeChild(node);
+		node.parent = this;
 		this.childNodes.splice(
 			this.childNodes.findIndex((x) => x === anchor),
 			0,
@@ -66,7 +68,7 @@ class ClassList extends Array {
 	}
 
 	add(...classes: string[]) {
-		this.push(...classes);
+		this.push(...classes.filter((x) => !this.includes(x)));
 	}
 	remove(...classes: string[]) {
 		for (let cls of classes) {
@@ -81,6 +83,10 @@ class ClassList extends Array {
 
 	toString(): string {
 		return this.join(" ");
+	}
+
+	_replace(classes: string[]) {
+		this.splice(0, this.length, ...classes);
 	}
 }
 
@@ -107,11 +113,11 @@ export class Element extends Node {
 	addEventListener() {}
 
 	setAttribute(key: string, value: any) {
-		if (key === "class") this.classList.push(...value.split(" "));
+		if (key === "class") this.classList._replace(value.split(" "));
 		this.attributes.set(key, "" + value);
 	}
 	removeAttribute(key: string) {
-		if (key === "class") this.classList = new ClassList();
+		if (key === "class") this.classList._replace([]);
 		this.attributes.delete(key);
 	}
 
@@ -243,6 +249,8 @@ export let newVDom = () => {
 
 	let identArr: Map<number, string> = new Map();
 
+	let promises: (Promise<any> | any)[] = [];
+
 	return [
 		{
 			createElement(type: string) {
@@ -255,6 +263,8 @@ export let newVDom = () => {
 			elArr,
 			identArr,
 
+			promises,
+
 			head: new Element("head"),
 		},
 		Node,
@@ -265,7 +275,11 @@ export let newVDom = () => {
 			identArr.set(elArr.length, ret);
 			return ret;
 		},
+		new Map(),
 		undefined, // enables "ssr mode"
 		undefined,
+		undefined,
+		promises,
+		promises,
 	] as const satisfies DomImpl;
 };

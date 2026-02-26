@@ -55,14 +55,15 @@ export let serializeState = (
 
 	let _serialize = (object: any, root?: boolean): SsrObject => {
 		let out: SsrObject = [];
-		for (let k in object) {
-			if (root && ["cx", "root"].includes(k)) continue;
+		if (!object[NO_CHANGE])
+			for (let k in object) {
+				if (root && ["cx", "root"].includes(k)) continue;
 
-			let v = object[k];
-			let val = _val(v);
+				let v = object[k];
+				let val = _val(v);
 
-			if (!isUndefined(val)) out.push([push(data.k, k), val]);
-		}
+				if (!isUndefined(val)) out.push([push(data.k, k), val]);
+			}
 		return out;
 	};
 

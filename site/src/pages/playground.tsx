@@ -1,29 +1,33 @@
 import { css, type FC } from "dreamland/core";
+import { Link, RouterState } from "dreamland/router";
 
 // rollup hack
 import "../playground/setup";
-import { setTitle } from "../main";
 
-import { Link } from "../../../dist/router";
 import { Hero } from "../utils";
 
-export function PlaygroundHost(
-	this: FC<
-		{},
-		{
-			host?: HTMLElement;
-			"on:routeshown": () => void;
-		}
-	>
-) {
-	this["on:routeshown"] = async () => {
-		if (!import.meta.env.SSR) {
-			let playground = await import("../playground/playground");
-			this.host = <playground.Playground />;
-		}
+export function PlaygroundLoading(this: FC) {
+	return (
+		<div>
+			<h2>
+				<b>Loading web IDE...</b>
+			</h2>
+		</div>
+	);
+}
+PlaygroundLoading.style = css`
+	:scope {
+		width: 100%;
+		height: 100%;
 
-		setTitle("Playground");
-	};
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+`;
+
+export function PlaygroundHost(this: FC<{ routerState: RouterState }>) {
+	this.cx.pageTitle = "Playground";
 
 	return (
 		<div>
@@ -34,13 +38,7 @@ export function PlaygroundHost(
 				Playground
 			</div>
 			<div class="main">
-				{use(this.host).or(
-					<div class="loading">
-						<h2>
-							<b>Loading web IDE...</b>
-						</h2>
-					</div>
-				)}
+				{use(this.routerState.outlet).or(<PlaygroundLoading />)}
 			</div>
 		</div>
 	);
@@ -78,13 +76,8 @@ PlaygroundHost.style = css`
 	.main {
 		flex: 1;
 	}
-
-	.loading {
-		width: 100%;
-		height: 100%;
-
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
 `;
+
+export function showPlayground() {
+	return import("../playground/playground").then((r) => <r.default />);
+}

@@ -23,7 +23,7 @@ export function DropdownController(this: FC<{}, {
 }
 */
 
-import { Component, DomImpl, getDomImpl, h, setDomImpl } from "dreamland/core";
+import { Component, DomImpl, domImpl, h, setDomImpl } from "dreamland/core";
 import { SSR, SSR_ID } from "../common/consts";
 
 export let mountOne = (
@@ -33,7 +33,8 @@ export let mountOne = (
 	let lookup = (ty: string, id: string) =>
 		root.querySelector(`${ty}[${SSR_ID}='${id}'`);
 
-	let old = getDomImpl();
+	let _old = domImpl,
+		old = _old();
 	let vdom = [
 		{
 			createElement(ty: string, _: any, props: any) {
@@ -53,6 +54,7 @@ export let mountOne = (
 		old[3],
 		old[4],
 		old[5],
+		old[6],
 		(init, cx) => {
 			if (init === component) {
 				if (cx) {
@@ -65,9 +67,9 @@ export let mountOne = (
 			}
 		},
 	] satisfies DomImpl;
-	setDomImpl(vdom);
+	setDomImpl(() => vdom);
 	let x = h(component, {});
-	setDomImpl(old);
+	setDomImpl(_old);
 
 	// @ts-expect-error prevent vite from messing stuff up
 	return x;

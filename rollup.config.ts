@@ -10,9 +10,11 @@ import { visualizer } from "rollup-plugin-visualizer";
 import {
 	classToDecl,
 	globalHoister,
+	instanceofHoister,
 	propertyHoister,
 	stringHoister,
 	stripBetweenComments,
+	typeofHoister,
 } from "./rollup.plugins.ts";
 
 let DEV = false;
@@ -29,7 +31,9 @@ let HOISTS = [
 	"WeakMap",
 	"WeakRef",
 	"Promise",
+	//	"Promise.all", unsafe transform
 	"Proxy",
+	"location",
 ];
 
 const onwarn: WarningHandlerWithDefault = (warning, warn) => {
@@ -65,7 +69,13 @@ function common({
 			tsconfig,
 		}),
 		...(hoist
-			? [globalHoister(HOISTS), propertyHoister(), stringHoister()]
+			? [
+					globalHoister(HOISTS),
+					propertyHoister(),
+					stringHoister(),
+					instanceofHoister(),
+					typeofHoister(),
+				]
 			: []),
 		...(DEV || !runTerser
 			? []

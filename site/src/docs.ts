@@ -5,7 +5,6 @@ export interface DocPage {
 	path: string;
 	groups: string[];
 	title: string;
-	component: Component<{}>;
 	order: number;
 }
 
@@ -15,20 +14,33 @@ export interface DocGroup {
 	children: (DocGroup | DocPage)[];
 }
 
+let mapPath = (path: string) => path.replace("./docs/", "").replace(".mdx", "");
+
 export let docs: DocPage[] = Object.entries(
-	import.meta.glob("./docs/**/*.mdx", { eager: true })
-)
-	.map(([path, module]: [string, any]) => {
-		return {
-			type: "page",
-			path: path.replace("./docs/", "").replace(".mdx", ""),
-			groups: module.title,
-			title: module.title[module.title.length - 1],
-			component: module.default,
-			order: module.order || 0,
-		} as const;
+	import.meta.glob("./docs/**/*.mdx", {
+		eager: true,
+		import: "frontmatter",
+		query: { frontmatter: true },
 	})
+)
+	.map(
+		([path, meta]: [string, any]) =>
+			({
+				type: "page",
+				path: mapPath(path),
+				groups: meta.title,
+				title: meta.title[meta.title.length - 1],
+				order: meta.order || 0,
+			}) as const
+	)
 	.sort((a, b) => a.order - b.order);
+
+export let docComponents: [string, () => Promise<Component>][] = Object.entries(
+	import.meta.glob("./docs/**/*.mdx")
+).map(([path, module]) => [
+	mapPath(path),
+	() => module().then((r: any) => r.default),
+]);
 
 export let groups: (DocGroup | DocPage)[] = [];
 for (let page of docs) {

@@ -1,5 +1,9 @@
-export let title = ["Features", "SSR"];
-export let order = 31;
+---
+title:
+  - Features
+  - SSR
+order: 31
+---
 
 dreamland's SSR implementation is based around DOM element construction order, so it is especially prone to hydration errors with differing logic on server vs client.
 The server-side API is based around `domhandler`'s DOM with a custom internal DOM that implements the bare minimum needed for dreamland.

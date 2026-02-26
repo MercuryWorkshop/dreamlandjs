@@ -1,4 +1,5 @@
 import { DREAMLAND, NO_CHANGE, WEAKMAP, WEAKREF } from "../consts";
+import { currentComponentCx } from "../jsx";
 import { deref, ObjectProp } from "../utils";
 import {
 	_stateListen,
@@ -10,10 +11,6 @@ import { useTrap, UseTrapMap, useTrapMap } from "./use";
 
 let constraints: WeakMap<any, Pointer<any>[]> = WEAKMAP();
 let internalPointers: WeakMap<Pointer<any>, InternalPointer<any>> = WEAKMAP();
-
-export let DEFAULT_CONSTRAINER: any | false | undefined;
-export let setConstrainer = (constrainer: typeof DEFAULT_CONSTRAINER) =>
-	(DEFAULT_CONSTRAINER = constrainer);
 
 const enum PointerType {
 	Regular = 0,
@@ -73,22 +70,27 @@ let unwrapStep = (val: StateStep): any => unwrapValue(val._prop);
 let followPath = (obj: any, path: ReadonlyArray<StateStep>): any =>
 	path.reduce((acc, x) => acc[unwrapStep(x)], obj);
 
+type DistributiveOmit<T, K extends PropertyKey> = T extends any
+	? Omit<T, K>
+	: never;
+let newPtr = (
+	ptr: DistributiveOmit<InternalPointer<any>, "_listeners" | "_weaks">
+) => new Pointer<any>({ ...ptr, _listeners: [], _weaks: [] });
+
 export let initializeStep = (
 	map: UseTrapMap,
 	step: ObjectProp
 ): StateStepVal => {
 	// map will just return nothing, cast to reduce code size
 	let init = map.get(step as symbol);
-	if (isPointer(init)) return init;
+	if (init instanceof Pointer) return init;
 	else if (!init) return step;
 
-	return new Pointer({
-		_listeners: [],
-		_weaks: [],
+	return newPtr({
 		_type: PointerType.Regular,
 		_state: init._state,
 		_path: init._path.map((x) => ({ _prop: initializeStep(map, x) })),
-	} satisfies InternalPointer<any>);
+	});
 };
 
 type Truthy<T> = NonNullable<Exclude<T, false | 0 | "" | null | undefined>>;
@@ -153,7 +155,7 @@ export class Pointer<T> {
 			internal._path.map((x, i) => {
 				x._callback = this._changed.bind(this, i);
 				x._callbackRef = WEAKREF(x._callback);
-				if (isPointer(x._prop)) x._prop._listenWeak(x._callbackRef);
+				if (x._prop instanceof Pointer) x._prop._listenWeak(x._callbackRef);
 				this._recalculate(i, internal, x);
 			});
 		} else if (internal._type == PointerType.Mapped) {
@@ -162,7 +164,7 @@ export class Pointer<T> {
 			internal._ptrs.map((x) => x._listenWeak(WEAKREF(this._listener)));
 		}
 
-		if (DEFAULT_CONSTRAINER) this.constrain(DEFAULT_CONSTRAINER);
+		if (currentComponentCx) this.constrain(currentComponentCx.state);
 	}
 
 	get value(): T {
@@ -230,9 +232,7 @@ export class Pointer<T> {
 			},
 		]
 	> {
-		return new Pointer({
-			_listeners: [],
-			_weaks: [],
+		return newPtr({
 			_type: PointerType.Zipped,
 			_ptrs: [this, ...pointers],
 		});
@@ -264,9 +264,7 @@ export class Pointer<T> {
 		reverse: (val: U) => T | typeof NO_CHANGE
 	): Pointer<U>;
 	map<U>(_map: (val: T) => U, _reverse?: (val: U) => T | typeof NO_CHANGE) {
-		return new Pointer({
-			_listeners: [],
-			_weaks: [],
+		return newPtr({
 			_type: PointerType.Mapped,
 			_ptr: this,
 			_map,
@@ -290,10 +288,8 @@ export class Pointer<T> {
 	}
 }
 
-export let isPointer = <T>(val: Pointer<T> | T): val is Pointer<T> =>
-	val instanceof Pointer;
 export let unwrapValue = <T>(val: Pointer<T> | T): T =>
-	isPointer(val) ? val.value : (val as T);
+	val instanceof Pointer ? val.value : (val as T);
 export let maybeListen = <T>(
 	val: Pointer<T> | T,
 	constrain: any,
@@ -301,7 +297,7 @@ export let maybeListen = <T>(
 	pointer?: () => void
 ) => {
 	let old = val;
-	if (isPointer(val)) {
+	if (val instanceof Pointer) {
 		pointer?.();
 		val
 			.constrain(constrain)

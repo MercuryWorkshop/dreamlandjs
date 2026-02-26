@@ -16,7 +16,7 @@ export let jsxPlugin = (): Plugin => ({
 
 export let renderSsr = async (
 	html: string,
-	render: () => RenderedComponent,
+	render: () => Promise<RenderedComponent> | RenderedComponent,
 	transform?: (html: string) => Promise<string> | string
 ): Promise<string> => {
 	if (transform) html = await transform(html);
@@ -25,7 +25,7 @@ export let renderSsr = async (
 		encodeEntities: "utf8",
 		decodeEntities: false,
 	};
-	let dom = render();
+	let dom = await render();
 	let head = renderToString([dom.data, ...dom.head], cfg);
 	let body = renderToString(dom.component, cfg);
 

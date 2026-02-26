@@ -1,12 +1,4 @@
-import {
-	new_Comment,
-	DOCUMENT,
-	new_Text,
-	genCssUid,
-	CSS_IDENT,
-	hydrating,
-	ssrTransform,
-} from "./dom";
+import { getDom, CSS_IDENT, CssInfo } from "./dom";
 import { CSS_COMPONENT, genuid } from "../css";
 import {
 	Component,
@@ -15,116 +7,26 @@ import {
 	ComponentInstance,
 	DLElementNameToElement,
 } from "./definitions";
-import {
-	DEFAULT_CONSTRAINER,
-	isPointer,
-	maybeListen,
-	setConstrainer,
-} from "../state/pointers";
+import { Pointer, maybeListen } from "../state/pointers";
 import { createState, stateProxy, Stateful } from "../state/state";
-import { DREAMLAND, MAP, NO_CHANGE } from "../consts";
 import { DelegateListener } from "../delegate";
-import { findLIS, isArray, isNode } from "../utils";
+import { mapChild } from "./child";
 
-export let currentCssIdent: string | undefined;
+export let currentComponentCx:
+	| ComponentContext<Component<any, any>>
+	| undefined;
 export let callDelegateListeners = (
 	value: any,
 	listeners: DelegateListener<any>[]
 ): void =>
 	listeners.map((x) => {
-		let oldIdent = currentCssIdent;
-		let oldConstrainer = DEFAULT_CONSTRAINER;
-		setConstrainer(x._constrainer);
-		currentCssIdent = x._cssIdent;
+		let old = currentComponentCx;
+		currentComponentCx = x._cx;
 		x._callback(value);
-		currentCssIdent = oldIdent;
-		setConstrainer(oldConstrainer);
+		currentComponentCx = old;
 	}) as any as void;
 
-let isBlacklisted = (val: any): val is null | undefined | boolean =>
-	[null, undefined, false, true].includes(val);
-
-let mapChild = (
-	child: ComponentChild,
-	parent: Node,
-	cssIdent?: string,
-	identOverride?: string
-): Node[] => {
-	if (isBlacklisted(child)) {
-		return [new_Comment()];
-	} else if (isPointer(child)) {
-		let start = new_Comment("[");
-		let end = new_Comment("]");
-		let current: Node[];
-
-		maybeListen(child, start, (val: ComponentChild) => {
-			if (current && !start.parentNode) return;
-			let mapped: Node[] = mapChild(val, parent, cssIdent, child._cssIdent);
-
-			// pretty sure it's not possible to put a pointer child in not a htmlelement
-			if (!hydrating?.(parent as HTMLElement) && current) {
-				let old = MAP(current.map((x, i) => [x, i]));
-				let staticNodes = mapped.map((x) => old.get(x)!).filter((x) => x);
-				let LIS = MAP(findLIS(staticNodes).map((x) => [current[x], ,]));
-				let anchor: Node = start;
-
-				mapped.map((child) => {
-					if (!old.has(child) || !LIS.has(child)) {
-						parent.insertBefore(child, anchor.nextSibling);
-					}
-					anchor = child;
-				});
-
-				current
-					.filter((x) => !mapped.includes(x) && x.parentNode === parent)
-					.map((child) => parent.removeChild(child));
-			}
-			current = mapped;
-		});
-
-		return [
-			start,
-			...(hydrating?.(parent as HTMLElement) ? [] : current!),
-			end,
-		];
-	} else if (isNode(child)) {
-		let list: DOMTokenList;
-		let apply = (child: any) => {
-			if ((list = child.classList)) {
-				let arr = [...list];
-				let other = arr.find((x) => x.startsWith(CSS_IDENT));
-
-				if (arr.find((x) => x == CSS_COMPONENT)) return;
-
-				if (!other) {
-					list.add(identOverride || cssIdent!);
-				} else if (identOverride && other !== identOverride) {
-					list.remove(other);
-					list.add(identOverride);
-				}
-
-				[...child.childNodes].map(apply);
-			}
-		};
-		if (identOverride || cssIdent) apply(child);
-
-		return [child];
-	} else if (isArray(child)) {
-		return child.flatMap((x) => mapChild(x, parent, cssIdent, identOverride));
-	} else {
-		return [new_Text(child as string)];
-	}
-};
-
 let CREATE_ELEMENT = "createElement" as const;
-
-interface CssInfo {
-	_id: string;
-	_vars: [string, (props: any) => any][];
-}
-
-let componentCssInfo: Map<Component, CssInfo> = MAP();
-let cxs: ComponentContext<Component<any, any>>[] = [];
 
 function _jsx<T extends Component<any, any>>(
 	init: T,
@@ -141,6 +43,21 @@ function _jsx(
 	_props: Record<string, any> | null,
 	key?: string
 ): HTMLElement {
+	let [
+		DOCUMENT,
+		NODE,
+		,
+		,
+		genCssUid,
+		componentCssInfo,
+		hydrating,
+		ssrTransform,
+		cxs = [],
+		inits = [],
+		mounts = [],
+	] = getDom();
+	let lastCssIdent = currentComponentCx?.id;
+
 	dev: {
 		if (!["string", "function"].includes(typeof init))
 			throw new Error("invalid component");
@@ -150,19 +67,25 @@ function _jsx(
 	if (init === Fragment) return _children;
 	if (key) props.key = key;
 	_children ||= [];
-	let children = isArray(_children) ? _children : [_children];
+	let children = _children instanceof Array ? _children : [_children];
 
 	let el: HTMLElement;
+	let setStyle = (ptr: Pointer<any>, style: CSSStyleDeclaration, k: string) =>
+		maybeListen(ptr, el, (v: any) => {
+			if (v === undefined) style.removeProperty(k);
+			else style.setProperty(k, v);
+		});
 
 	if (typeof init === "function") {
 		let state = createState({ children }) as Stateful<any>;
+		let cssInfo: CssInfo | undefined = componentCssInfo.get(init);
 
 		ssrTransform?.(init);
 
 		for (let attr in props) {
 			let val = props[attr];
 
-			if (isPointer(val)) {
+			if (val instanceof Pointer) {
 				stateProxy(state, attr, val);
 			} else {
 				state[attr] = val;
@@ -173,12 +96,11 @@ function _jsx(
 			// any pointers passed as children were unable to inherit the currentCssIdent.
 			// we add the currentCssIdent (which is of the parent) here since we know that the pointer came from the parent.
 			// this might break if pointers of elements are being passed as props but oh well
-			if (isPointer(child)) {
-				child._cssIdent ||= currentCssIdent;
+			if (child instanceof Pointer) {
+				child._cssIdent ||= lastCssIdent;
 			}
 		}
 
-		let cssInfo: CssInfo | undefined = componentCssInfo.get(init);
 		if (init.style) {
 			let style = init.style;
 			let styleEl = DOCUMENT[CREATE_ELEMENT]("style");
@@ -216,18 +138,14 @@ function _jsx(
 			id: cssInfo?._id,
 		} as ComponentContext<any>;
 
-		let constrainer = DEFAULT_CONSTRAINER;
-		setConstrainer(state);
-		let oldIdent = currentCssIdent;
+		let old = currentComponentCx;
 		state.cx = cx;
-		currentCssIdent = cssInfo?._id;
+		currentComponentCx = cx;
 		el = init.call(state);
-		currentCssIdent = oldIdent;
+		currentComponentCx = old;
 		state.root = el;
 
-		setConstrainer(constrainer);
-
-		if (isNode(el)) {
+		if (el instanceof NODE) {
 			dev: {
 				if ((el as ComponentInstance<any>).$ && cssInfo)
 					throw new Error("Wrapper components cannot have CSS");
@@ -241,22 +159,20 @@ function _jsx(
 				for (let [varid, func] of cssInfo._vars) {
 					let id = `--${varid}`;
 					let style = el.style;
-
-					maybeListen(func(cx.state), el, (val: any) => {
-						if (val === undefined) style.removeProperty(id);
-						else style.setProperty(id, val);
-					});
+					setStyle(func(cx.state), style, id);
 				}
 		}
 
 		ssrTransform?.(init, cx);
 
-		setConstrainer(state);
-		cx.init?.();
+		currentComponentCx = cx;
+		inits.push(cx.init?.());
 
-		if (isNode(el) && hydrating?.(el)) cxs.push(cx);
-		else if (hydrating) cx.mount?.();
-		setConstrainer(constrainer);
+		if (el instanceof NODE && hydrating?.(el)) cxs.push(cx);
+		else if (hydrating) {
+			mounts.push(cx.mount?.());
+		}
+		currentComponentCx = old;
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
@@ -275,7 +191,7 @@ function _jsx(
 		);
 
 		for (let child of children) {
-			let ret = mapChild(child, el, currentCssIdent);
+			let ret = mapChild(child, el, lastCssIdent);
 			ret.map((x) => {
 				if (x.parentNode !== el) el.appendChild(x);
 			});
@@ -285,6 +201,7 @@ function _jsx(
 
 		for (let attr in props) {
 			let val = props[attr];
+			let oldClasses: string[] = [];
 			if (attr === "this") {
 				val.value = el;
 			} else if (attr === "value" || attr === "checked") {
@@ -300,44 +217,39 @@ function _jsx(
 					}
 				);
 			} else if (attr === "class") {
-				let old: string[] = [];
-
 				maybeListen(val, el, (val: string) => {
+					// document.createElement("div").classList.{add,remove}(...[]) work
+					// document.createElement("div").classList.{add,remove}(...[""]) throw
 					let classes = val.split(" ").filter((x) => x.length);
-					if (old.length) classList.remove(...old);
-					if (classes.length) classList.add(...classes);
-					old = classes;
+					classList.remove(...oldClasses);
+					classList.add(...classes);
+					oldClasses = classes;
 				});
 			} else if (attr.startsWith("on:")) {
-				if (val) el.addEventListener(attr.slice(3), (e) => val(e));
+				el.addEventListener(attr.slice(3), val);
 			} else if (attr.startsWith("class:")) {
-				let name = attr.slice(6);
-
 				maybeListen(val, el, (val: boolean) => {
-					if (val) {
-						classList.add(name);
-					} else {
-						classList.remove(name);
-					}
+					classList[val ? "add" : "remove"](attr.slice(6));
 				});
 			} else if (attr.startsWith("attr:")) {
-				let key = attr.slice(5);
 				maybeListen(val, el, (val: boolean) => {
-					if (!hydrating?.(el)) (el as any)[key] = val;
+					if (!hydrating?.(el)) (el as any)[attr.slice(5)] = val;
 				});
-			} else if (attr == "style" && typeof val == "object" && !isPointer(val)) {
+			} else if (
+				attr == "style" &&
+				typeof val == "object" &&
+				!(val instanceof Pointer)
+			) {
 				for (let k in val) {
-					maybeListen(val[k], el, (v: any) => {
-						el.style.setProperty(k, v);
-					});
+					setStyle(val[k], el.style, k);
 				}
 			} else {
 				maybeListen(val, el, (val) => setAttr(attr, val));
 			}
 		}
 
-		if (currentCssIdent && ![...classList].find((x) => x.startsWith(CSS_IDENT)))
-			classList.add(currentCssIdent);
+		if (lastCssIdent && ![...classList].find((x) => x.startsWith(CSS_IDENT)))
+			classList.add(lastCssIdent);
 
 		// all children would need to also be created with the correct namespace if we were doing this properly
 		// this is annoying and expensive bundle size wise, so it's easier to just force a reparse
@@ -370,14 +282,7 @@ function _h(
 }
 
 export let h = _h;
-export let jsx: typeof _jsx & {
-	[DREAMLAND]: () => void;
-	[NO_CHANGE]: () => ComponentContext<Component<any, any>>[];
-} = _jsx as any;
-export let addDREAMLAND = () => {
-	jsx[DREAMLAND] = () => (componentCssInfo = MAP());
-	jsx[NO_CHANGE] = () => cxs.splice(0, cxs.length);
-};
+export let jsx = _jsx;
 
 export let Fragment = ((_: any) => 0) as any as Component<{
 	children?: ComponentChild;
