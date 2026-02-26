@@ -5,7 +5,7 @@ import { Component, ComponentContext } from "./definitions";
 export let CSS_IDENT = "dlcss-";
 
 type NodeConstructor = (text?: string) => any;
-type CssUidGenerator = () => string;
+type CssUidGenerator = (init: Component<any, any>) => string;
 type IsHydrating = (el: HTMLElement) => boolean;
 type SsrTransformCallback = <T extends Component<any, any>>(
 	init: T,

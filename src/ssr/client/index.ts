@@ -163,7 +163,7 @@ export let hydrate = async (
 			}
 			return node || old[3](x);
 		},
-		() => data.i[idx + 1] || old[4](),
+		(x) => data.i[idx + 1] || old[4](x),
 		old[5],
 		hydrating,
 		(init, cx) => {
