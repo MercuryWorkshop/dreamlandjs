@@ -105,7 +105,7 @@ function _jsx(
 			let style = init.style;
 			let styleEl = DOCUMENT[CREATE_ELEMENT]("style");
 			if (!cssInfo) {
-				cssInfo = { _id: genCssUid(init), _vars: [] };
+				cssInfo = { _id: CSS_IDENT + genCssUid(init), _vars: [] };
 				let cssString = "";
 
 				for (let i = 0; i < style._strings.length; i++) {

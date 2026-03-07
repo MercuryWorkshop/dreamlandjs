@@ -271,7 +271,7 @@ export let newVDom = () => {
 		(text?: any) => push(new Text("" + text)),
 		(text?: any) => push(new Comment("" + text)),
 		() => {
-			let ret = CSS_IDENT + identArr.size;
+			let ret = "" + identArr.size;
 			identArr.set(elArr.length, ret);
 			return ret;
 		},

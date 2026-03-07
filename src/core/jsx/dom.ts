@@ -38,7 +38,7 @@ export let getDom: () => DomImpl = () => [
 	globalThis.Node,
 	(text) => new Text(text),
 	(text) => new Comment(text),
-	() => CSS_IDENT + genuid(),
+	(init) => init.name + "-" + genuid(),
 	componentCssInfo,
 	() => false,
 ];
