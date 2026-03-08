@@ -1,4 +1,4 @@
-import { Component, ComponentContext, DomImpl } from "dreamland/core";
+import { ComponentContext, DomImpl } from "dreamland/core";
 
 // @ts-expect-error rrweb-cssom doesn't have types
 import { CSSOM } from "rrweb-cssom";

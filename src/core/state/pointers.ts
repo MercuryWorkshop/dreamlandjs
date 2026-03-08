@@ -258,7 +258,7 @@ export class Pointer<T> {
 		);
 	}
 	not(): Pointer<boolean> {
-		return this.map(val => !val);
+		return this.map((val) => !val);
 	}
 
 	map<U>(func: (val: T) => U): Pointer<U>;

@@ -59,9 +59,11 @@ However, layouts can use `routerParams` to show a loading bar or placeholder.
 "Corked" routes are routes with a layout that are only fully instantiated on the client and eagerly switch to their layout when navigating in from other pages.
 This allows for clientside only routes for browser-only things like Monaco.
 
+Make a route with a layout corked using the `cork={true}` prop.
+
 ## SSR integration
 
-dreamland's router is compatible with SSR and hydration. By default, it'll attempt to route to `[location.pathname, location.origin]`,
+dreamland's router is compatible with SSR and hydration. By default, it'll attempt to route to `[location.pathname, location.origin]` which won't work in SSR environment,
 but this can be overridden with the `initial` prop:
 
 ```tsx

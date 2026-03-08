@@ -56,7 +56,9 @@ export async function render(
 			v: [],
 			n: {},
 			i: Object.fromEntries(
-				[...vdom[0].identArr.entries()].filter(([_, i]) => domCssIdents.has(i))
+				[...vdom[0].identArr.entries()].filter(([_, i]) =>
+					domCssIdents.has(CSS_IDENT + i)
+				)
 			),
 			t: [],
 		};

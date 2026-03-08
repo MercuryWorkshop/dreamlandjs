@@ -100,7 +100,7 @@ let average = use(counters.one, counters.two, counters.three).map(
 );
 ```
 
-To easily toggle between values (or lazily computed values) when you have a booleanish pointer, you can use `andThen`:
+To easily toggle between values (or lazily computed values) when you have a booleanish pointer, you can use `and` and `or`:
 
 ```tsx
 let settings: Stateful<{
@@ -121,4 +121,11 @@ If you have an arraylike value, you can map each element of the array instead of
 let cards: Pointer<string[]> = /* ... */;
 
 let cardEls = cards.mapEach(x => <div>card: {x}</div>);
+```
+
+You can quickly negate a value using `not`:
+
+```tsx
+let enabled: Pointer<boolean> = /* ... */;
+let disabled = enabled.not();
 ```
