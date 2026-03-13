@@ -12,7 +12,7 @@ export function DropdownController(this: FC<{}, {
 	}
 
 	// return a bunch of mount points as a Fragment
-	// mount points have dl-ssr to figure out where to mount them, id matches "dlssri=..."
+	// mount points have dlssr to figure out where to mount them, id matches "dlssri=..."
 	// any children/components or other props will just get added onto or modify the element
 	return <>
 		<button dlssr={{ id: "abc" }} on:click={() => this.hidden = false} />
@@ -23,29 +23,65 @@ export function DropdownController(this: FC<{}, {
 }
 */
 
-import { Component, DomImpl, domImpl, h, setDomImpl } from "dreamland/core";
+import {
+	Component,
+	DomImpl,
+	domImpl,
+	h,
+	setDomImpl,
+	Pointer,
+} from "dreamland/core";
 import { SSR, SSR_ID } from "../common/consts";
 
 export let mountOne = (
 	root: HTMLElement,
-	component: Component<any, any>
+	component: Component<any, any>,
+	data?: any
 ): void => {
-	let lookup = (ty: string, id: string) =>
-		root.querySelector(`${ty}[${SSR_ID}='${id}'`);
+	let lookup = (
+		root: HTMLElement,
+		ty: string,
+		props: any,
+		ssr: { id: string } | string
+	) => {
+		props[SSR] = undefined;
+		if (typeof ssr === "string") ssr = { id: ssr };
+
+		let el: HTMLElement | null | undefined;
+		if (ty === SSR + "-root") el = root;
+		else if (ssr.id)
+			el = root.querySelector<HTMLElement>(`${ty}[${SSR_ID}='${ssr.id}'`);
+
+		if (!el) return;
+
+		for (let prop in props) {
+			let val;
+			if (prop.startsWith("attr:")) val = (el as any)[prop];
+			else if (prop == "this" || prop.includes(":")) continue;
+			else val = el.getAttribute(prop);
+			if (val && props[prop] instanceof Pointer) {
+				props[prop].value = val;
+			}
+		}
+
+		return el;
+	};
 
 	let _old = domImpl,
 		old = _old();
 	let vdom = [
 		{
 			createElement(ty: string, _: any, props: any) {
-				let ssr = props[SSR];
-				props[SSR] = false;
-				if (ssr) return lookup(ty, ssr.id);
-				else return document.createElement(ty);
+				return (
+					(props[SSR] && lookup(root, ty, props, props[SSR])) ||
+					document.createElement(ty)
+				);
 			},
 			createElementNS(ns: string, ty: string, props: any) {
-				if (props[SSR]) return lookup(ty, props[SSR].id);
-				else return document.createElementNS(ns, ty);
+				return (
+					lookup(root, ty, props, props[SSR]) ||
+					document.createElementNS(ns, ty)
+				);
 			},
 			head: document.head,
 		},
@@ -55,14 +91,18 @@ export let mountOne = (
 		old[4],
 		old[5],
 		old[6],
-		(init, cx) => {
+		(init, state, cx) => {
 			if (init === component) {
-				if (cx) {
-					cx.state.root = root;
-				} else if (init.style) {
+				if (init.style) {
 					dev: {
 						throw new Error("Hybrid SSR controllers do not support CSS");
 					}
+				}
+
+				if (cx) {
+					cx.state.root = root;
+				} else {
+					(state as any).ssrData = data;
 				}
 			}
 		},
@@ -77,12 +117,13 @@ export let mountOne = (
 
 export let mount = (
 	roots: string | HTMLElement[],
-	component: Component<any, any>
+	component: Component<any, any>,
+	getData?: (x: HTMLElement) => any
 ) => {
 	(typeof roots == "string"
 		? [...document.querySelectorAll<HTMLElement>(roots)]
 		: roots
-	).map((x) => mountOne(x, component));
+	).map((x) => mountOne(x, component, getData?.(x)));
 };
 
 export let discover = async (

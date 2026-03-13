@@ -1,6 +1,6 @@
 import { MAP } from "../consts";
 import { genuid } from "../css";
-import { Component, ComponentContext } from "./definitions";
+import { Component, ComponentContext, ComponentState } from "./definitions";
 
 export let CSS_IDENT = "dlcss-";
 
@@ -9,6 +9,7 @@ type CssUidGenerator = (init: Component<any, any>) => string;
 type IsHydrating = (el: HTMLElement) => boolean;
 type SsrTransformCallback = <T extends Component<any, any>>(
 	init: T,
+	state: ComponentState<T>,
 	cx?: ComponentContext<T>
 ) => void;
 type CxList = ComponentContext<Component<any, any>>[];

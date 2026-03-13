@@ -80,8 +80,6 @@ function _jsx(
 		let state = createState({ children }) as Stateful<any>;
 		let cssInfo: CssInfo | undefined = componentCssInfo.get(init);
 
-		ssrTransform?.(init);
-
 		for (let attr in props) {
 			let val = props[attr];
 
@@ -91,6 +89,8 @@ function _jsx(
 				state[attr] = val;
 			}
 		}
+
+		ssrTransform?.(init, state);
 
 		for (let child of children) {
 			// any pointers passed as children were unable to inherit the currentCssIdent.
@@ -163,7 +163,7 @@ function _jsx(
 				}
 		}
 
-		ssrTransform?.(init, cx);
+		ssrTransform?.(init, state, cx);
 
 		currentComponentCx = cx;
 		inits.push(cx.init?.());
@@ -210,7 +210,7 @@ function _jsx(
 					el,
 					(val: any) => {
 						setAttr(attr, val);
-						(el as any).value = val;
+						(el as any)[attr] = val;
 					},
 					() => {
 						el.addEventListener("input", () => (val.value = (el as any)[attr]));

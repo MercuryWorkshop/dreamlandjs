@@ -166,7 +166,7 @@ export let hydrate = async (
 		(x) => data.i[idx + 1] || old[4](x),
 		old[5],
 		hydrating,
-		(init, cx) => {
+		(_init, _state, cx) => {
 			if (cx?.state?.root instanceof old[1] && !hydrating(cx.state?.root))
 				hydrateCx(cx);
 		},
