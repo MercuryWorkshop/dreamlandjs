@@ -17,8 +17,10 @@ import { readFile } from "node:fs/promises";
 import computeAppBundleSize from "./util/app-bundle-size";
 import { getFrameworkInfo } from "./util/framework-info";
 
-let appBundleSize = await computeAppBundleSize();
-let frameworkInfo = await getFrameworkInfo();
+let appBundleSize = "export default" + JSON.stringify(await computeAppBundleSize());
+let frameworkInfo = Object.entries(await getFrameworkInfo())
+	.map((x) => `export let ${x[0]} = ${JSON.stringify(x[1])};`)
+	.join("\n");
 
 function recmaUseThis() {
 	return (tree: any) => {
@@ -92,16 +94,19 @@ async function compileMdx(content: string, name?: string) {
 
 export default defineConfig({
 	build: {
-		rollupOptions: {
+		chunkSizeWarningLimit: Infinity,
+		rolldownOptions: {
+			checks: {
+				pluginTimings: false
+			},
 			output: {
 				manualChunks: (id) => {
 					if (id.includes("monaco-editor")) {
 						return "monaco";
 					}
 				},
-				onlyExplicitManualChunks: true,
 			},
-		},
+		}
 	},
 	plugins: [
 		cssMinifier({
@@ -114,34 +119,50 @@ export default defineConfig({
 		{
 			name: "mdx-frontmatter",
 			enforce: "pre",
-			async load(_id) {
-				let [id, query] = _id.split("?");
-				if (query === "frontmatter=true") {
-					let vfile = await readVFile(id);
-					matter(vfile);
-					return {
-						code: `export let frontmatter = ${JSON.stringify(vfile.data.matter)}`,
-					};
-				}
-			},
+			load: {
+				filter: {
+					id: /^.*\?frontmatter=true$/
+				},
+				async handler(_id) {
+					let [id, query] = _id.split("?");
+					if (query === "frontmatter=true") {
+						let vfile = await readVFile(id);
+						matter(vfile);
+						return {
+							code: `export let frontmatter = ${JSON.stringify(vfile.data.matter)}`,
+						};
+					}
+				},
+			}
 		},
 		{
 			name: "dl-framework-bundle",
 			enforce: "pre",
-			resolveId(id) {
-				if (id === "dl:frameworks") return "\0dl:frameworks";
+			resolveId: {
+				filter: {
+					id: /* @ts-expect-error */
+						new RegExp(RegExp.escape("dl:frameworks"))
+				},
+				handler() { return "\0dl:frameworks" }
 			},
-			async load(id) {
-				if (id === "\0dl:frameworks") {
-					return `export default ${JSON.stringify(appBundleSize)}`;
+			load: {
+				filter: {
+					id: /* @ts-expect-error */
+						new RegExp(RegExp.escape("\0dl:frameworks"))
+				},
+				handler() {
+					return appBundleSize;
 				}
 			},
 		},
 		{
 			name: "dl-examples",
 			enforce: "pre",
-			async load(id) {
-				if (/^.*src\/examples\/.*\.tsx$/.test(id)) {
+			load: {
+				filter: {
+					id: /^.*src\/examples\/.*\.tsx$/
+				},
+				async handler(id) {
 					let file = await readFile(id);
 
 					return `
@@ -149,20 +170,26 @@ export default defineConfig({
 
 						${await compileMdx("```tsx\n" + file + "\n```", "Code")}
 					`;
-				}
-			},
+				},
+			}
 		},
 		{
 			name: "dl-bundle",
 			enforce: "pre",
-			resolveId(id) {
-				if (id === "dl:bundle") return "\0dl:bundle";
+			resolveId: {
+				filter: {
+					id: /* @ts-expect-error */
+						new RegExp(RegExp.escape("dl:bundle"))
+				},
+				handler() { return "\0dl:bundle" }
 			},
-			async load(id) {
-				if (id === "\0dl:bundle") {
-					return Object.entries(frameworkInfo)
-						.map((x) => `export let ${x[0]} = ${JSON.stringify(x[1])};`)
-						.join("\n");
+			load: {
+				filter: {
+					id: /* @ts-expect-error */
+						new RegExp(RegExp.escape("\0dl:bundle"))
+				},
+				handler() {
+					return frameworkInfo;
 				}
 			},
 		},
