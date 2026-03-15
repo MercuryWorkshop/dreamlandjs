@@ -7,7 +7,7 @@ body,
 	height: 100%;
 }
 
-#app {
+:root {
 	--bg-1: #0b0a0b;
 	--bg-2: #141214;
 	--bg-3: #211e21;
