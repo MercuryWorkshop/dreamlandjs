@@ -376,7 +376,7 @@ export function Router(
 	this.cx.init = () => {
 		let [path, origin] = this.initial || [];
 		return route(true, path, origin).then(([_, _late]) => {
-			if (ran) return _late?.();
+			if (ran) _late?.();
 			else late = _late;
 		});
 	};
