@@ -127,3 +127,6 @@ Async routes are now available!
 ### SSR/prerendering
 Remove any manual `Router.route` calls with custom paths and replace them with the `initial` prop.
 `initial` prop has the type `[path: string, origin: string]` and both must be specified. You can use a fake origin if needed.
+
+## Stores
+Stores have been moved to `dreamland/util`. There's also now a `deserializeState` and `serializeState` function for more powerful stores.

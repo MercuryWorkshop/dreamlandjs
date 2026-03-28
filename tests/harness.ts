@@ -1,4 +1,5 @@
 import { glob, realpath } from "node:fs/promises";
+import { sep } from "node:path";
 import { argv, stdout } from "node:process";
 import { fileURLToPath } from "node:url";
 
@@ -63,6 +64,87 @@ export class Check extends BaseCheck {
 			this.pass();
 		} else {
 			this.details = `${a} !== ${b}`;
+			this.fail();
+		}
+	}
+
+	private _deepEqual(
+		a: unknown,
+		b: unknown,
+		path: string = ""
+	): { equal: boolean; details: string } {
+		if (a === b) {
+			return { equal: true, details: "" };
+		}
+
+		if (a === null || b === null) {
+			return { equal: false, details: `${path}: ${a} !== ${b}` };
+		}
+
+		if (typeof a !== typeof b) {
+			return { equal: false, details: `${path}: ${typeof a} !== ${typeof b}` };
+		}
+
+		if (Array.isArray(a) !== Array.isArray(b)) {
+			return {
+				equal: false,
+				details: `${path}: array !== ${Array.isArray(b) ? "array" : "object"}`,
+			};
+		}
+
+		if (Array.isArray(a) && Array.isArray(b)) {
+			if (a.length !== b.length) {
+				return {
+					equal: false,
+					details: `${path}: array length ${a.length} !== ${b.length}`,
+				};
+			}
+			for (let i = 0; i < a.length; i++) {
+				let result = this._deepEqual(a[i], b[i], `${path}[${i}]`);
+				if (!result.equal) return result;
+			}
+			return { equal: true, details: "" };
+		}
+
+		if (typeof a === "object" && typeof b === "object") {
+			let aKeys = Object.keys(a as object);
+			let bKeys = Object.keys(b as object);
+			let allKeys = new Set([...aKeys, ...bKeys]);
+
+			for (let key of allKeys) {
+				let aVal = (a as Record<string, unknown>)[key];
+				let bVal = (b as Record<string, unknown>)[key];
+
+				if (!(key in a)) {
+					return {
+						equal: false,
+						details: `${path}.${key}: undefined !== ${bVal}`,
+					};
+				}
+				if (!(key in b)) {
+					return {
+						equal: false,
+						details: `${path}.${key}: ${aVal} !== undefined`,
+					};
+				}
+
+				let result = this._deepEqual(aVal, bVal, `${path}.${key}`);
+				if (!result.equal) return result;
+			}
+			return { equal: true, details: "" };
+		}
+
+		return { equal: false, details: `${path}: ${a} !== ${b}` };
+	}
+
+	assertDeepEq<T>(a: T, b: T) {
+		let result = this._deepEqual(a, b);
+		if (result.equal) {
+			this.details = `${JSON.stringify(a)} === ${JSON.stringify(b)}`;
+			this.pass();
+		} else {
+			this.details =
+				result.details || `${JSON.stringify(a)} !== ${JSON.stringify(b)}`;
 			this.fail();
 		}
 	}
@@ -172,7 +254,22 @@ export function checkGC<T extends WeakKey>(name: string, val: T): T {
 }
 
 async function collectTests(folders: string[]) {
+	if (!folders.length) return [];
+
 	folders = await Promise.all(folders.map((x) => realpath(x)));
+
+	let commonParts = [];
+	let sepFolders = folders.map((x) => x.split("/").slice(1));
+	while (true) {
+		let parts = sepFolders.map((x) => x.shift());
+		if (parts.every((x) => x?.length) && parts.every((x) => x === parts[0])) {
+			commonParts.push(parts[0]);
+		} else {
+			break;
+		}
+	}
+
+	let common = commonParts.join("/") + "/";
 
 	let testList: CollectedTest[] = [];
 	tests = testList;
@@ -180,7 +277,7 @@ async function collectTests(folders: string[]) {
 		for await (let entry of glob(
 			["js", "ts"].map((x) => folder + "/**/*." + x)
 		)) {
-			let displayEntry = entry.replace(folder, "").slice(1);
+			let displayEntry = entry.replace(common, "").slice(1);
 
 			currentFile = displayEntry;
 			await import(entry);
@@ -272,6 +369,11 @@ if (fileURLToPath(import.meta.url) === argv[1]) {
 				}
 				if (result === TestResult.Threw) {
 					stdout.write(`\tThrown error: ${error}\n`);
+					if (error instanceof Error) {
+						for (let line of error.stack!.split("\n").slice(1)) {
+							stdout.write(`\t\t${line}\n`);
+						}
+					}
 				}
 			},
 		});

@@ -17,7 +17,8 @@ import { readFile } from "node:fs/promises";
 import computeAppBundleSize from "./util/app-bundle-size";
 import { getFrameworkInfo } from "./util/framework-info";
 
-let appBundleSize = "export default" + JSON.stringify(await computeAppBundleSize());
+let appBundleSize =
+	"export default" + JSON.stringify(await computeAppBundleSize());
 let frameworkInfo = Object.entries(await getFrameworkInfo())
 	.map((x) => `export let ${x[0]} = ${JSON.stringify(x[1])};`)
 	.join("\n");
@@ -97,7 +98,7 @@ export default defineConfig({
 		chunkSizeWarningLimit: Infinity,
 		rolldownOptions: {
 			checks: {
-				pluginTimings: false
+				pluginTimings: false,
 			},
 			output: {
 				manualChunks: (id) => {
@@ -106,7 +107,7 @@ export default defineConfig({
 					}
 				},
 			},
-		}
+		},
 	},
 	plugins: [
 		cssMinifier({
@@ -121,7 +122,7 @@ export default defineConfig({
 			enforce: "pre",
 			load: {
 				filter: {
-					id: /^.*\?frontmatter=true$/
+					id: /^.*\?frontmatter=true$/,
 				},
 				async handler(_id) {
 					let [id, query] = _id.split("?");
@@ -133,26 +134,29 @@ export default defineConfig({
 						};
 					}
 				},
-			}
+			},
 		},
 		{
 			name: "dl-framework-bundle",
 			enforce: "pre",
 			resolveId: {
 				filter: {
-					id: /* @ts-expect-error */
-						new RegExp(RegExp.escape("dl:frameworks"))
+					/* @ts-expect-error regexp.escape */ id: new RegExp(
+						RegExp.escape("dl:frameworks")
+					),
 				},
-				handler() { return "\0dl:frameworks" }
+				handler() {
+					return "\0dl:frameworks";
+				},
 			},
 			load: {
 				filter: {
-					id: /* @ts-expect-error */
-						new RegExp(RegExp.escape("\0dl:frameworks"))
+					/* @ts-expect-error regexp.escape */
+					id: new RegExp(RegExp.escape("\0dl:frameworks")),
 				},
 				handler() {
 					return appBundleSize;
-				}
+				},
 			},
 		},
 		{
@@ -160,7 +164,7 @@ export default defineConfig({
 			enforce: "pre",
 			load: {
 				filter: {
-					id: /^.*src\/examples\/.*\.tsx$/
+					id: /^.*src\/examples\/.*\.tsx$/,
 				},
 				async handler(id) {
 					let file = await readFile(id);
@@ -171,26 +175,30 @@ export default defineConfig({
 						${await compileMdx("```tsx\n" + file + "\n```", "Code")}
 					`;
 				},
-			}
+			},
 		},
 		{
 			name: "dl-bundle",
 			enforce: "pre",
 			resolveId: {
 				filter: {
-					id: /* @ts-expect-error */
-						new RegExp(RegExp.escape("dl:bundle"))
+					/* @ts-expect-error regexp.escape */ id: new RegExp(
+						RegExp.escape("dl:bundle")
+					),
 				},
-				handler() { return "\0dl:bundle" }
+				handler() {
+					return "\0dl:bundle";
+				},
 			},
 			load: {
 				filter: {
-					id: /* @ts-expect-error */
-						new RegExp(RegExp.escape("\0dl:bundle"))
+					/* @ts-expect-error regexp.escape */ id: new RegExp(
+						RegExp.escape("\0dl:bundle")
+					),
 				},
 				handler() {
 					return frameworkInfo;
-				}
+				},
 			},
 		},
 	],

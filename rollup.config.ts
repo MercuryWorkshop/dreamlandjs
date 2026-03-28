@@ -297,5 +297,6 @@ export default (args: Record<string, boolean>) => {
 			output: "vite",
 			external: true,
 		}),
+		...cfg({ input: ["src/util"], output: "util" }),
 	] satisfies RollupOptions[];
 };

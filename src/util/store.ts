@@ -1,49 +1,69 @@
-import { createState, isStateful, Stateful, stateListen } from "./state/state";
+import { Stateful, createState, isStateful, stateListen } from "dreamland/core";
 
-let delegates: (() => void)[] = [];
+let DLS_TY = "__dls_ty";
+let LOCALSTORAGE = globalThis.localStorage || {};
 
-type StoreSyncBacking = {
+export let serializeState = (state: Stateful<any>): any => {
+	let set = new Set([state]);
+	return JSON.stringify(state, (_, v) => {
+		if (set.has(v)) return v;
+
+		if (isStateful(v)) {
+			set.add(v);
+			return { [DLS_TY]: "s", v };
+		}
+
+		return v;
+	});
+};
+
+export let deserializeState = (saved: any): Stateful<any> => {
+	return createState(
+		JSON.parse(saved, (_, v) => {
+			if (v && typeof v === "object" && DLS_TY in v) {
+				if (v[DLS_TY] == "s") {
+					return createState(v.v);
+				}
+			}
+			return v;
+		})
+	);
+};
+
+export type StoreSyncBacking = {
 	read: (ident: string) => string | undefined;
 	write: (ident: string, data: string) => void;
 };
-type StoreAsyncBacking = {
+export type StoreAsyncBacking = {
 	read: (ident: string) => Promise<string | undefined>;
 	write: (ident: string, data: string) => Promise<void>;
 };
+export type StoreSyncOptions = {
+	ident: string;
+	backing: "localstorage" | StoreSyncBacking | StoreAsyncBacking;
+	autosave: "auto" | "manual" | "beforeunload";
+};
+export type StoreAsyncOptions = {
+	ident: string;
+	backing: StoreAsyncBacking;
+	autosave: "auto" | "manual" | "beforeunload";
+};
 
-let LOCALSTORAGE = globalThis.localStorage || {};
-let INTERNAL = "__dls_ty";
+let saveDelegates: (() => void)[] = [];
 
 function _createStore<T extends object>(
 	target: T,
-	options: {
-		ident: string;
-		backing: StoreAsyncBacking;
-		autosave: "auto" | "manual" | "beforeunload";
-	}
+	options: StoreAsyncOptions
 ): Promise<Stateful<T>>;
 function _createStore<T extends object>(
 	target: T,
-	options: {
-		ident: string;
-		backing: "localstorage" | StoreSyncBacking;
-		autosave: "auto" | "manual" | "beforeunload";
-	}
+	options: StoreSyncOptions
 ): Stateful<T>;
 function _createStore<T extends object>(
 	target: T,
-	{
-		ident,
-		backing,
-		autosave,
-	}: {
-		ident: string;
-		backing: "localstorage" | StoreSyncBacking | StoreAsyncBacking;
-		autosave: "auto" | "manual" | "beforeunload";
-	}
+	{ ident, backing, autosave }: StoreAsyncOptions | StoreSyncOptions
 ): Stateful<T> | Promise<Stateful<T>> {
 	ident = "dls-" + ident;
-	let isAuto = autosave === "auto";
 
 	if (backing === "localstorage") {
 		backing = {
@@ -52,36 +72,26 @@ function _createStore<T extends object>(
 		};
 	}
 
+	let isAuto = autosave === "auto";
 	let last = "";
 	let saving: Promise<void> | undefined;
 	let asyncSave = async () => {
 		await saving;
 
-		let serialized = JSON.stringify(target, (_, v) => {
-			dev: {
-				if (v.__proto__ === Object.prototype) {
-					throw "Only plain objects can be serialized in stores";
-				}
-			}
-
-			if (isStateful(v)) {
-				return { [INTERNAL]: "s", v };
-			}
-			return v;
-		});
-
+		let serialized = serializeState(target);
 		if (serialized === last) return;
 		dev: {
 			console.info("[dreamland.js]: saving " + ident);
 		}
 		await backing.write(ident, serialized);
+		last = serialized;
 	};
 	let save = () => {
 		saving = asyncSave();
 	};
 
 	let saveHook = (value: any) => {
-		if (isStateful(value)) stateListen(value, saveHook);
+		if (isStateful(value) && isAuto) stateListen(value, saveHook);
 		save();
 	};
 
@@ -99,24 +109,16 @@ function _createStore<T extends object>(
 
 	let finish = (data?: string): Stateful<T> => {
 		if (data) {
-			deepMerge(
-				target,
-				JSON.parse(data, (_, v) => {
-					if (v && v[INTERNAL] === "s") {
-						return createState(v.v);
-					}
-					return v;
-				})
-			);
+			deepMerge(target, deserializeState(data));
 		}
 
 		let state = createState(target);
-		delegates.push(save);
+		saveDelegates.push(save);
 
 		if (isAuto) {
 			stateListen(state, saveHook);
 		} else if (autosave === "beforeunload") {
-			globalThis.addEventListener(autosave, save);
+			globalThis?.addEventListener(autosave, save);
 		}
 
 		return state;
@@ -128,5 +130,5 @@ function _createStore<T extends object>(
 export let createStore = _createStore;
 
 export let saveAllStores = () => {
-	delegates.forEach((cb) => cb());
+	saveDelegates.forEach((cb) => cb());
 };

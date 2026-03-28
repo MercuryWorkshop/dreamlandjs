@@ -2,9 +2,13 @@ import { defineUse } from "./state";
 import "./state";
 
 export { Pointer } from "./state/pointers";
-export { Stateful, createState, stateListen, stateProxy } from "./state/state";
-
-export { createStore, saveAllStores } from "./store";
+export {
+	Stateful,
+	createState,
+	stateListen,
+	stateProxy,
+	isStateful,
+} from "./state/state";
 
 export { createDelegate, Delegate } from "./delegate";
 

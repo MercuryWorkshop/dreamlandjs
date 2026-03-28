@@ -16,8 +16,8 @@
 		"watch": "rollup -cw --config-dev",
 		"format": "prettier -w .",
 		"lint": "eslint",
-		"test": "node --expose-gc --experimental-transform-types tests/harness.ts tests/core/",
-		"all": "pnpm format && pnpm lint && pnpm build && pnpm test && dust -sbo b dist/{core,{js,jsx}-runtime,router,ssr.{client,hybrid,server},motion,vite}.js",
+		"test": "bash tests/run.sh tests/core/ tests/util/",
+		"all": "pnpm format && pnpm lint && pnpm build && pnpm test && dust -sbo b dist/{core,{js,jsx}-runtime,router,ssr.{client,hybrid,server},motion,vite,util}.js",
 		"prepack": "npm run build"
 	},
 	"exports": {
@@ -59,6 +59,10 @@
 		},
 		"./vite": {
 			"types": "./dist/vite.d.ts",
+			"default": "./dist/vite.js"
+		},
+		"./util": {
+			"types": "./dist/util.d.ts",
 			"default": "./dist/vite.js"
 		}
 	},
