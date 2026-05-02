@@ -30,9 +30,13 @@ export let mapChild = (
 
 			// pretty sure it's not possible to put a pointer child in not a htmlelement
 			if (!hydrating?.(parent as HTMLElement) && current) {
-				let old = MAP(current.map((x, i) => [x, i]));
+				let actual: Node[] = [];
+				for (let n = start.nextSibling; n && n !== end; n = n.nextSibling) {
+					actual.push(n);
+				}
+				let old = MAP(actual.map((x, i) => [x, i]));
 				let staticNodes = mapped.map((x) => old.get(x)!).filter((x) => x);
-				let LIS = MAP(findLIS(staticNodes).map((x) => [current[x], ,]));
+				let LIS = MAP(findLIS(staticNodes).map((x) => [actual[x], ,]));
 				let anchor: Node = start;
 
 				mapped.map((child) => {
@@ -42,7 +46,7 @@ export let mapChild = (
 					anchor = child;
 				});
 
-				current.map(
+				actual.map(
 					(x) =>
 						!mapped.includes(x) &&
 						x.parentNode === parent &&
