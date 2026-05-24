@@ -151,7 +151,9 @@ function _jsx(
 					throw new Error("Wrapper components cannot have CSS");
 			}
 
-			(el as ComponentInstance<any>).$ = cx;
+			if (!(el as ComponentInstance<any>).$ || cssInfo) {
+					(el as ComponentInstance<any>).$ = cx;
+			}
 
 			el.classList.add(CSS_COMPONENT);
 
