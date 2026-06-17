@@ -3,11 +3,23 @@ import { sep } from "node:path";
 import { argv, stdout } from "node:process";
 import { fileURLToPath } from "node:url";
 
-let induceGC = (() => {
-	let induceGC = global.gc;
-	if (!induceGC) throw new Error("global.gc not found");
-	return induceGC;
+let rawGC = (() => {
+	let gc = global.gc;
+	if (!gc) throw new Error("global.gc not found");
+	return gc;
 })();
+
+// A single synchronous global.gc() does NOT reliably reclaim eligible garbage:
+// WeakRef-tracked objects frequently survive one pass and are only collected on a
+// later cycle (often after the engine processes a macrotask). Looping gc() with a
+// macrotask yield between passes makes collection deterministic, which is required
+// to assert that pointers/listeners/derived pointers are actually freed.
+export async function collectGarbage(cycles: number = 6): Promise<void> {
+	for (let i = 0; i < cycles; i++) {
+		rawGC();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	}
+}
 
 export interface TestFunction {
 	(): Promise<void> | void;
@@ -165,19 +177,38 @@ export class Check extends BaseCheck {
 
 export class GCCheck extends BaseCheck {
 	ref: WeakRef<WeakKey>;
+	// @internal
+	_mustFree: boolean;
+
+	state: TestResult = TestResult.Invalid;
 
 	// @internal
-	constructor(name: string, obj: WeakKey) {
+	constructor(name: string, obj: WeakKey, mustFree: boolean) {
 		super(name);
 		this.ref = new WeakRef(obj);
+		this._mustFree = mustFree;
 	}
 
 	// @internal
-	_checkInvariants(): void {}
-
-	get state(): TestResult {
-		if (this.ref.deref()) return TestResult.Passed;
-		else return TestResult.GcFailed;
+	_checkInvariants(): void {
+		let alive = !!this.ref.deref();
+		if (this._mustFree) {
+			// expected to have been collected once its constraint owner was dropped
+			if (alive) {
+				this.state = TestResult.GcFailed;
+				this.details = "still reachable after GC (leak)";
+			} else {
+				this.state = TestResult.Passed;
+			}
+		} else {
+			// expected to stay alive (reachable from a still-live constraint owner)
+			if (alive) {
+				this.state = TestResult.Passed;
+			} else {
+				this.state = TestResult.GcFailed;
+				this.details = "collected prematurely";
+			}
+		}
 	}
 }
 
@@ -193,13 +224,14 @@ interface Test {
 	checks: BaseCheck[];
 }
 
-export enum TestResult {
-	Passed = "passed",
-	GcFailed = "GC-failed",
-	Failed = "failed",
-	Threw = "threw",
-	Invalid = "invalid",
-}
+export const TestResult = {
+	Passed: "passed",
+	GcFailed: "GC-failed",
+	Failed: "failed",
+	Threw: "threw",
+	Invalid: "invalid",
+} as const;
+export type TestResult = (typeof TestResult)[keyof typeof TestResult];
 
 function resultToSortNum(result: TestResult): number {
 	switch (result) {
@@ -246,12 +278,22 @@ export function check(name: string): Check {
 	return check;
 }
 
-export function checkGC<T extends WeakKey>(name: string, val: T): T {
+// asserts `val` is still reachable after the end-of-test GC (i.e. it is correctly
+// retained by a constraint owner that is still alive). passes when alive.
+export function checkAlive<T extends WeakKey>(name: string, val: T): T {
 	if (!currentTest) throw new Error("run this in a test");
-	let check = new GCCheck("GC: " + name, val);
-	currentTest.checks.push(check);
+	currentTest.checks.push(new GCCheck("GC-alive: " + name, val, false));
 	return val;
 }
+// asserts `val` is collected after the end-of-test GC (i.e. once its constraint
+// owner is dropped, nothing keeps it alive). passes when freed, fails (leak) if alive.
+export function checkFreed<T extends WeakKey>(name: string, val: T): T {
+	if (!currentTest) throw new Error("run this in a test");
+	currentTest.checks.push(new GCCheck("GC-freed: " + name, val, true));
+	return val;
+}
+// @deprecated ambiguous; prefer checkAlive (stays reachable) or checkFreed (collected)
+export let checkGC = checkAlive;
 
 async function collectTests(folders: string[]) {
 	if (!folders.length) return [];
@@ -320,7 +362,7 @@ export async function runTests(
 		}
 		currentTest = undefined;
 
-		induceGC();
+		await collectGarbage();
 
 		test.checks.map((x) => x._checkInvariants());
 
