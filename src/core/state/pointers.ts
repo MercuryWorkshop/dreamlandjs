@@ -8,6 +8,7 @@ import {
 	Stateful,
 } from "./state";
 import { useTrap, UseTrapMap, useTrapMap } from "./use";
+import { StateListenerNode, walkStateListeners } from "./util";
 
 let constraints: WeakMap<any, Pointer<any>[]> = WEAKMAP();
 let internalPointers: WeakMap<Pointer<any>, InternalPointer<any>> = WEAKMAP();
@@ -29,7 +30,7 @@ type StateStep = {
 export type PointerListener<T> = (val: T) => void;
 type InternalPointer<T> = {
 	_listeners: PointerListener<T>[];
-	_deps: [WeakRef<Pointer<any>>, number | undefined][];
+	d /* _deps */?: StateListenerNode;
 } & (
 	| {
 			readonly _type: PointerType.Regular;
@@ -70,7 +71,7 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends any
 	: never;
 let newPtr = (
 	ptr: DistributiveOmit<InternalPointer<any>, "_listeners" | "_deps">
-) => new Pointer<any>({ ...ptr, _listeners: [], _deps: [] });
+) => new Pointer<any>({ ...ptr, _listeners: [] });
 
 export let initializeStep = (
 	map: UseTrapMap,
@@ -152,8 +153,8 @@ export class Pointer<T> {
 	_callListeners() {
 		let ptr = this._ptr;
 		ptr._listeners.map((x) => x(this.value));
-		(ptr._deps = ptr._deps.filter((x) => deref(x[0]))).map(([ptr, i]) =>
-			deref(ptr)!._pointerChanged(i)
+		walkStateListeners((x) => deref(x._pointer), ptr, "d").forEach((x) =>
+			deref(x._pointer)!._pointerChanged(x._index)
 		);
 	}
 
@@ -224,7 +225,7 @@ export class Pointer<T> {
 
 	// @internal
 	_listenDep(ptr: WeakRef<Pointer<any>>, i?: number): void {
-		this._ptr._deps.push([ptr, i]);
+		this._ptr.d = { _pointer: ptr, _index: i, _next: this._ptr.d };
 	}
 	listen(func: PointerListener<T>) {
 		this._ptr._listeners.push(func);

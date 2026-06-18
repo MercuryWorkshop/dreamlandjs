@@ -2,6 +2,7 @@ import { COMMA_TOKEN, WEAKMAP } from "../consts";
 import { deref, ObjectProp } from "../utils";
 import { InitializingPointer, Pointer } from "./pointers";
 import { useTrap, useTrapMap } from "./use";
+import { StateListenerNode, walkStateListeners } from "./util";
 
 let internalStatefuls: WeakMap<Stateful<any>, InternalStateful> = WEAKMAP();
 
@@ -9,7 +10,7 @@ export type StatefulListener = (newValue: any, prop: ObjectProp) => void;
 
 interface InternalStateful {
 	_listeners: StatefulListener[];
-	_pointers: Record<ObjectProp, [WeakRef<Pointer<any>>, number][]>;
+	_pointers: Record<ObjectProp, StateListenerNode | undefined>;
 	_proxies: Record<ObjectProp, Pointer<any>>;
 }
 
@@ -26,9 +27,11 @@ let callListeners = (
 	newValue: any
 ) => {
 	internal._listeners.map((x) => x(newValue, prop));
-	(internal._pointers[prop] = (internal._pointers[prop] || []).filter((x) =>
-		deref(x[0])
-	)).map(([ptr, i]) => deref(ptr)!._changed(i));
+	walkStateListeners(
+		(x) => deref(x._pointer),
+		internal._pointers,
+		prop
+	).forEach((x) => deref(x._pointer)!._changed(x._index!));
 };
 
 export let _stateListen = <T extends object>(
@@ -38,7 +41,7 @@ export let _stateListen = <T extends object>(
 	i: number
 ) => {
 	let pointers = getInternal(stateful)._pointers;
-	(pointers[prop] ||= []).push([listener, i]);
+	pointers[prop] = { _pointer: listener, _index: i, _next: pointers[prop] };
 };
 export let _stateListenRemove = <T extends object>(
 	stateful: Stateful<T>,
@@ -46,9 +49,10 @@ export let _stateListenRemove = <T extends object>(
 	listener: WeakRef<Pointer<any>>,
 	i: number
 ) => {
-	let pointers = getInternal(stateful)._pointers;
-	pointers[prop] = (pointers[prop] || []).filter(
-		(x) => x[0] !== listener || x[1] != i
+	walkStateListeners(
+		(n) => !(listener === n._pointer && i === n._index),
+		getInternal(stateful)._pointers,
+		prop
 	);
 };
 

@@ -216,6 +216,33 @@ test("state-api/isStateful", () => {
 	);
 });
 
+test("listener-added-during-dispatch", () => {
+	// A pointer registered on (state, prop) from inside a listener that fires for
+	// that same (state, prop) must survive the dispatch and react to later changes.
+	// Regresses a linked-list clobber: the head was reassigned after dispatch,
+	// discarding any node prepended while dispatching.
+	let state = createState({ a: 1 });
+	let keep: any[] = [];
+
+	let added = check(
+		"pointer added mid-dispatch reacts to the next change"
+	).once();
+
+	let p1 = use(state.a);
+	keep.push(p1);
+	let createdOnce = false;
+	p1.listen(() => {
+		if (createdOnce) return;
+		createdOnce = true;
+		let p2 = use(state.a);
+		keep.push(p2);
+		p2.listen((v) => added.assertEq(v, 20));
+	});
+
+	state.a = 10; // p1 fires -> registers p2 on state."a" mid-dispatch
+	state.a = 20; // p2 must fire here
+});
+
 test("stateful-prototype", () => {
 	// the StatefulClass pattern from browser.js: createState over an object whose
 	// methods live on the prototype, accessed through the proxy.

@@ -1,5 +1,4 @@
 import { glob, realpath } from "node:fs/promises";
-import { sep } from "node:path";
 import { argv, stdout } from "node:process";
 import { fileURLToPath } from "node:url";
 
@@ -55,8 +54,8 @@ export class Check extends BaseCheck {
 	// @internal
 	_checkInvariants() {
 		if (this._targetCalls !== -1 && this.calls !== this._targetCalls) {
-			this.fail();
 			this.details = `call count ${this.calls} != ${this._targetCalls}`;
+			this.fail();
 		}
 	}
 
