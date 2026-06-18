@@ -9,7 +9,7 @@ export type StatefulListener = (newValue: any, prop: ObjectProp) => void;
 
 interface InternalStateful {
 	_listeners: StatefulListener[];
-	_weaks: WeakRef<StatefulListener>[];
+	_pointers: Record<ObjectProp, [WeakRef<Pointer<any>>, number][]>;
 	_proxies: Record<ObjectProp, Pointer<any>>;
 }
 
@@ -26,30 +26,36 @@ let callListeners = (
 	newValue: any
 ) => {
 	internal._listeners.map((x) => x(newValue, prop));
-	(internal._weaks = internal._weaks.filter(deref)).map((x) =>
-		deref(x)!(newValue, prop)
-	);
+	(internal._pointers[prop] = (internal._pointers[prop] || []).filter((x) =>
+		deref(x[0])
+	)).map(([ptr, i]) => deref(ptr)!._changed(i));
 };
 
 export let _stateListen = <T extends object>(
 	stateful: Stateful<T>,
-	listener: WeakRef<StatefulListener>
+	prop: ObjectProp,
+	listener: WeakRef<Pointer<any>>,
+	i: number
 ) => {
-	getInternal(stateful)._weaks.push(listener);
+	let pointers = getInternal(stateful)._pointers;
+	(pointers[prop] ||= []).push([listener, i]);
 };
 export let _stateListenRemove = <T extends object>(
 	stateful: Stateful<T>,
-	listener: WeakRef<StatefulListener>
+	prop: ObjectProp,
+	listener: WeakRef<Pointer<any>>,
+	i: number
 ) => {
-	getInternal(stateful)._weaks = getInternal(stateful)._weaks.filter(
-		(x) => x !== listener
+	let pointers = getInternal(stateful)._pointers;
+	pointers[prop] = (pointers[prop] || []).filter(
+		(x) => x[0] !== listener || x[1] != i
 	);
 };
 
 export let createState = <T extends object>(target: T): Stateful<T> => {
 	let internal: InternalStateful = {
 		_listeners: [],
-		_weaks: [],
+		_pointers: {},
 		_proxies: {},
 	} satisfies InternalStateful;
 
