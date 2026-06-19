@@ -19,12 +19,12 @@ export let callDelegateListeners = (
 	value: any,
 	listeners: DelegateListener<any>[]
 ): void =>
-	listeners.map((x) => {
+	listeners.forEach((x) => {
 		let old = currentComponentCx;
 		currentComponentCx = x._cx;
 		x._callback(value);
 		currentComponentCx = old;
-	}) as any as void;
+	});
 
 let CREATE_ELEMENT = "createElement" as const;
 
@@ -52,9 +52,9 @@ function _jsx(
 		componentCssInfo,
 		hydrating,
 		ssrTransform,
-		cxs = [],
-		inits = [],
-		mounts = [],
+		cxs,
+		inits,
+		mounts,
 	] = getDom();
 	let lastCssIdent = currentComponentCx?.id;
 
@@ -166,11 +166,11 @@ function _jsx(
 		ssrTransform?.(init, state, cx);
 
 		currentComponentCx = cx;
-		inits.push(cx.init?.());
+		inits?.push(cx.init?.());
 
-		if (el instanceof NODE && hydrating?.(el)) cxs.push(cx);
+		if (el instanceof NODE && hydrating?.(el)) cxs?.push(cx);
 		else if (hydrating) {
-			mounts.push(cx.mount?.());
+			mounts?.push(cx.mount?.());
 		}
 		currentComponentCx = old;
 	} else {
@@ -192,7 +192,7 @@ function _jsx(
 
 		for (let child of children) {
 			let ret = mapChild(child, el, lastCssIdent);
-			ret.map((x) => {
+			ret.forEach((x) => {
 				if (x.parentNode !== el) el.appendChild(x);
 			});
 		}

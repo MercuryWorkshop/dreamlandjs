@@ -13,4 +13,3 @@ export const TYPE_TOKEN: unique symbol;
 
 export const MAP: <K, V>(x?: [K, V][]) => Map<K, V>;
 export const WEAKMAP: <K extends object, V>() => WeakMap<K, V>;
-export const WEAKREF: <V extends object>(val: V) => WeakRef<V>;

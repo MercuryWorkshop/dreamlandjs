@@ -15,4 +15,3 @@ export let [
 ] = Array.from(Array(11), Symbol);
 export let MAP = (x) => new Map(x);
 export let WEAKMAP = () => new WeakMap();
-export let WEAKREF = (x) => new WeakRef(x);

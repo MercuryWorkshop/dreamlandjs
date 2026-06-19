@@ -26,7 +26,7 @@ let callListeners = (
 	prop: ObjectProp,
 	newValue: any
 ) => {
-	internal._listeners.map((x) => x(newValue, prop));
+	internal._listeners.forEach((x) => x(newValue, prop));
 	if (internal._pointers[prop])
 		walkStateListeners(
 			(x) => deref(x._pointer),

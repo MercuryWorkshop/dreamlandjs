@@ -1,4 +1,4 @@
-import { DREAMLAND, NO_CHANGE, WEAKMAP, WEAKREF } from "../consts";
+import { DREAMLAND, NO_CHANGE, WEAKMAP } from "../consts";
 import { currentComponentCx } from "../jsx";
 import { deref, ObjectProp } from "../utils";
 import {
@@ -95,7 +95,7 @@ export class Pointer<T> {
 	// @internal
 	_id: symbol = Symbol();
 	// @internal
-	_weak = WEAKREF(this);
+	_weak = new WeakRef(this);
 	// @internal
 	_cssIdent?: string;
 
@@ -149,7 +149,7 @@ export class Pointer<T> {
 	// @internal
 	_callListeners() {
 		let ptr = this._ptr;
-		ptr._listeners.map((x) => x(this.value));
+		ptr._listeners.forEach((x) => x(this.value));
 		walkStateListeners((x) => deref(x._pointer), ptr, "d").forEach((x) =>
 			deref(x._pointer)!._pointerChanged(x._index)
 		);
@@ -160,14 +160,14 @@ export class Pointer<T> {
 		this._ptr = internal;
 
 		if (internal._type == PointerType.Regular) {
-			internal._path.map((x, i) => {
+			internal._path.forEach((x, i) => {
 				if (x._prop instanceof Pointer) x._prop._listenDep(this._weak, i);
 				this._recalculate(i, internal, x);
 			});
 		} else if (internal._type == PointerType.Mapped) {
 			internal._ptr._listenDep(this._weak);
 		} else if (internal._type == PointerType.Zipped) {
-			internal._ptrs.map((x) => x._listenDep(this._weak));
+			internal._ptrs.forEach((x) => x._listenDep(this._weak));
 		}
 
 		if (currentComponentCx) this.constrain(currentComponentCx.state);
