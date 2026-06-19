@@ -27,11 +27,12 @@ let callListeners = (
 	newValue: any
 ) => {
 	internal._listeners.map((x) => x(newValue, prop));
-	walkStateListeners(
-		(x) => deref(x._pointer),
-		internal._pointers,
-		prop
-	).forEach((x) => deref(x._pointer)!._changed(x._index!));
+	if (internal._pointers[prop])
+		walkStateListeners(
+			(x) => deref(x._pointer),
+			internal._pointers,
+			prop
+		).forEach((x) => deref(x._pointer)!._changed(x._index!));
 };
 
 export let _stateListen = <T extends object>(

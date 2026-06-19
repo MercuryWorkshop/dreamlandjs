@@ -11,7 +11,6 @@ import { useTrap, UseTrapMap, useTrapMap } from "./use";
 import { StateListenerNode, walkStateListeners } from "./util";
 
 let constraints: WeakMap<any, Pointer<any>[]> = WEAKMAP();
-let internalPointers: WeakMap<Pointer<any>, InternalPointer<any>> = WEAKMAP();
 
 const enum PointerType {
 	Regular = 0,
@@ -101,9 +100,7 @@ export class Pointer<T> {
 	_cssIdent?: string;
 
 	// @internal
-	get _ptr(): InternalPointer<T> {
-		return internalPointers.get(this)!;
-	}
+	_ptr: InternalPointer<T>;
 
 	// @internal
 	_recalculate(i: number, ptr: InternalRegularPointer<T>, step: StateStep) {
@@ -160,7 +157,7 @@ export class Pointer<T> {
 
 	// @internal
 	constructor(internal: InternalPointer<T>) {
-		internalPointers.set(this, internal);
+		this._ptr = internal;
 
 		if (internal._type == PointerType.Regular) {
 			internal._path.map((x, i) => {

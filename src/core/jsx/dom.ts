@@ -34,7 +34,7 @@ export interface CssInfo {
 	_vars: [string, (props: any) => any][];
 }
 let componentCssInfo: Map<Component, CssInfo> = MAP();
-export let getDom: () => DomImpl = () => [
+let defaultDom: DomImpl = [
 	globalThis.document,
 	globalThis.Node,
 	(text) => new Text(text),
@@ -43,6 +43,7 @@ export let getDom: () => DomImpl = () => [
 	componentCssInfo,
 	() => false,
 ];
+export let getDom: () => DomImpl = () => defaultDom;
 
 export let setDomImpl = (impl: () => DomImpl) => {
 	getDom = impl;

@@ -153,7 +153,7 @@ function _jsx(
 
 			(el as ComponentInstance<any>).$ = cx;
 
-			el.classList.add(CSS_COMPONENT);
+			if (init.style) el.classList.add(CSS_COMPONENT);
 
 			if (cssInfo)
 				for (let [varid, func] of cssInfo._vars) {
