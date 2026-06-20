@@ -11,6 +11,7 @@ import { Pointer, maybeListen } from "../state/pointers";
 import { createState, stateProxy, Stateful } from "../state/state";
 import { DelegateListener } from "../delegate";
 import { mapChild } from "./child";
+import { NO_CHANGE } from "../consts";
 
 export let currentComponentCx:
 	| ComponentContext<Component<any, any>>
@@ -28,6 +29,22 @@ export let callDelegateListeners = (
 
 let CREATE_ELEMENT = "createElement" as const;
 
+let setStyle = (
+	el: HTMLElement,
+	ptr: Pointer<any>,
+	style: CSSStyleDeclaration,
+	k: string
+) =>
+	maybeListen(ptr, el, (v: any) => {
+		if (v === undefined) style.removeProperty(k);
+		else style.setProperty(k, v);
+	});
+
+let iterateChildren = (children: any, cb: (child: any) => void) => {
+	if (children instanceof Array) children.forEach(cb);
+	else if (children) cb(children);
+};
+
 function _jsx<T extends Component<any, any>>(
 	init: T,
 	props: Record<string, any> | null,
@@ -40,22 +57,12 @@ function _jsx<T extends string>(
 ): DLElementNameToElement<T>;
 function _jsx(
 	init: Component<any, any> | string,
-	_props: Record<string, any> | null,
+	props: Record<string, any> | null,
 	key?: string
 ): HTMLElement {
-	let [
-		DOCUMENT,
-		NODE,
-		,
-		,
-		genCssUid,
-		componentCssInfo,
-		hydrating,
-		ssrTransform,
-		cxs,
-		inits,
-		mounts,
-	] = getDom();
+	props ||= {};
+
+	let [DOCUMENT, NODE] = getDom();
 	let lastCssIdent = currentComponentCx?.id;
 
 	dev: {
@@ -63,24 +70,32 @@ function _jsx(
 			throw new Error("invalid component");
 	}
 
-	let { children: _children, ...props } = _props!;
-	if (init === Fragment) return _children;
+	let children = props.children;
+	if (init === Fragment) return children;
 	if (key) props.key = key;
-	_children ||= [];
-	let children = _children instanceof Array ? _children : [_children];
 
 	let el: HTMLElement;
-	let setStyle = (ptr: Pointer<any>, style: CSSStyleDeclaration, k: string) =>
-		maybeListen(ptr, el, (v: any) => {
-			if (v === undefined) style.removeProperty(k);
-			else style.setProperty(k, v);
-		});
 
 	if (typeof init === "function") {
+		let [
+			,
+			,
+			,
+			,
+			genCssUid,
+			componentCssInfo,
+			hydrating,
+			ssrTransform,
+			cxs,
+			inits,
+			mounts,
+		] = getDom();
 		let state = createState({ children }) as Stateful<any>;
 		let cssInfo: CssInfo | undefined = componentCssInfo.get(init);
 
 		for (let attr in props) {
+			if (attr == "children") continue;
+
 			let val = props[attr];
 
 			if (val instanceof Pointer) {
@@ -92,14 +107,14 @@ function _jsx(
 
 		ssrTransform?.(init, state);
 
-		for (let child of children) {
+		iterateChildren(children, (child) => {
 			// any pointers passed as children were unable to inherit the currentCssIdent.
 			// we add the currentCssIdent (which is of the parent) here since we know that the pointer came from the parent.
 			// this might break if pointers of elements are being passed as props but oh well
 			if (child instanceof Pointer) {
 				child._cssIdent ||= lastCssIdent;
 			}
-		}
+		});
 
 		if (init.style) {
 			let style = init.style;
@@ -136,6 +151,7 @@ function _jsx(
 		let cx = {
 			state,
 			id: cssInfo?._id,
+			[NO_CHANGE]: [],
 		} as ComponentContext<any>;
 
 		let old = currentComponentCx;
@@ -159,7 +175,7 @@ function _jsx(
 				for (let [varid, func] of cssInfo._vars) {
 					let id = `--${varid}`;
 					let style = el.style;
-					setStyle(func(cx.state), style, id);
+					setStyle(el, func(cx.state), style, id);
 				}
 		}
 
@@ -174,6 +190,7 @@ function _jsx(
 		}
 		currentComponentCx = old;
 	} else {
+		let hydrating = getDom()[6];
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
 		let xmlns = props?.xmlns;
@@ -190,21 +207,22 @@ function _jsx(
 			children
 		);
 
-		for (let child of children) {
+		iterateChildren(children, (child) => {
 			let ret = mapChild(child, el, lastCssIdent);
 			ret.forEach((x) => {
 				if (x.parentNode !== el) el.appendChild(x);
 			});
-		}
+		});
 
 		let classList = el.classList;
 
 		for (let attr in props) {
+			if (attr == "children") continue;
+
 			let val = props[attr];
-			let oldClasses: string[] = [];
-			if (attr === "this") {
+			if (attr == "this") {
 				val.value = el;
-			} else if (attr === "value" || attr === "checked") {
+			} else if (attr == "value" || attr == "checked") {
 				maybeListen(
 					val,
 					el,
@@ -216,7 +234,8 @@ function _jsx(
 						el.addEventListener("input", () => (val.value = (el as any)[attr]));
 					}
 				);
-			} else if (attr === "class") {
+			} else if (attr == "class") {
+				let oldClasses: string[] = [];
 				maybeListen(val, el, (val: string) => {
 					// document.createElement("div").classList.{add,remove}(...[]) work
 					// document.createElement("div").classList.{add,remove}(...[""]) throw
@@ -241,7 +260,7 @@ function _jsx(
 				!(val instanceof Pointer)
 			) {
 				for (let k in val) {
-					setStyle(val[k], el.style, k);
+					setStyle(el, val[k], el.style, k);
 				}
 			} else {
 				maybeListen(val, el, (val) => setAttr(attr, val));

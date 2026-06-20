@@ -27,12 +27,11 @@ let callListeners = (
 	newValue: any
 ) => {
 	internal._listeners.forEach((x) => x(newValue, prop));
-	if (internal._pointers[prop])
-		walkStateListeners(
-			(x) => deref(x._pointer),
-			internal._pointers,
-			prop
-		).forEach((x) => deref(x._pointer)!._changed(x._index!));
+	walkStateListeners(
+		(x) => deref(x._pointer),
+		internal._pointers,
+		prop
+	).forEach((x) => deref(x._pointer)!._changed(x._index!));
 };
 
 export let _stateListen = <T extends object>(
@@ -57,6 +56,14 @@ export let _stateListenRemove = <T extends object>(
 	);
 };
 
+export interface StepCollector {
+	_sym: symbol;
+	_ptr: InitializingPointer;
+	_proxy: any;
+}
+
+export let stepCollectors: StepCollector[] = [];
+
 export let createState = <T extends object>(target: T): Stateful<T> => {
 	let internal: InternalStateful = {
 		_listeners: [],
@@ -71,19 +78,28 @@ export let createState = <T extends object>(target: T): Stateful<T> => {
 				let ptr: InitializingPointer = {
 					_state: ret,
 					_path: [p],
-				} satisfies InitializingPointer;
+				} as any;
+				let collector;
+				if (!(collector = stepCollectors.pop())) {
+					collector = {
+						_proxy: new Proxy(
+							{},
+							{
+								get(target, p, receiver) {
+									if (p === Symbol.toPrimitive) return () => collector!._sym;
+									collector!._ptr._path.push(p);
+									return receiver;
+								},
+							}
+						),
+					} as any;
+				}
+				collector._sym = sym;
+				collector._ptr = ptr;
+				ptr._collector = collector;
 				useTrapMap.set(sym, ptr);
 
-				return new Proxy(
-					{},
-					{
-						get(target, p, receiver) {
-							if (p === Symbol.toPrimitive) return () => sym;
-							ptr._path.push(p);
-							return receiver;
-						},
-					}
-				);
+				return collector._proxy;
 			}
 
 			return internal._proxies[p]
@@ -94,7 +110,8 @@ export let createState = <T extends object>(target: T): Stateful<T> => {
 			let setRet = internal._proxies[p]
 				? internal._proxies[p]._set(newValue)
 				: Reflect.set(target, p, newValue, receiver);
-			if (setRet) callListeners(internal, p, newValue);
+			if (setRet && (internal._listeners.length || internal._pointers[p]))
+				callListeners(internal, p, newValue);
 			// returning setRet would be better here but it would break a lot of strictmode code
 			return true;
 		},

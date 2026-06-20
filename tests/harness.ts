@@ -8,6 +8,14 @@ let rawGC = (() => {
 	return gc;
 })();
 
+function s(obj) {
+	try {
+		return "" + obj;
+	} catch {
+		return `[failed stringify: ${typeof obj}]`;
+	}
+}
+
 // A single synchronous global.gc() does NOT reliably reclaim eligible garbage:
 // WeakRef-tracked objects frequently survive one pass and are only collected on a
 // later cycle (often after the engine processes a macrotask). Looping gc() with a
@@ -71,10 +79,20 @@ export class Check extends BaseCheck {
 
 	assertEq<T>(a: T, b: T) {
 		if (a === b) {
-			this.details = `${a} === ${b}`;
+			this.details = `${s(a)} === ${s(b)}`;
 			this.pass();
 		} else {
-			this.details = `${a} !== ${b}`;
+			this.details = `${s(a)} !== ${s(b)}`;
+			this.fail();
+		}
+	}
+
+	assertInstance(val: any, cls: any) {
+		if (val instanceof cls) {
+			this.details = `${s(val)} instanceof ${s(cls)}`;
+			this.pass();
+		} else {
+			this.details = `${s(val)} is not instanceof ${s(cls)}`;
 			this.fail();
 		}
 	}
@@ -214,12 +232,14 @@ export class GCCheck extends BaseCheck {
 interface CollectedTest {
 	file: string;
 	name: string;
+	variant?: string;
 	fn: TestFunction;
 }
 
 interface Test {
 	file: string;
 	name: string;
+	variant?: string;
 	checks: BaseCheck[];
 }
 
@@ -250,6 +270,7 @@ function resultToSortNum(result: TestResult): number {
 export interface FinishedTest {
 	file: string;
 	name: string;
+	variant?: string;
 	result: TestResult;
 	checks: BaseCheck[];
 	error?: unknown;
@@ -257,7 +278,7 @@ export interface FinishedTest {
 
 export interface TestRunnerCallbacks {
 	collected?: (files: { file: string; name: string }[]) => void;
-	pre?: (file: string, name: string) => void;
+	pre?: (file: string, name: string, variant?: string) => void;
 	post?: (test: FinishedTest) => void;
 }
 
@@ -265,8 +286,8 @@ let currentFile = "<no file>";
 let currentTest: Test | undefined;
 let tests: CollectedTest[] = [];
 
-export function test(name: string, fn: TestFunction) {
-	tests.push({ file: currentFile, name, fn });
+export function test(name: string, fn: TestFunction, variant?: string) {
+	tests.push({ file: currentFile, name, fn, variant });
 }
 
 export function check(name: string): Check {
@@ -343,11 +364,12 @@ export async function runTests(
 		let test: Test = {
 			file: testDesc.file,
 			name: testDesc.name,
+			variant: testDesc.variant,
 
 			checks: [],
 		} satisfies Test;
 
-		callbacks?.pre?.(test.file, test.name);
+		callbacks?.pre?.(test.file, test.name, test.variant);
 
 		let result: TestResult | undefined;
 		let error: unknown;
@@ -374,6 +396,7 @@ export async function runTests(
 		let finishedTest: FinishedTest = {
 			file: test.file,
 			name: test.name,
+			variant: test.variant,
 			result,
 			checks: test.checks,
 			error,
@@ -393,8 +416,10 @@ if (fileURLToPath(import.meta.url) === argv[1]) {
 			collected(files) {
 				stdout.write(`Collected ${files.length} tests\n\n`);
 			},
-			pre(file, name) {
-				stdout.write(`Running test ${file}/${name}...`);
+			pre(file, name, variant) {
+				stdout.write(
+					`Running test ${file}/${name}${variant ? ` (${variant})` : ""}...`
+				);
 			},
 			post({ result, error, checks }) {
 				stdout.write(result.toUpperCase() + "\n");

@@ -16,7 +16,7 @@
 		"watch": "rollup -cw --config-dev",
 		"format": "prettier -w .",
 		"lint": "eslint",
-		"test": "bash tests/run.sh tests/core/ tests/util/",
+		"test": "bash tests/run.sh tests/core/ tests/jsx/ tests/util/",
 		"all": "pnpm format && pnpm lint && pnpm build && pnpm test && dust -sbo b dist/{core,{js,jsx}-runtime,router,ssr.{client,hybrid,server},motion,vite,util}.js",
 		"prepack": "npm run build"
 	},
@@ -80,6 +80,7 @@
 		"@types/node": "^25.5.0",
 		"eslint": "^10.0.3",
 		"globals": "^17.4.0",
+		"happy-dom": "^20.10.6",
 		"magic-string": "^0.30.21",
 		"prettier": "^3.8.1",
 		"rollup": "^4.59.0",

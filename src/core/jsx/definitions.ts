@@ -1,7 +1,7 @@
 import { CssInit } from "../css";
 import { Pointer } from "../state/pointers";
 import { Stateful } from "../state/state";
-import { COMMA_TOKEN } from "../consts";
+import { COMMA_TOKEN, DREAMLAND, NO_CHANGE } from "../consts";
 
 export type ComponentChild =
 	| Node
@@ -17,13 +17,8 @@ type BannedPropNames = "cx" | "root";
 type BanProps<T extends object> = {
 	[K in keyof T]: K extends BannedPropNames ? never : T[K];
 };
-type MapChildren<ChildrenTy> =
-	ChildrenTy extends Array<any> ? ChildrenTy : [ChildrenTy];
-
 type _StateProps<Combined extends BanProps<Combined>> = {
-	[K in keyof Combined]: K extends "children"
-		? MapChildren<Combined[K]>
-		: Combined[K];
+	[K in keyof Combined]: Combined[K];
 } & { root: JSX.Element; cx: ComponentCx<_StateProps<Combined>> };
 type StateProps<
 	Props extends BanProps<Props>,
@@ -51,6 +46,8 @@ export type Component<
 > = ComponentFn<Props, This> & { style?: CssInit };
 
 type ComponentCx<StatefulProps extends { [COMMA_TOKEN]?: never } & object> = {
+	[NO_CHANGE]: any[];
+
 	state: Stateful<StatefulProps>;
 	id?: string;
 

@@ -7,6 +7,8 @@ import { CSS_IDENT, SSR_DATA } from "../common/consts";
 import { Node, SsrData } from "../common/types";
 import { serializeState } from "../common/serialize";
 
+export { newVDom as __unstable_newVdom };
+
 export interface RenderedComponent {
 	head: DomElement[];
 	data: DomElement;

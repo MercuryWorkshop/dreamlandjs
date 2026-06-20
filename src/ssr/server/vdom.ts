@@ -34,6 +34,13 @@ export class Node {
 		this.childNodes = this.childNodes.filter((x) => x !== node);
 	}
 
+	replaceChild(el: Node, node: Node) {
+		let idx = this.childNodes.findIndex((x) => x === node);
+		this.childNodes[idx] = el;
+		el.parent = this;
+		node.parent = undefined;
+	}
+
 	insertBefore(node: Node, anchor: Node) {
 		this.removeChild(node);
 		node.parent = this;
@@ -266,6 +273,11 @@ export let newVDom = () => {
 			promises,
 
 			head: new Element("head"),
+
+			Comment,
+			Text,
+			Node,
+			Element,
 		},
 		Node,
 		(text?: any) => push(new Text("" + text)),

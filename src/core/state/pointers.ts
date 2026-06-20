@@ -6,6 +6,8 @@ import {
 	_stateListenRemove,
 	isStateful,
 	Stateful,
+	StepCollector,
+	stepCollectors,
 } from "./state";
 import { useTrap, UseTrapMap, useTrapMap } from "./use";
 import { StateListenerNode, walkStateListeners } from "./util";
@@ -59,6 +61,7 @@ type InternalZippedPointer<T> = InternalPointer<T> & {
 export interface InitializingPointer {
 	_state: Stateful<any>;
 	_path: ObjectProp[];
+	_collector: StepCollector;
 }
 
 let unwrapStep = (val: StateStep): any => unwrapValue(val._prop);
@@ -80,6 +83,9 @@ export let initializeStep = (
 	let init = map.get(step as symbol);
 	if (init instanceof Pointer) return init;
 	else if (!init) return step;
+
+	stepCollectors.push(init._collector);
+	init._collector._ptr = null!;
 
 	return newPtr({
 		_type: PointerType.Regular,
@@ -170,7 +176,7 @@ export class Pointer<T> {
 			internal._ptrs.forEach((x) => x._listenDep(this._weak));
 		}
 
-		if (currentComponentCx) this.constrain(currentComponentCx.state);
+		if (currentComponentCx) this.constrain(currentComponentCx);
 	}
 
 	get value(): T {
@@ -288,12 +294,17 @@ export class Pointer<T> {
 	}
 
 	constrain(to: any) {
-		if (!constraints.has(to)) constraints.set(to, []);
-		constraints.get(to)!.push(this);
+		let arr = to[NO_CHANGE];
+		if (!arr && !(arr = constraints.get(to))) constraints.set(to, (arr = []));
+		arr.push(this);
 		return this;
 	}
 	unconstrain(to: any) {
-		constraints.set(to, constraints.get(to)?.filter((x) => x !== this) || []);
+		let arr = to[NO_CHANGE] || constraints.get(to),
+			idx;
+		if (arr && (idx = arr.indexOf(this)) >= 0) {
+			arr.splice(idx, 1);
+		}
 	}
 }
 
