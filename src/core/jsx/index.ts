@@ -200,6 +200,7 @@ function _jsx(
 			if (val === undefined || val === false) el.removeAttribute(param);
 			else el.setAttribute(param, val);
 		};
+		let classListDirty = false;
 		el = (DOCUMENT as any)[CREATE_ELEMENT + (xmlns ? "NS" : "")](
 			xmlns || init,
 			xmlns && init,
@@ -240,14 +241,19 @@ function _jsx(
 					// document.createElement("div").classList.{add,remove}(...[]) work
 					// document.createElement("div").classList.{add,remove}(...[""]) throw
 					let classes = val.split(" ").filter((x) => x.length);
-					classList.remove(...oldClasses);
-					classList.add(...classes);
+					if (classListDirty) {
+						classList.remove(...oldClasses);
+						classList.add(...classes);
+					} else {
+						classList.value = val;
+					}
 					oldClasses = classes;
 				});
 			} else if (attr.startsWith("on:")) {
 				el.addEventListener(attr.slice(3), val);
 			} else if (attr.startsWith("class:")) {
 				maybeListen(val, el, (val: boolean) => {
+					classListDirty = true;
 					classList[val ? "add" : "remove"](attr.slice(6));
 				});
 			} else if (attr.startsWith("attr:")) {
