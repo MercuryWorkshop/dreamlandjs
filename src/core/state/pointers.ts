@@ -99,7 +99,7 @@ type Falsy<T> = Extract<T, false | 0 | "" | null | undefined>;
 
 export class Pointer<T> {
 	// @internal
-	_id: symbol = Symbol();
+	_id?: symbol;
 	// @internal
 	_weak = new WeakRef(this);
 	// @internal
@@ -222,7 +222,7 @@ export class Pointer<T> {
 	}
 
 	[Symbol.toPrimitive]() {
-		if (useTrap) useTrapMap.set(this._id, this);
+		if (useTrap) useTrapMap.set((this._id ||= Symbol()), this);
 		return this._id;
 	}
 
