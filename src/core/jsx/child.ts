@@ -36,7 +36,7 @@ export let mapChild = (
 					actual.push(n);
 				}
 				let old = MAP(actual.map((x, i) => [x, i]));
-				let staticNodes = mapped.map((x) => old.get(x)!).filter((x) => x);
+				let staticNodes = mapped.map((x) => old.get(x)!).filter((x) => x + 1); // undefined -> NaN (falsy), 0 -> 1 (truthy), n -> n+1 (truthy)
 				let LIS = MAP(findLIS(staticNodes).map((x) => [actual[x], ,]));
 				let anchor: Node = start;
 
@@ -67,10 +67,9 @@ export let mapChild = (
 		let apply = (child: any) => {
 			if ((list = child.classList)) {
 				let arr = [...list];
-				let other = arr.find((x) => x.startsWith(CSS_IDENT));
-
 				if (arr.find((x) => x == CSS_COMPONENT)) return;
 
+				let other = arr.find((x) => x.startsWith(CSS_IDENT));
 				if (!other) {
 					list.add(identOverride || cssIdent!);
 				} else if (identOverride && other !== identOverride) {
@@ -78,7 +77,7 @@ export let mapChild = (
 					list.add(identOverride);
 				}
 
-				[...child.childNodes].map(apply);
+				child.childNodes.forEach(apply);
 			}
 		};
 		if (identOverride || cssIdent) apply(child);
