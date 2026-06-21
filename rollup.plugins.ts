@@ -887,6 +887,20 @@ export const classToDecl = () => ({
 	},
 });
 
+// Combine repeated `x instanceof Class` checks into one dedicated helper per
+// class: `let _io0 = (a) => a instanceof Class`. Each helper keeps a *constant*
+// right-hand operand, so V8 sees a monomorphic `instanceof` site and can inline
+// it — unlike a single generic `(a, b) => a instanceof b` helper, whose RHS
+// varies per call site and goes megamorphic. Only hoisted when (a) the class
+// name is never bound in a nested scope (so every occurrence provably resolves
+// to the same top-level/global binding) and (b) a raw-size cost model says the
+// chunk shrinks. The size threshold (>=3 uses) also keeps terser from
+// re-inlining the helper, since terser only inlines single-use functions.
+const FUNCTION_NODE_TYPES = new Set([
+	"FunctionDeclaration",
+	"FunctionExpression",
+	"ArrowFunctionExpression",
+]);
 export const instanceofHoister = () => ({
 	name: "hoist-instanceof-invocation",
 	renderChunk: {
@@ -895,93 +909,160 @@ export const instanceofHoister = () => ({
 			if (!code.includes("instanceof")) return null;
 
 			const ast = this.parse(code);
-			const rewritten = new MagicString(code);
-			const replacements: Array<[number, number, string]> = [];
 
-			const visit = (node: any) => {
-				if (!node || typeof node !== "object") return;
-				if (
-					node.type === "BinaryExpression" &&
-					node.operator === "instanceof" &&
-					typeof node.start === "number" &&
-					typeof node.end === "number" &&
-					typeof node.left?.start === "number" &&
-					typeof node.left?.end === "number" &&
-					typeof node.right?.start === "number" &&
-					typeof node.right?.end === "number"
-				) {
-					const left = code.slice(node.left.start, node.left.end);
-					const right = code.slice(node.right.start, node.right.end);
-					replacements.push([
-						node.start,
-						node.end,
-						`__instanceof(${left}, ${right})`,
-					]);
-				}
+			// names bound anywhere below the top level — `instanceof X` on such a
+			// name might resolve to a shadowing local, so it isn't safe to merge.
+			const nestedNames = new Set<string>();
+			// every `a instanceof Identifier`, grouped by the identifier text.
+			const groups = new Map<string, any[]>();
 
-				for (const value of Object.values(node)) {
-					if (!value) continue;
-					if (Array.isArray(value)) {
-						for (const child of value) {
-							if (child && typeof child === "object") visit(child);
-						}
-					} else if (typeof value === "object") {
-						visit(value);
-					}
+			const recordPattern = (pat: any, depth: number) => {
+				if (!pat) return;
+				switch (pat.type) {
+					case "Identifier":
+						if (depth > 0) nestedNames.add(pat.name);
+						break;
+					case "ArrayPattern":
+						pat.elements.forEach((e: any) => recordPattern(e, depth));
+						break;
+					case "ObjectPattern":
+						pat.properties.forEach((p: any) =>
+							recordPattern(p.type === "Property" ? p.value : p, depth)
+						);
+						break;
+					case "AssignmentPattern":
+						recordPattern(pat.left, depth);
+						break;
+					case "RestElement":
+						recordPattern(pat.argument, depth);
+						break;
 				}
 			};
 
-			visit(ast);
+			const walk = (node: any, depth: number) => {
+				if (!node || typeof node !== "object") return;
+				const type = node.type;
+
+				if (type === "VariableDeclarator") recordPattern(node.id, depth);
+				else if (
+					(type === "FunctionDeclaration" ||
+						type === "ClassDeclaration" ||
+						type === "FunctionExpression" ||
+						type === "ClassExpression") &&
+					node.id &&
+					depth > 0
+				)
+					nestedNames.add(node.id.name);
+				else if (type === "CatchClause") recordPattern(node.param, depth);
+
+				if (
+					type === "BinaryExpression" &&
+					node.operator === "instanceof" &&
+					node.right?.type === "Identifier" &&
+					typeof node.start === "number" &&
+					typeof node.left?.start === "number" &&
+					typeof node.left?.end === "number"
+				) {
+					const name = node.right.name;
+					(groups.get(name) ?? groups.set(name, []).get(name)!).push(node);
+				}
+
+				const inner = FUNCTION_NODE_TYPES.has(type) ? depth + 1 : depth;
+				if (FUNCTION_NODE_TYPES.has(type))
+					(node.params || []).forEach((p: any) => recordPattern(p, inner));
+				for (const key in node) {
+					if (key === "params") continue;
+					const value = node[key];
+					if (Array.isArray(value)) {
+						for (const child of value) walk(child, inner);
+					} else if (value && typeof value === "object") {
+						walk(value, inner);
+					}
+				}
+			};
+			walk(ast, 0);
+
+			// cost model, in post-terser bytes (identifiers shrink to ~2 chars).
+			const MIN_VAR = 2;
+			const INSTANCEOF_LEN = " instanceof ".length;
+			// `EXPR instanceof Cls` (EXPR + INSTANCEOF_LEN + clsLen) becomes
+			// `H(EXPR)` (helper + parens + EXPR); EXPR cancels out.
+			const savePerUse = INSTANCEOF_LEN + MIN_VAR - (MIN_VAR + "()".length);
+			// `H=(a)=>a instanceof Cls,`
+			const declCost =
+				MIN_VAR + "=a=>a".length + INSTANCEOF_LEN + MIN_VAR + ",".length;
+
+			const replacements: Array<[number, number, string]> = [];
+			const decls: string[] = [];
+			let helperIdx = 0;
+			for (const [name, nodes] of groups) {
+				if (nestedNames.has(name)) continue;
+				if (nodes.length * savePerUse - declCost <= 0) continue;
+
+				const helper = `__io${helperIdx++}`;
+				decls.push(`${helper}=(__iov)=>__iov instanceof ${name}`);
+				for (const node of nodes) {
+					const left = code.slice(node.left.start, node.left.end);
+					replacements.push([node.start, node.end, `${helper}(${left})`]);
+				}
+			}
+
 			if (replacements.length === 0) return null;
 
-			replacements.sort((a, b) => b[0] - a[0]);
-			for (const [start, end, replacement] of replacements) {
-				rewritten.overwrite(start, end, replacement);
+			// drop any overlapping (nested) instanceof rewrite — keep the earliest.
+			replacements.sort((a, b) => a[0] - b[0]);
+			const safe: Array<[number, number, string]> = [];
+			let lastEnd = -1;
+			for (const r of replacements) {
+				if (r[0] < lastEnd) continue;
+				safe.push(r);
+				lastEnd = r[1];
 			}
 
-			const helperDecl = "let __instanceof = (a, b) => a instanceof b;";
-			if (!code.includes(helperDecl)) {
-				let lastImportIndex = 0;
-				for (let i = 0; i < code.length; i++) {
-					if (/\s/.test(code[i])) continue;
-					if (code.startsWith("//", i)) {
-						const idx = code.indexOf("\n", i);
-						i = idx === -1 ? code.length : idx;
-						continue;
-					}
-					if (code.startsWith("/*", i)) {
-						const idx = code.indexOf("*/", i);
-						i = idx === -1 ? code.length : idx + 1;
-						continue;
-					}
-					if (code.startsWith("import", i)) {
-						const next = code[i + 6];
-						if (!next || !/[a-zA-Z0-9_$]/.test(next)) {
-							let inQuote: string | null = null;
-							let depth = 0;
-							for (let j = i; j < code.length; j++) {
-								const ch = code[j];
-								if (inQuote) {
-									if (ch === "\\" && code[j + 1]) j++;
-									else if (ch === inQuote) inQuote = null;
-								} else {
-									if (ch === "'" || ch === '"') inQuote = ch;
-									else if (ch === "{" || ch === "(") depth++;
-									else if (ch === "}" || ch === ")") depth--;
-									else if (ch === ";" && depth === 0) {
-										lastImportIndex = j + 1;
-										i = j;
-										break;
-									}
+			const rewritten = new MagicString(code);
+			for (const [start, end, replacement] of safe.sort((a, b) => b[0] - a[0]))
+				rewritten.overwrite(start, end, replacement);
+
+			let lastImportIndex = 0;
+			for (let i = 0; i < code.length; i++) {
+				if (/\s/.test(code[i])) continue;
+				if (code.startsWith("//", i)) {
+					const idx = code.indexOf("\n", i);
+					i = idx === -1 ? code.length : idx;
+					continue;
+				}
+				if (code.startsWith("/*", i)) {
+					const idx = code.indexOf("*/", i);
+					i = idx === -1 ? code.length : idx + 1;
+					continue;
+				}
+				if (code.startsWith("import", i)) {
+					const next = code[i + 6];
+					if (!next || !/[a-zA-Z0-9_$]/.test(next)) {
+						let inQuote: string | null = null;
+						let depth = 0;
+						for (let j = i; j < code.length; j++) {
+							const ch = code[j];
+							if (inQuote) {
+								if (ch === "\\" && code[j + 1]) j++;
+								else if (ch === inQuote) inQuote = null;
+							} else {
+								if (ch === "'" || ch === '"') inQuote = ch;
+								else if (ch === "{" || ch === "(") depth++;
+								else if (ch === "}" || ch === ")") depth--;
+								else if (ch === ";" && depth === 0) {
+									lastImportIndex = j + 1;
+									i = j;
+									break;
 								}
 							}
-							continue;
 						}
+						continue;
 					}
-					break;
 				}
-				rewritten.appendRight(lastImportIndex, helperDecl);
+				break;
 			}
+			rewritten.appendRight(lastImportIndex, `let ${decls.join(",")};`);
 
 			return {
 				code: rewritten.toString(),

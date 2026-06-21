@@ -13,5 +13,6 @@ export let [
 	ATTRIBUTE_TOKEN,
 	TYPE_TOKEN,
 ] = Array.from(Array(11), Symbol);
-export let MAP = (x) => new Map(x);
+// this comment allows vite to treeshake out the css regexes
+export let MAP = /*@__NO_SIDE_EFFECTS__*/ (x) => new Map(x);
 export let WEAKMAP = () => new WeakMap();

@@ -73,7 +73,7 @@ function common({
 					globalHoister(HOISTS),
 					propertyHoister(),
 					stringHoister(),
-					//instanceofHoister(),
+					instanceofHoister(),
 					typeofHoister(),
 				]
 			: []),
