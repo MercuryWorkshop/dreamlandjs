@@ -34,6 +34,8 @@ export type ShowElement =
 type _MaybePromiseShowEl = Promise<ShowElement> | ShowElement;
 export type ShowTarget = _MaybePromiseShowEl | (() => _MaybePromiseShowEl);
 
+let normalizeChildren = (children: ComponentChild) => (children ? children instanceof Array ? children : [children] : []) as any as RouteInternal[];
+
 export function Route(
 	this: FC<{
 		path?: string;
@@ -48,7 +50,7 @@ export function Route(
 		_show: this.show,
 		_layout: this.layout,
 		_cork: this.cork,
-		_children: this.children as any as RouteInternal[],
+		_children: normalizeChildren(this.children)
 	} satisfies RouteInternal as any;
 }
 
@@ -297,10 +299,7 @@ export function Router(
 ) {
 	this[NO_CHANGE] = true;
 
-	// eslint-disable-next-line @typescript-eslint/no-this-alias
-	router = this;
-
-	let routes = { _children: this.children as any as RouteInternal[] };
+	let routes = { _children: normalizeChildren(this.children) };
 	dev: {
 		validateRoute(routes);
 	}
@@ -389,6 +388,9 @@ export function Router(
 		ran = true;
 		return ret;
 	};
+
+	// eslint-disable-next-line @typescript-eslint/no-this-alias
+	router = this;
 
 	return <>{use(this.el)}</>;
 }

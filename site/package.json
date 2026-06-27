@@ -10,28 +10,27 @@
 		"build": "pnpm run build:client && pnpm run build:server && node prerender.js"
 	},
 	"devDependencies": {
-		"@literals/rollup-plugin-html-css-minifier": "^3.0.1",
 		"@mdx-js/mdx": "^3.1.1",
 		"@mdx-js/rollup": "^3.1.1",
 		"@types/estree-jsx": "^1.0.5",
-		"@wooorm/starry-night": "^3.9.0",
-		"esbuild": "^0.27.4",
+		"@wooorm/starry-night": "^3.10.0",
+		"esbuild": "^0.28.1",
 		"estree-util-visit": "^2.0.0",
-		"react": "^19.2.4",
-		"react-dom": "^19.2.4",
+		"react": "^19.2.7",
+		"react-dom": "^19.2.7",
 		"rehype-starry-night": "^2.2.0",
 		"remark-frontmatter": "^5.0.0",
-		"solid-js": "^1.9.11",
-		"svelte": "^5.53.12",
-		"terser": "^5.46.0",
+		"solid-js": "^1.9.13",
+		"svelte": "^5.56.4",
+		"terser": "^5.48.0",
 		"to-vfile": "^8.0.0",
-		"typescript": "~5.9.3",
+		"typescript": "~6.0.3",
 		"vfile-matter": "^5.0.1",
-		"vite": "^8.0.0"
+		"vite": "^8.1.0"
 	},
 	"dependencies": {
 		"@mdi/js": "^7.4.47",
-		"@rollup/browser": "^4.59.0",
+		"@rollup/browser": "^4.62.2",
 		"dreamland": "link:..",
 		"monaco-editor": "^0.55.1"
 	}
