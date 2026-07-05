@@ -84,6 +84,10 @@ class ClassList extends Array {
 		}
 	}
 
+	set value(val: string) {
+		this._replace(val.split(" "));
+	}
+
 	empty(): boolean {
 		return this.length == 0;
 	}
@@ -120,18 +124,17 @@ export class Element extends Node {
 	addEventListener() {}
 
 	setAttribute(key: string, value: any) {
-		if (key === "class") this.classList._replace(value.split(" "));
+		if (key === "class") this.classList.value = value;
 		this.attributes.set(key, "" + value);
 	}
 	removeAttribute(key: string) {
-		if (key === "class") this.classList._replace([]);
+		if (key === "class") this.classList.value = "";
 		this.attributes.delete(key);
 	}
 
 	replaceWith(el: Element) {
 		if (!this.parent) throw new Error("element has no parent");
-		let idx = this.parent.childNodes.findIndex((x) => x === this);
-		this.parent.childNodes[idx] = el;
+		this.parent.replaceChild(el, this);
 	}
 
 	get $() {
