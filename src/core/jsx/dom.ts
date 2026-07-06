@@ -39,7 +39,8 @@ let defaultDom: DomImpl = [
 	globalThis.Node,
 	(text) => new Text(text),
 	(text) => new Comment(text),
-	(init) => init.name + "-" + genuid(),
+	// js-valid but selector-invalid chars can make it into init.name
+	(init) => init.name.replace(/[^\w-]/g, "_") + "-" + genuid(),
 	componentCssInfo,
 	() => false,
 ];

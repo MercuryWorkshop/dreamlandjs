@@ -11,7 +11,7 @@ import {
 } from "domhandler";
 import { parseDocument } from "htmlparser2";
 import renderToString from "dom-serializer";
-import { CSS_IDENT, SSR_ID } from "../common/consts";
+import { SSR_ID } from "../common/consts";
 
 export class Node {
 	_id!: number;

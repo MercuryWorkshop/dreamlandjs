@@ -87,13 +87,21 @@ let _rewrite = (style: HTMLStyleElement, css: string, tag: string) => {
 	let rewriteRules = (list: any) =>
 		[...list].forEach((rule: any) => {
 			if (rule.selectorText) {
-				rule.selectorText = stringify(
+				let newselector = stringify(
 					rewriteSelector(
 						tokenize(
 							rule.selectorText.replaceAll(globalWhereTransformation, GLOBAL)
 						)
 					)
 				).replace(/:scope/g, `.${tag}.${CSS_COMPONENT}`);
+				rule.selectorText = newselector;
+				dev: {
+					if (
+						rule.selectorText.replace(/\s+/g, "") !==
+						newselector.replace(/\s+/g, "")
+					)
+						console.warn("[dreamland/css]: invalid selector", rule.selectorText, newselector);
+				}
 			}
 			if (rule.cssRules) {
 				rewriteRules(rule.cssRules);
