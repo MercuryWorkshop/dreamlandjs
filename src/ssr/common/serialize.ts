@@ -57,7 +57,7 @@ export let serializeState = (
 		let out: SsrObject = [];
 		if (!object[NO_CHANGE])
 			for (let k in object) {
-				if (root && ["cx", "root"].includes(k)) continue;
+				if (root && ["cx", "children"].includes(k)) continue;
 
 				let v = object[k];
 				let val = _val(v);

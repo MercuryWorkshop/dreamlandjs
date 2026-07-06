@@ -141,9 +141,8 @@ export default defineConfig({
 			enforce: "pre",
 			resolveId: {
 				filter: {
-					/* @ts-expect-error regexp.escape */ id: new RegExp(
-						RegExp.escape("dl:frameworks")
-					),
+					/* @ts-expect-error regexp.escape */
+					id: new RegExp(RegExp.escape("dl:frameworks")),
 				},
 				handler() {
 					return "\0dl:frameworks";

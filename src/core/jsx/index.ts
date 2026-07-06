@@ -92,6 +92,7 @@ function _jsx(
 		] = getDom();
 		let state = createState({ children }) as Stateful<any>;
 		let cssInfo: CssInfo | undefined = componentCssInfo.get(init);
+		let tmp;
 
 		for (let attr in props) {
 			if (attr == "children") continue;
@@ -148,6 +149,7 @@ function _jsx(
 			}
 		}
 
+
 		let cx = {
 			state,
 			id: cssInfo?._id,
@@ -161,13 +163,19 @@ function _jsx(
 		currentComponentCx = old;
 		state.root = el;
 
+		dev: {
+			if (cssInfo && !(el instanceof NODE))
+				throw new Error("Fragment/data components cannot have CSS");
+		}
+
 		if (el instanceof NODE) {
 			dev: {
 				if ((el as ComponentInstance<any>).$ && cssInfo)
 					throw new Error("Wrapper components cannot have CSS");
 			}
 
-			(el as ComponentInstance<any>).$ = cx;
+			if (!(el as ComponentInstance<any>).$)
+				(el as ComponentInstance<any>).$ = cx;
 
 			if (init.style) el.classList.add(CSS_COMPONENT);
 
@@ -182,11 +190,13 @@ function _jsx(
 		ssrTransform?.(init, state, cx);
 
 		currentComponentCx = cx;
-		inits?.push(cx.init?.());
+		tmp = cx.init?.();
+		inits?.push(tmp);
 
 		if (el instanceof NODE && hydrating?.(el)) cxs?.push(cx);
 		else if (hydrating) {
-			mounts?.push(cx.mount?.());
+			tmp = cx.mount?.();
+			mounts?.push(tmp);
 		}
 		currentComponentCx = old;
 	} else {
@@ -201,6 +211,7 @@ function _jsx(
 			else el.setAttribute(param, val);
 		};
 		let classListDirty = false;
+
 		el = (DOCUMENT as any)[CREATE_ELEMENT + (xmlns ? "NS" : "")](
 			xmlns || init,
 			xmlns && init,
@@ -273,8 +284,10 @@ function _jsx(
 			}
 		}
 
-		if (lastCssIdent && ![...classList].find((x) => x.startsWith(CSS_IDENT)))
+		if (lastCssIdent && ![...classList].find((x) => x.startsWith(CSS_IDENT))) {
 			classList.add(lastCssIdent);
+			classListDirty = true;
+		}
 
 		// all children would need to also be created with the correct namespace if we were doing this properly
 		// this is annoying and expensive bundle size wise, so it's easier to just force a reparse

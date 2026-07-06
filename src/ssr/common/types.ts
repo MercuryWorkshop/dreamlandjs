@@ -25,4 +25,5 @@ export interface SsrData {
 	i /* idents */: Record<number, string>;
 	t /* textFixups */: [number, number, number][];
 	p /* pruned element ranges (dev only) */?: (number | [number, number])[];
+	c /* css idents detected (dev only) */?: string[];
 }

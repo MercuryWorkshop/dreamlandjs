@@ -40,7 +40,7 @@ export async function render(
 		}
 
 		let domIds = new Set<number>();
-		let domCssIdents = new Set();
+		let domCssIdents = new Set<string>();
 		let walk = (el: VdomNode) => {
 			domIds.add(el._id);
 			if (el instanceof Element && el.component) {
@@ -135,6 +135,7 @@ export async function render(
 			}
 			if (start !== -1) flush();
 			data.p = ranges;
+			data.c = [...domCssIdents];
 		}
 
 		let head = [
@@ -142,7 +143,7 @@ export async function render(
 			...vdom[0].head.childNodes.filter(
 				(x) =>
 					x instanceof Element &&
-					domCssIdents.has(x.attributes.get(CSS_IDENT + "id"))
+					domCssIdents.has(x.attributes.get(CSS_IDENT + "id") || "")
 			),
 		].map((x) => x.toStandard()) as DomElement[];
 

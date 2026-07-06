@@ -158,6 +158,9 @@ export class Element extends Node {
 	set innerText(value: string) {
 		this.childNodes = [new Text(value)];
 	}
+	set textContent(value: string) {
+		this.childNodes = [new Text(value)];
+	}
 
 	toStandard(): DomElement {
 		if (this.style.cssText) {
@@ -208,6 +211,9 @@ export class Style extends Element {
 	sheet = new CSSOM.CSSStyleSheet();
 
 	set innerText(value: string) {
+		this.sheet = CSSOM.parse(value);
+	}
+	set textContent(value: string) {
 		this.sheet = CSSOM.parse(value);
 	}
 
