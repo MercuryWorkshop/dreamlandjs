@@ -165,6 +165,21 @@ export let cssMinifier = (options: CssMinifierOptions = {}): Plugin => {
 						});
 						let minified = result.code.toString();
 
+						// lightningcss decides url() quoting from the placeholder text,
+						// not the real interpolated value (unknown at build time, and it
+						// may contain chars like ' that require quoting - e.g. a Vite
+						// inlined SVG data URI). Restore quotes around any url() holding a
+						// placeholder so the substituted value stays a valid url token.
+						minified = minified.replace(
+							new RegExp(`url\\(([^)]*${PLACEHOLDER}[^)]*)\\)`, "g"),
+							(_m, inner) => {
+								inner = inner.trim();
+								return /^["']/.test(inner)
+									? `url(${inner})`
+									: `url("${inner}")`;
+							}
+						);
+
 						// split back on placeholders
 						let parts = minified.split(PLACEHOLDER);
 						if (parts.length !== quasis.length) {
