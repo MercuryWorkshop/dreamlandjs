@@ -241,6 +241,7 @@ export default (args: Record<string, boolean>) => {
 			],
 			visualize: true,
 		}),
+		...cfg({ input: ["src/babel-compat"], output: "babel-compat" }),
 		...cfg({ input: ["src/js-runtime"], output: "js-runtime" }),
 		...cfg({ input: ["src/jsx-runtime"], output: "jsx-runtime" }),
 		...cfg({

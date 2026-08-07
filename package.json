@@ -21,6 +21,10 @@
 		"prepack": "npm run build"
 	},
 	"exports": {
+		".": {
+			"types": "./dist/babel-compat.d.ts",
+			"default": "./dist/babel-compat.js"
+		},
 		"./core": {
 			"types": "./dist/core.d.ts",
 			"default": "./dist/core.js"
