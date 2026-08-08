@@ -18,7 +18,40 @@ import {
 } from "./rollup.plugins.ts";
 
 let DEV = false;
+let EMITDEFS = true;
 let USESTR = true;
+let ONLY: string[] | null = null;
+
+// The schedule build.ts farms out to parallel rollup processes.
+//
+// A group is one src/ subdirectory. It is the unit of sharding because entries
+// sharing a typeRoot also share a dist/**/types subtree, and two processes must
+// never emit declarations into the same one.
+//
+// Order matters, because an entry sees another entry's types through the emitted
+// dist/*.d.ts rather than through source: a group cannot compile until every
+// group it imports has been built, or its types silently degrade to `any`.
+// Everything imports dreamland/core, so core takes the first wave alone. vite
+// imports dreamland/ssr/server, so the two share a shard -- rollup builds a
+// process's configs in the order configs() returns them, which puts ssr first.
+//
+// Only dist/core.d.ts actually gates the rest, and the dev variant does not emit
+// declarations, so core's prod variant is the whole of the first wave and its dev
+// variant goes back in the pool. Units are listed slowest-first.
+export const WAVES: { groups: string[]; variant?: "prod" | "dev" }[][] = [
+	[{ groups: ["core"], variant: "prod" }],
+	[
+		{ groups: ["ssr", "vite"] },
+		{ groups: ["core"], variant: "dev" },
+		{ groups: ["router"] },
+		{ groups: ["js-runtime"] },
+		{ groups: ["motion"] },
+		{ groups: ["util"] },
+		{ groups: ["babel-compat"] },
+		{ groups: ["jsx-runtime"] },
+	],
+];
+export const GROUPS = [...new Set(WAVES.flat().flatMap((u) => u.groups))];
 let HOISTS = [
 	"Object",
 	"Object.assign",
@@ -35,6 +68,10 @@ let HOISTS = [
 	"Proxy",
 	"location",
 ];
+
+// prod builds go to dist/, dev builds to dist/dev/
+const outDir = () => (DEV ? "dist/dev" : "dist");
+const typesDir = () => outDir() + "/types";
 
 const onwarn: WarningHandlerWithDefault = (warning, warn) => {
 	if (warning.code === "CIRCULAR_DEPENDENCY") return;
@@ -67,6 +104,21 @@ function common({
 			include: typeRoot + "/**/*",
 			filterRoot: process.cwd(),
 			tsconfig,
+			// declarationDir must live inside the rollup output dir, which differs
+			// per variant. when nothing downstream reads this variant's declarations
+			// we skip emitting them, and the compiler then skips checking too -- but
+			// the tsconfig's own declarationDir has to be cleared along with it, or
+			// TS5069 fires for a declarationDir with no declaration
+			// this variant neither checks nor emits types, so ambient @types packages
+			// are pure parsing cost -- @types/node alone is megabytes
+			...(EMITDEFS
+				? { declarationDir: typesDir() }
+				: {
+						declaration: false,
+						declarationDir: undefined,
+						noCheck: true,
+						types: [],
+					}),
 		}),
 		...(hoist
 			? [
@@ -81,6 +133,9 @@ function common({
 			? []
 			: [
 					terser({
+						// defaults to one worker per core, which is a thread explosion
+						// when build.ts already has a rollup process per core
+						maxWorkers: ONLY ? 1 : undefined,
 						parse: {},
 						compress: {
 							passes: 5,
@@ -151,6 +206,9 @@ const cfg = ({
 	external: extraExternal,
 	bundled,
 }: CfgOptions): RollupOptions[] => {
+	const group = entry[0].substring("src/".length);
+	if (ONLY && !ONLY.includes(group)) return [];
+
 	plugins ||= [];
 	defs ??= true;
 	minify ??= true;
@@ -187,12 +245,13 @@ const cfg = ({
 	const out: RollupOptions[] = [
 		{
 			input,
-			output: [{ file: `dist/${output}.js`, sourcemap: true }],
+			output: [{ file: `${outDir()}/${output}.js`, sourcemap: true }],
 			plugins: [
 				...common({
 					runTerser: minify,
 					typeRoot: entry[0],
-					visualizerPath: visualize ? output : undefined,
+					// the dev build is unminified, so its treemap is meaningless
+					visualizerPath: visualize && !DEV ? output : undefined,
 					unsafe,
 					hoist,
 				}),
@@ -202,10 +261,12 @@ const cfg = ({
 			onwarn,
 		},
 	];
-	if (defs) {
+	// the two variants have identical types, so only one of them emits them
+	if (defs && EMITDEFS) {
 		out.push({
 			input:
-				"dist/types/" +
+				typesDir() +
+				"/" +
 				input
 					.substring("src/".length)
 					.replace(".tsx", ".ts")
@@ -219,9 +280,9 @@ const cfg = ({
 	return out;
 };
 
-export default (args: Record<string, boolean>) => {
-	if (args["config-dev"]) DEV = true;
-	if (args["config-nousestr"]) USESTR = false;
+const configs = (): RollupOptions[] => {
+	// captured now: DEV changes before the bundles actually run
+	const constDefs = typesDir() + "/core/consts.d.ts";
 
 	return [
 		...cfg({
@@ -229,14 +290,15 @@ export default (args: Record<string, boolean>) => {
 			output: "core",
 			hoist: true,
 			plugins: [
-				{
-					name: "copyConstDefs",
-					writeBundle: () =>
-						fs.promises.copyFile(
-							"src/core/consts.d.ts",
-							"dist/types/core/consts.d.ts"
-						),
-				},
+				...(EMITDEFS
+					? [
+							{
+								name: "copyConstDefs",
+								writeBundle: () =>
+									fs.promises.copyFile("src/core/consts.d.ts", constDefs),
+							},
+						]
+					: []),
 				classToDecl(),
 			],
 			visualize: true,
@@ -299,5 +361,29 @@ export default (args: Record<string, boolean>) => {
 			external: true,
 		}),
 		...cfg({ input: ["src/util"], output: "util" }),
-	] satisfies RollupOptions[];
+	];
+};
+
+export default (args: Record<string, string | boolean>) => {
+	if (args["config-nousestr"]) USESTR = false;
+	// build.ts shards a full build across processes with these two
+	if (typeof args["config-only"] === "string")
+		ONLY = args["config-only"].split(",");
+	let nodefs = !!args["config-nodefs"];
+
+	// the exports map in package.json picks between the two variants with the
+	// development/production conditions
+	let variants = args["config-dev"]
+		? [true]
+		: args["config-prod"]
+			? [false]
+			: [false, true];
+
+	let out: RollupOptions[] = [];
+	for (let dev of variants) {
+		DEV = dev;
+		EMITDEFS = !nodefs && dev === variants[0];
+		out.push(...configs());
+	}
+	return out;
 };

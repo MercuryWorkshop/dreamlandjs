@@ -1,6 +1,6 @@
 import { test, check, checkAlive, collectGarbage } from "../harness.ts";
 
-import { createState, stateProxy } from "../../dist/core.js";
+import { createState, stateProxy } from "dreamland/core";
 
 // These tests model the real-world contract: a LONG-LIVED state (an app store, a
 // settings singleton) is observed by SHORT-LIVED pointers/listeners owned by

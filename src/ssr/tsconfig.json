@@ -1,0 +1,12 @@
+{
+	"compilerOptions": {
+		// src/ssr/server imports node:async_hooks. plain tsc finds @types/node by
+		// scanning typeRoots, but @rollup/plugin-typescript builds its program from
+		// root files rather than the config file, so that scan never happens and the
+		// import resolves to nothing -- naming the package explicitly fixes it.
+		// kept to this group so node globals stay out of the browser entries
+		"types": ["node"]
+	},
+	"include": ["."],
+	"extends": "../../tsconfig.json"
+}

@@ -12,7 +12,10 @@
 	"bugs": "https://github.com/MercuryWorkshop/dreamlandjs/issues",
 	"license": "MIT",
 	"scripts": {
-		"build": "rollup -c",
+		"build": "node build.ts",
+		"build:dev": "node build.ts --config-dev",
+		"build:prod": "node build.ts --config-prod",
+		"build:seq": "rollup -c",
 		"watch": "rollup -cw --config-dev",
 		"format": "prettier -w .",
 		"lint": "eslint",
@@ -23,57 +26,71 @@
 	"exports": {
 		".": {
 			"types": "./dist/babel-compat.d.ts",
+			"development": "./dist/dev/babel-compat.js",
 			"default": "./dist/babel-compat.js"
 		},
 		"./core": {
 			"types": "./dist/core.d.ts",
+			"development": "./dist/dev/core.js",
 			"default": "./dist/core.js"
 		},
 		"./js-runtime": {
 			"types": "./dist/js-runtime.d.ts",
+			"development": "./dist/dev/js-runtime.js",
 			"default": "./dist/js-runtime.js"
 		},
 		"./jsx-runtime": {
 			"types": "./dist/jsx-runtime.d.ts",
+			"development": "./dist/dev/jsx-runtime.js",
 			"default": "./dist/jsx-runtime.js"
 		},
 		"./jsx-dev-runtime": {
 			"types": "./dist/jsx-runtime.d.ts",
+			"development": "./dist/dev/jsx-runtime.js",
 			"default": "./dist/jsx-runtime.js"
 		},
 		"./ssr/server": {
 			"types": "./dist/ssr.server.d.ts",
+			"development": "./dist/dev/ssr.server.js",
 			"default": "./dist/ssr.server.js"
 		},
 		"./ssr/hybrid": {
 			"types": "./dist/ssr.hybrid.d.ts",
+			"development": "./dist/dev/ssr.hybrid.js",
 			"default": "./dist/ssr.hybrid.js"
 		},
 		"./ssr/client": {
 			"types": "./dist/ssr.client.d.ts",
+			"development": "./dist/dev/ssr.client.js",
 			"default": "./dist/ssr.client.js"
 		},
 		"./router": {
 			"types": "./dist/router.d.ts",
+			"development": "./dist/dev/router.js",
 			"default": "./dist/router.js"
 		},
 		"./motion": {
 			"types": "./dist/motion.d.ts",
+			"development": "./dist/dev/motion.js",
 			"default": "./dist/motion.js"
 		},
 		"./vite": {
 			"types": "./dist/vite.d.ts",
+			"development": "./dist/dev/vite.js",
 			"default": "./dist/vite.js"
 		},
 		"./util": {
 			"types": "./dist/util.d.ts",
+			"development": "./dist/dev/util.js",
 			"default": "./dist/util.js"
 		}
 	},
 	"files": [
 		"dist/*.d.ts",
 		"dist/*.js",
-		"dist/*.js.map"
+		"dist/*.js.map",
+		"dist/dev/*.js",
+		"dist/dev/*.js.map"
 	],
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",

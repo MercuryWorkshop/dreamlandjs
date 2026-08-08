@@ -6,7 +6,7 @@ import {
 	stateListen,
 	stateProxy,
 	NO_CHANGE,
-} from "../../dist/core.js";
+} from "dreamland/core";
 
 // Behavioral coverage for the reactive features the consumer apps (browser.js,
 // m3-dreamland) exercise but the suite did not previously test: multi-arg/zip use,

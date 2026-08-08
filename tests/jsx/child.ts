@@ -1,6 +1,6 @@
 import { CommentClass, jsxTest, NodeClass, TextClass } from "./harness.ts";
 import { check } from "../harness.ts";
-import { createState, css, jsx } from "../../dist/core.js";
+import { createState, css, jsx } from "dreamland/core";
 
 jsxTest("basic", () => {
 	let dom = jsx("div", {

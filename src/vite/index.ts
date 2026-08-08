@@ -8,9 +8,8 @@ export type { CssMinifierOptions } from "./css-minifier";
 export let jsxPlugin = (): Plugin => ({
 	name: "dreamland/vite/jsx",
 	config(config: UserConfig) {
-		config.esbuild ||= {};
-		config.esbuild.jsx = "automatic";
-		config.esbuild.jsxImportSource = "dreamland";
+		config.oxc ||= {};
+		config.oxc.jsx = { runtime: "automatic", importSource: "dreamland" };
 	},
 });
 

@@ -1,11 +1,7 @@
 import { test, check } from "../harness.ts";
 
-import { createState } from "../../dist/core.js";
-import {
-	serializeState,
-	deserializeState,
-	createStore,
-} from "../../dist/util.js";
+import { createState } from "dreamland/core";
+import { serializeState, deserializeState, createStore } from "dreamland/util";
 
 test("serialize/basic", () => {
 	let obj = {
