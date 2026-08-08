@@ -1,5 +1,5 @@
 import { getDom, CSS_IDENT, CssInfo } from "./dom";
-import { CSS_COMPONENT, genuid } from "../css";
+import { CSS_COMPONENT } from "../css";
 import {
 	Component,
 	ComponentChild,
@@ -122,21 +122,7 @@ function _jsx(
 			let styleEl = DOCUMENT[CREATE_ELEMENT]("style");
 			if (!cssInfo) {
 				cssInfo = { _id: CSS_IDENT + genCssUid(init), _vars: [] };
-				let cssString = "";
-
-				for (let i = 0; i < style._strings.length; i++) {
-					cssString += style._strings[i];
-					if (i + 1 < style._strings.length) {
-						let func = style._funcs[i];
-						if (typeof func === "string") {
-							cssString += func;
-						} else {
-							let varid = genuid();
-							cssString += `var(--${varid})`;
-							cssInfo._vars.push([varid, func]);
-						}
-					}
-				}
+				let cssString = style._build(style, cssInfo);
 
 				if (!hydrating?.(styleEl)) {
 					styleEl.setAttribute(CSS_COMPONENT, init.name);
@@ -148,7 +134,6 @@ function _jsx(
 				componentCssInfo.set(init, cssInfo);
 			}
 		}
-
 
 		let cx = {
 			state,
@@ -177,14 +162,12 @@ function _jsx(
 			if (!(el as ComponentInstance<any>).$)
 				(el as ComponentInstance<any>).$ = cx;
 
-			if (init.style) el.classList.add(CSS_COMPONENT);
-
-			if (cssInfo)
-				for (let [varid, func] of cssInfo._vars) {
-					let id = `--${varid}`;
-					let style = el.style;
-					setStyle(el, func(cx.state), style, id);
-				}
+			if (cssInfo) {
+				el.classList.add(CSS_COMPONENT);
+				cssInfo._vars.forEach(([id, func]) =>
+					setStyle(el, func(cx.state), el.style, id)
+				);
+			}
 		}
 
 		ssrTransform?.(init, state, cx);

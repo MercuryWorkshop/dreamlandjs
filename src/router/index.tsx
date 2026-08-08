@@ -34,7 +34,12 @@ export type ShowElement =
 type _MaybePromiseShowEl = Promise<ShowElement> | ShowElement;
 export type ShowTarget = _MaybePromiseShowEl | (() => _MaybePromiseShowEl);
 
-let normalizeChildren = (children: ComponentChild) => (children ? children instanceof Array ? children : [children] : []) as any as RouteInternal[];
+let normalizeChildren = (children: ComponentChild) =>
+	(children
+		? children instanceof Array
+			? children
+			: [children]
+		: []) as any as RouteInternal[];
 
 export function Route(
 	this: FC<{
@@ -50,7 +55,7 @@ export function Route(
 		_show: this.show,
 		_layout: this.layout,
 		_cork: this.cork,
-		_children: normalizeChildren(this.children)
+		_children: normalizeChildren(this.children),
 	} satisfies RouteInternal as any;
 }
 

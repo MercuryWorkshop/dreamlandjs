@@ -5,12 +5,17 @@ import {
 	PSEUDO_ELEMENT_TOKEN,
 } from "../consts";
 import { ComponentFn, ComponentFnState } from "../jsx/definitions";
+import { CssInfo } from "../jsx/dom";
 import { stringify, Token, tokenize } from "./selectorParser";
 
 export type CssInit = {
+	// kept public since we need a unique type but a lie
 	_strings: TemplateStringsArray;
 	_funcs: (((state: any) => any) | string)[];
+	// @internal
 	_rewrite: typeof _rewrite;
+	// @internal
+	_build: typeof _build;
 };
 
 export let css = /*@__NO_SIDE_EFFECTS__*/ <T extends ComponentFn<any, any>>(
@@ -21,6 +26,7 @@ export let css = /*@__NO_SIDE_EFFECTS__*/ <T extends ComponentFn<any, any>>(
 		_strings,
 		_funcs,
 		_rewrite,
+		_build,
 	};
 };
 
@@ -34,6 +40,26 @@ export let genuid = () => {
 	return [...Array(16)].reduce(a => a + Math.random().toString(36)[2], '')
 	// the above will occasionally misfire with `undefined` or 0 in the string whenever Math.random returns exactly 0 or really small numbers
 	// we don't care, it would be very uncommon for that to actually happen 16 times
+};
+
+let _build = (init: CssInit, info: CssInfo): string => {
+	let cssString = "";
+
+	for (let i = 0; i < init._strings.length; i++) {
+		cssString += init._strings[i];
+		if (i + 1 < init._strings.length) {
+			let func = init._funcs[i];
+			if (typeof func === "string") {
+				cssString += func;
+			} else {
+				let varid = `--${info._id}-${i}`;
+				cssString += `var(${varid})`;
+				info._vars.push([varid, func]);
+			}
+		}
+	}
+
+	return cssString;
 };
 
 let GLOBAL = ":global(";
@@ -100,7 +126,11 @@ let _rewrite = (style: HTMLStyleElement, css: string, tag: string) => {
 						rule.selectorText.replace(/\s+/g, "") !==
 						newselector.replace(/\s+/g, "")
 					)
-						console.warn("[dreamland/css]: invalid selector", rule.selectorText, newselector);
+						console.warn(
+							"[dreamland/css]: invalid selector",
+							rule.selectorText,
+							newselector
+						);
 				}
 			}
 			if (rule.cssRules) {
