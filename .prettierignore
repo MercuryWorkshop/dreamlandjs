@@ -2,3 +2,4 @@ pnpm-lock.yaml
 site/dist
 site/**/*.mdx
 site/src/examples/**/*.tsx
+tests/core/wpt

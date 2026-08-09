@@ -1,12 +1,8 @@
-import {
-	COMBINATOR_TOKEN,
-	COMMA_TOKEN,
-	PSEUDO_CLASS_TOKEN,
-	PSEUDO_ELEMENT_TOKEN,
-} from "../consts";
 import { ComponentFn, ComponentFnState } from "../jsx/definitions";
 import { CssInfo } from "../jsx/dom";
-import { stringify, Token, tokenize } from "./selectorParser";
+import { CSS_COMPONENT, rewriteSelector } from "./scope";
+
+export { CSS_COMPONENT };
 
 export type CssInit = {
 	// kept public since we need a unique type but a lie
@@ -29,9 +25,6 @@ export let css = /*@__NO_SIDE_EFFECTS__*/ <T extends ComponentFn<any, any>>(
 		_build,
 	};
 };
-
-// added to every component's root, determines start of scoped css scope
-export let CSS_COMPONENT = "dlc";
 
 export let genuid = () => {
 	// prettier-ignore
@@ -64,62 +57,18 @@ let _build = (init: CssInit, info: CssInfo): string => {
 
 let GLOBAL = ":global(";
 let _rewrite = (style: HTMLStyleElement, css: string, tag: string) => {
-	let where = tokenize(`:where(.${tag})`);
+	// :global() is not valid css, so the browser would drop every rule using it
+	// before we ever get to look at the sheet. swap it for something parseable on
+	// the way in and swap it back per-selector on the way out
 	let globalWhereTransformation = `:where(._${genuid()} `;
-
-	let rewriteSelector = (tokens: Token[], inGlobal?: boolean): Token[] => {
-		for (let i = 0; i < tokens.length; i++) {
-			let token = tokens[i];
-
-			let idx: number, cnt: number, arr: Token[] | undefined;
-			if (token._type == PSEUDO_CLASS_TOKEN && token.arg) {
-				let global = token.nm == "global";
-
-				let rewritten = rewriteSelector(
-					tokenize(token.arg),
-					global || inGlobal
-				);
-				if (global) {
-					idx = i;
-					cnt = 1;
-					arr = rewritten;
-				} else {
-					token.arg = stringify(rewritten);
-					token._content = `:${token.nm}(${token.arg})`;
-				}
-			} else if (
-				!inGlobal &&
-				(i === tokens.length - 1 ||
-					[COMBINATOR_TOKEN, COMMA_TOKEN].includes(tokens[i + 1]._type))
-			) {
-				idx = i;
-				while (idx > 0 && tokens[idx]._type == PSEUDO_ELEMENT_TOKEN) {
-					idx--;
-				}
-
-				idx++;
-				cnt = 0;
-				arr = where;
-			}
-
-			if (arr) {
-				tokens.splice(idx!, cnt!, ...arr);
-				i += arr.length;
-			}
-		}
-		return tokens;
-	};
 
 	let rewriteRules = (list: any) =>
 		[...list].forEach((rule: any) => {
 			if (rule.selectorText) {
-				let newselector = stringify(
-					rewriteSelector(
-						tokenize(
-							rule.selectorText.replaceAll(globalWhereTransformation, GLOBAL)
-						)
-					)
-				).replace(/:scope/g, `.${tag}.${CSS_COMPONENT}`);
+				let newselector = rewriteSelector(
+					rule.selectorText.replaceAll(globalWhereTransformation, GLOBAL),
+					tag
+				);
 				rule.selectorText = newselector;
 				dev: {
 					if (

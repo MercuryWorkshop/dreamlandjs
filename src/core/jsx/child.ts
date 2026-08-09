@@ -5,9 +5,8 @@ import { findLIS } from "../utils";
 import { ComponentChild } from "./definitions";
 import { CSS_IDENT, getDom } from "./dom";
 
-let blacklisted = [null, undefined, false, true];
 let isBlacklisted = (val: any): val is null | undefined | boolean =>
-	blacklisted.includes(val);
+	val == null || typeof val == "boolean";
 
 export let mapChild = (
 	child: ComponentChild,

@@ -16,7 +16,3 @@ dreamland is a utilitarian JSX-based web framework with **no virtual dom** and *
 ---
 
 Check out the [website](https://dreamland.js.org/docs/getting-started) to get started with dreamland. You can also try dreamland online in the [playground](https://dreamland.js.org/playground), which has dreamland and typescript set up already.
-
-## Acknowledgements
-
-dreamland uses the [parsel](https://github.com/LeaVerou/parsel) CSS selector parsing library to transform CSS in components.
