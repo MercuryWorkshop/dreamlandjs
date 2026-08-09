@@ -243,6 +243,50 @@ test("listener-added-during-dispatch", () => {
 	state.a = 20; // p2 must fire here
 });
 
+test("dynamic-key", () => {
+	// a pointer used as a path step: the step's listener has to move to the new
+	// prop when the key pointer changes. _recalculate used to compare the key
+	// against itself (both reads happen after the key already changed), so the
+	// listener stayed registered under the old key forever.
+	let inner = createState({ a: 1, b: 2 });
+	let state = createState({ obj: inner, key: "a" as "a" | "b" });
+
+	let key = use(state.key);
+	let p = use(state.obj[key]);
+	check("initial value").assertEq(p.value, 1);
+
+	let listen = check(
+		"reacts to the key change, then to the new key"
+	).expectCalls(2);
+	let expected = 2;
+	p.listen((v) => listen.assertEq(v, expected));
+
+	state.key = "b";
+	check("value after key change").assertEq(p.value, 2);
+
+	expected = 20;
+	inner.b = 20;
+
+	let stale = 0;
+	p.listen(() => stale++);
+	inner.a = 99; // the old key must no longer be listened to
+	check("old key no longer fires").assertEq(stale, 0);
+});
+
+test("falsy-intermediate", () => {
+	// a falsy (but present) intermediate value used to fall back to the root
+	// state, registering the next step's listener on the root under its own prop
+	let state = createState({ a: 0 as any, b: "unrelated" });
+	let p = use(state.a.b);
+	check("falsy intermediate value").assertEq(p.value, undefined);
+
+	let listen = check("only the real dependency fires").once();
+	p.listen((v) => listen.assertEq(v, 5));
+
+	state.b = "still unrelated";
+	state.a = { b: 5 };
+});
+
 test("stateful-prototype", () => {
 	// the StatefulClass pattern from browser.js: createState over an object whose
 	// methods live on the prototype, accessed through the proxy.

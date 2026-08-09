@@ -9,23 +9,35 @@ import {
 } from "./definitions";
 import { Pointer, maybeListen } from "../state/pointers";
 import { createState, stateProxy, Stateful } from "../state/state";
-import { DelegateListener } from "../delegate";
+import { Delegate, DelegateListener } from "../delegate";
 import { mapChild } from "./child";
 import { NO_CHANGE } from "../consts";
 
 export let currentComponentCx:
 	| ComponentContext<Component<any, any>>
 	| undefined;
-export let callDelegateListeners = (
-	value: any,
-	listeners: DelegateListener<any>[]
-): void =>
-	listeners.forEach((x) => {
-		let old = currentComponentCx;
-		currentComponentCx = x._cx;
-		x._callback(value);
-		currentComponentCx = old;
-	});
+
+// has to be here since it assigns currentComponentCx and terser is terrible at inlining iifes fully
+export let _createDelegate = <T>(): Delegate<T> => {
+	let listeners: DelegateListener<T>[] = [];
+
+	let delegate = ((value: any): void =>
+		listeners.forEach((x) => {
+			let old = currentComponentCx;
+			currentComponentCx = x._cx;
+			x._callback(value);
+			currentComponentCx = old;
+		})) as Delegate<T>;
+
+	delegate.listen = (_callback: (value: T) => void) => {
+		listeners.push({
+			_callback,
+			_cx: currentComponentCx,
+		});
+	};
+
+	return delegate;
+};
 
 let CREATE_ELEMENT = "createElement" as const;
 

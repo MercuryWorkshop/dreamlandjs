@@ -25,14 +25,13 @@ type StateStep = {
 	readonly _prop: StateStepVal;
 	// the computed value used in _recalculate
 	_computed?: any;
-	// the current state object that has the listener
+	// the current state object that has the listener, and the prop the listener
+	// was registered under (_prop may be a pointer, so it can change under us)
 	_state?: Stateful<any>;
+	_lprop?: ObjectProp;
 };
 export type PointerListener<T> = (val: T) => void;
-type InternalPointer<T> = {
-	_listeners: PointerListener<T>[];
-	d /* _deps */?: StateListenerNode;
-} & (
+type InternalPointer<T> =
 	| {
 			readonly _type: PointerType.Regular;
 			readonly _state: Stateful<any>;
@@ -49,8 +48,7 @@ type InternalPointer<T> = {
 			readonly _type: PointerType.Zipped;
 
 			readonly _ptrs: ReadonlyArray<Pointer<any>>;
-	  }
-);
+	  };
 type InternalRegularPointer<T> = InternalPointer<T> & {
 	readonly _type: PointerType.Regular;
 };
@@ -68,12 +66,7 @@ let unwrapStep = (val: StateStep): any => unwrapValue(val._prop);
 let followPath = (obj: any, path: ReadonlyArray<StateStep>): any =>
 	path.reduce((acc, x) => acc[unwrapStep(x)], obj);
 
-type DistributiveOmit<T, K extends PropertyKey> = T extends any
-	? Omit<T, K>
-	: never;
-let newPtr = (
-	ptr: DistributiveOmit<InternalPointer<any>, "_listeners" | "_deps">
-) => new Pointer<any>({ ...ptr, _listeners: [] });
+let newPtr = (ptr: InternalPointer<any>) => new Pointer<any>(ptr);
 
 export let initializeStep = (
 	map: UseTrapMap,
@@ -99,30 +92,35 @@ type Falsy<T> = Extract<T, false | 0 | "" | null | undefined>;
 
 export class Pointer<T> {
 	// @internal
-	_id?: symbol;
+	declare _id?: symbol;
 	// @internal
 	_weak = new WeakRef(this);
 	// @internal
-	_cssIdent?: string;
+	declare _cssIdent?: string;
 
 	// @internal
-	_ptr: InternalPointer<T>;
+	declare _ptr: InternalPointer<T>;
+	// @internal
+	_listeners: PointerListener<T>[] = [];
+	// @internal
+	declare d /* _deps */?: StateListenerNode;
 
 	// @internal
 	_recalculate(i: number, ptr: InternalRegularPointer<T>, step: StateStep) {
 		let old = step._state,
-			oldProp = unwrapValue(step._prop);
-		let last = ptr._path[i - 1]?._computed || ptr._state;
+			oldProp = step._lprop,
+			// the previous step's _computed is always up to date here: both callers
+			// walk forward from the step that changed
+			last = i ? ptr._path[i - 1]._computed : ptr._state,
+			prop = unwrapStep(step);
 
-		step._computed = followPath(ptr._state, ptr._path.slice(0, i))[
-			unwrapStep(step)
-		];
+		step._computed = last[prop];
 		step._state = isStateful(last) ? last : null;
 
-		let newProp = unwrapValue(step._prop);
-		if (old !== step._state || oldProp !== newProp) {
-			if (old) _stateListenRemove(old, oldProp, this._weak, i);
-			if (step._state) _stateListen(step._state, newProp, this._weak, i);
+		if (old !== step._state || oldProp !== prop) {
+			if (old) _stateListenRemove(old, oldProp!, this._weak, i);
+			if (step._state)
+				_stateListen(step._state, (step._lprop = prop), this._weak, i);
 		}
 	}
 
@@ -154,9 +152,8 @@ export class Pointer<T> {
 
 	// @internal
 	_callListeners() {
-		let ptr = this._ptr;
-		ptr._listeners.forEach((x) => x(this.value));
-		walkStateListeners((x) => deref(x._pointer), ptr, "d").forEach((x) =>
+		this._listeners.forEach((x) => x(this.value));
+		walkStateListeners((x) => deref(x._pointer), this, "d").forEach((x) =>
 			deref(x._pointer)!._pointerChanged(x._index)
 		);
 	}
@@ -228,10 +225,10 @@ export class Pointer<T> {
 
 	// @internal
 	_listenDep(ptr: WeakRef<Pointer<any>>, i?: number): void {
-		this._ptr.d = { _pointer: ptr, _index: i, _next: this._ptr.d };
+		this.d = { _pointer: ptr, _index: i, _next: this.d };
 	}
 	listen(func: PointerListener<T>) {
-		this._ptr._listeners.push(func);
+		this._listeners.push(func);
 	}
 
 	zip<Ptrs extends ReadonlyArray<Pointer<any>>>(

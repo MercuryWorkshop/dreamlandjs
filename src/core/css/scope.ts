@@ -70,14 +70,6 @@ export let rewriteSelector = (
 		let at = pseudoElAt < 0 ? out.length : pseudoElAt;
 		out = out.slice(0, at) + `:where(.${tag})` + out.slice(at);
 	};
-	// close off the compound we were in, then emit the separator that ended it
-	let separate = (sep: string) => {
-		scope();
-		out += sep;
-		pseudoElAt = -1;
-		global = 0;
-		start = out.length;
-	};
 
 	while (i < sel.length) {
 		let c = sel[i];
@@ -133,9 +125,16 @@ export let rewriteSelector = (
 		} else if (SEPARATOR.test(c)) {
 			let end = i;
 			while (end < sel.length && SEPARATOR.test(sel[end])) end++;
+
+			// close off the compound we were in, then emit the separator that ended it
+			scope();
 			// the run collapses to its combinator: `  >  ` is one child combinator,
 			// and whitespace around a `,` is not a descendant combinator
-			separate(sel.slice(i, end).trim() || " ");
+			out += sel.slice(i, end).trim() || " ";
+			pseudoElAt = -1;
+			global = 0;
+			start = out.length;
+
 			i = end;
 		} else {
 			out += c;
