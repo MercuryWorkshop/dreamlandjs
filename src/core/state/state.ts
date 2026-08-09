@@ -1,4 +1,4 @@
-import { NO_CHANGE, WEAKMAP } from "../consts";
+import { DREAMLAND, WEAKMAP } from "../consts";
 import { deref, ObjectProp } from "../utils";
 import { InitializingPointer, Pointer } from "./pointers";
 import { useTrap, useTrapMap } from "./use";
@@ -16,7 +16,7 @@ interface InternalStateful {
 
 export type Stateful<T extends object> = T & {
 	/// THIS IS A SEALED MARKER TYPE. do not try accessing it
-	readonly [NO_CHANGE]: unique symbol;
+	readonly [DREAMLAND]: unique symbol;
 };
 
 let getInternal = (stateful: Stateful<any>): InternalStateful =>

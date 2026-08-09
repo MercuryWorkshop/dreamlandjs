@@ -15,6 +15,7 @@ import {
 	propertyHoister,
 	stringHoister,
 	stripBetweenComments,
+	symbolVisualizer,
 	typeofHoister,
 } from "./rollup.plugins.ts";
 
@@ -174,9 +175,16 @@ function common({
 					visualizer({
 						filename: `dist/${visualizerPath}.size.html`,
 						sourcemap: true,
+						// both are silently ignored under sourcemap: true --
+						// the plugin drops them rather than compressing a
+						// per-module byte soup
 						gzipSize: true,
 						brotliSize: true,
 						title: `Dreamland ${visualizerPath} Size`,
+					}),
+					symbolVisualizer({
+						filename: `dist/${visualizerPath}.symbols.html`,
+						title: `Dreamland ${visualizerPath} Symbols`,
 					}),
 				]
 			: []),
@@ -354,6 +362,7 @@ const configs = (): RollupOptions[] => {
 		...cfg({
 			input: ["src/router", "index.tsx"],
 			output: "router",
+			visualize: true,
 			hoist: true,
 		}),
 		...cfg({ input: ["src/motion"], output: "motion" }),

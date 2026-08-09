@@ -1,7 +1,7 @@
 import { CssInit } from "../css";
 import { Pointer } from "../state/pointers";
 import { Stateful } from "../state/state";
-import { COMMA_TOKEN, DREAMLAND, NO_CHANGE } from "../consts";
+import { DREAMLAND, NO_CHANGE } from "../consts";
 
 export type ComponentChild =
 	| Node
@@ -45,7 +45,7 @@ export type Component<
 	This extends BanProps<This> = {},
 > = ComponentFn<Props, This> & { style?: CssInit };
 
-type ComponentCx<StatefulProps extends { [COMMA_TOKEN]?: never } & object> = {
+type ComponentCx<StatefulProps extends { [DREAMLAND]?: never } & object> = {
 	[NO_CHANGE]: any[];
 
 	state: Stateful<StatefulProps>;

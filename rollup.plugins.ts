@@ -1,4 +1,7 @@
+import fs from "node:fs";
+import nodePath from "node:path";
 import MagicString from "magic-string";
+import ts from "typescript";
 
 export const propertyHoister = () => {
 	return {
@@ -1517,5 +1520,608 @@ export const stripBetweenComments = (
 			code: code.toString(),
 			map: code.generateMap({ hires: true }),
 		};
+	},
+});
+
+// Size accounting at function/class/method granularity.
+//
+// rollup-plugin-visualizer buckets rendered bytes per *module*: for every byte
+// of output it asks the sourcemap which file that byte came from, and drops the
+// line/column it got back. This keeps those coordinates and intersects them
+// with a TypeScript AST of the original source, so each byte is charged to the
+// innermost function/class/method that contains it.
+//
+// It works only because the sourcemap chain survives the pipeline -- every
+// transform above returns a hires MagicString map and terser chains its own --
+// so minified bytes still trace to original .ts positions. A transform that
+// dropped its map would collapse its files back into one bucket each.
+//
+// Reading the output:
+//   - terser inlines, so a callee's bytes are charged to the callee once per
+//     call site: a symbol's size is what that code costs, not what deleting it
+//     would save
+//   - bytes inside a file but inside no function (imports, top-level consts)
+//     land in "(top level)"
+//   - compressed size cannot be split per symbol, so these are raw bytes
+
+const B64 = new Map<string, number>();
+"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+	.split("")
+	.forEach((c, i) => B64.set(c, i));
+
+interface Segment {
+	line: number;
+	col: number;
+	src: number;
+	srcLine: number;
+	srcCol: number;
+}
+
+// A sourcemap lookup per output byte is what makes the visualizer's sourcemap
+// mode slow enough that it disables gzip sizing. Decoding the mappings once and
+// charging the run of bytes between consecutive segments is the same answer for
+// a fraction of the work, since every byte in a run shares one origin.
+const decodeMappings = (mappings: string): Segment[] => {
+	const out: Segment[] = [];
+	let src = 0,
+		srcLine = 0,
+		srcCol = 0;
+
+	const lines = mappings.split(";");
+	for (let line = 0; line < lines.length; line++) {
+		let col = 0;
+		for (const field of lines[line].split(",")) {
+			if (!field) continue;
+
+			let pos = 0;
+			const read = () => {
+				let value = 0,
+					shift = 0,
+					digit;
+				do {
+					digit = B64.get(field[pos++]) ?? 0;
+					// 2 ** shift rather than a shift op: a minified line is one
+					// long line, so generated columns get big enough that the
+					// last group would overflow into the sign bit
+					value += (digit & 31) * 2 ** shift;
+					shift += 5;
+				} while (digit & 32);
+				return value & 1 ? -(value >>> 1) : value >>> 1;
+			};
+
+			col += read();
+			// a one-field segment marks generated code with no origin
+			if (pos >= field.length) continue;
+			src += read();
+			srcLine += read();
+			srcCol += read();
+			out.push({ line, col, src, srcLine, srcCol });
+		}
+	}
+	return out;
+};
+
+interface Sym {
+	name: string;
+	line: number;
+	start: number;
+	end: number;
+	parent: Sym | null;
+	path?: string[];
+}
+
+const scriptKind = (file: string) =>
+	file.endsWith(".tsx")
+		? ts.ScriptKind.TSX
+		: file.endsWith(".jsx")
+			? ts.ScriptKind.JSX
+			: file.endsWith(".js")
+				? ts.ScriptKind.JS
+				: ts.ScriptKind.TS;
+
+// An arrow or function expression carries no name of its own, so take the one
+// it is about to be bound to -- `const f = () => {}` reads as `f`, not `(anon)`.
+const inferredName = (node: any, sf: any): string | null => {
+	const parent = node.parent;
+	if (!parent) return null;
+	if (ts.isVariableDeclaration(parent) && parent.initializer === node)
+		return parent.name.getText(sf);
+	if (ts.isPropertyAssignment(parent) && parent.initializer === node)
+		return parent.name.getText(sf);
+	if (
+		ts.isBinaryExpression(parent) &&
+		parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+		parent.right === node
+	)
+		return parent.left.getText(sf);
+	return null;
+};
+
+const symbolName = (
+	node: any,
+	sf: any
+): { name: string; anon: boolean } | null => {
+	// an overload signature or an ambient declaration emits nothing, and
+	// counting it would collide with the implementation it belongs to --
+	// three `_jsx` siblings would push an `@line` onto the one real function
+	if ("body" in node && !node.body && !ts.isPropertyDeclaration(node))
+		return null;
+	if (ts.isClassDeclaration(node) || ts.isClassExpression(node)) {
+		const name = node.name?.getText(sf) ?? inferredName(node, sf);
+		return name ? { name, anon: false } : { name: "(class)", anon: true };
+	}
+	if (ts.isConstructorDeclaration(node))
+		return { name: "constructor", anon: false };
+	if (ts.isGetAccessor(node))
+		return { name: `get ${node.name.getText(sf)}`, anon: false };
+	if (ts.isSetAccessor(node))
+		return { name: `set ${node.name.getText(sf)}`, anon: false };
+	if (ts.isMethodDeclaration(node) || ts.isPropertyDeclaration(node))
+		return { name: node.name.getText(sf), anon: false };
+	if (
+		ts.isFunctionDeclaration(node) ||
+		ts.isFunctionExpression(node) ||
+		ts.isArrowFunction(node)
+	) {
+		// a class field's initializer is not a symbol of its own, or
+		// `x = () => {}` would nest an `x` inside `x`
+		const parent = node.parent;
+		if (
+			parent &&
+			ts.isPropertyDeclaration(parent) &&
+			parent.initializer === node
+		)
+			return null;
+		const name = node.name?.getText(sf) ?? inferredName(node, sf);
+		return name ? { name, anon: false } : { name: "(anon)", anon: true };
+	}
+	return null;
+};
+
+interface Range {
+	start: number;
+	end: number;
+	sym: Sym | null;
+}
+
+interface SourceIndex {
+	ranges: Range[];
+	lineStarts: number[];
+}
+
+// Symbol intervals nest exactly (they come from an AST), so one sweep with a
+// stack flattens them into disjoint ranges each labelled with the innermost
+// symbol covering it. That turns attribution into a binary search per segment.
+const flatten = (syms: Sym[]): Range[] => {
+	const sorted = syms
+		.slice()
+		.sort((a, b) => a.start - b.start || b.end - a.end);
+	const ranges: Range[] = [];
+	const stack: Sym[] = [];
+	let cur = 0;
+
+	const close = (until: number) => {
+		while (stack.length && stack[stack.length - 1].end <= until) {
+			const top = stack.pop()!;
+			if (cur < top.end) ranges.push({ start: cur, end: top.end, sym: top });
+			cur = Math.max(cur, top.end);
+		}
+	};
+
+	for (const sym of sorted) {
+		close(sym.start);
+		if (cur < sym.start)
+			ranges.push({
+				start: cur,
+				end: sym.start,
+				sym: stack[stack.length - 1] ?? null,
+			});
+		cur = Math.max(cur, sym.start);
+		stack.push(sym);
+	}
+	close(Infinity);
+	return ranges;
+};
+
+const buildIndex = (file: string, text: string): SourceIndex => {
+	const sf = ts.createSourceFile(
+		file,
+		text,
+		ts.ScriptTarget.Latest,
+		true,
+		scriptKind(file)
+	);
+
+	const syms: Sym[] = [];
+	// siblings only: two `(anon)`s under different parents already read apart
+	const siblings = new Map<Sym | null, Sym[]>();
+	const anon = new Set<Sym>();
+
+	const walk = (node: any, parent: Sym | null) => {
+		let inner = parent;
+		const named = symbolName(node, sf);
+		if (named) {
+			const start = node.getStart(sf);
+			const sym: Sym = {
+				name: named.name,
+				line: sf.getLineAndCharacterOfPosition(start).line + 1,
+				start,
+				end: node.getEnd(),
+				parent,
+			};
+			syms.push(sym);
+			if (named.anon) anon.add(sym);
+			const group = siblings.get(parent);
+			if (group) group.push(sym);
+			else siblings.set(parent, [sym]);
+			inner = sym;
+		}
+		node.forEachChild((child: any) => walk(child, inner));
+	};
+	sf.forEachChild((node: any) => walk(node, null));
+
+	// `mapChild.(anon)` says nothing when a function holds four callbacks, and
+	// two overloads or two `on` methods in one scope collide the same way
+	for (const group of siblings.values()) {
+		const seen = new Map<string, number>();
+		for (const sym of group) seen.set(sym.name, (seen.get(sym.name) ?? 0) + 1);
+		for (const sym of group)
+			if (anon.has(sym) || seen.get(sym.name)! > 1) sym.name += `@${sym.line}`;
+	}
+
+	const lineStarts = [0];
+	for (let i = 0; i < text.length; i++)
+		if (text[i] === "\n") lineStarts.push(i + 1);
+
+	return { ranges: flatten(syms), lineStarts };
+};
+
+const symPath = (sym: Sym): string[] => {
+	if (sym.path) return sym.path;
+	const out: string[] = [];
+	for (let node: Sym | null = sym; node; node = node.parent)
+		out.unshift(node.name);
+	return (sym.path = out);
+};
+
+const rangeAt = (ranges: Range[], pos: number): Range | null => {
+	let lo = 0,
+		hi = ranges.length - 1;
+	while (lo <= hi) {
+		const mid = (lo + hi) >> 1;
+		if (ranges[mid].end <= pos) lo = mid + 1;
+		else if (ranges[mid].start > pos) hi = mid - 1;
+		else return ranges[mid];
+	}
+	return null;
+};
+
+const mkNode = (n: string) => ({
+	n,
+	s: 0,
+	t: 0,
+	f: false,
+	i: new Map<string, any>(),
+});
+
+// fileAt marks which segment of the path is the source file, so the treemap can
+// hand every symbol in a file one colour instead of one per cell
+const addBytes = (root: any, path: string[], bytes: number, fileAt: number) => {
+	root.t += bytes;
+	let cur = root;
+	for (let i = 0; i < path.length; i++) {
+		let next = cur.i.get(path[i]);
+		if (!next) cur.i.set(path[i], (next = mkNode(path[i])));
+		if (i === fileAt) next.f = true;
+		next.t += bytes;
+		cur = next;
+	}
+	cur.s += bytes;
+};
+
+// `s` is bytes charged to the node itself, `t` includes descendants
+const toJson = (node: any, top?: boolean): any => {
+	let name = node.n;
+	let cur = node;
+	let file = node.f;
+	// a directory that only ever holds one thing is a level the treemap spends
+	// without saying anything -- `src` then `core` then `state` would use up the
+	// whole depth budget before reaching a single function
+	if (!top)
+		while (cur.i.size === 1 && cur.s === 0) {
+			const only = [...cur.i.values()][0];
+			name += "/" + only.n;
+			file ||= only.f;
+			cur = only;
+		}
+	return {
+		n: name,
+		s: cur.s,
+		t: cur.t,
+		...(file ? { f: 1 } : {}),
+		c: [...cur.i.values()].map((c) => toJson(c)).sort((a, b) => b.t - a.t),
+	};
+};
+
+// A treemap of the tree above, inlined into one file so it opens off disk. The
+// page script is deliberately concatenation-only -- it lives inside a template
+// literal, so a backtick or a `${` in it would be read by this file instead.
+const symbolTemplate = (title: string, data: any) => `<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title>
+<style>
+:root { color-scheme: dark }
+body { margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+	background: #111; color: #ddd; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace }
+#head { flex: none; display: flex; gap: 10px; align-items: baseline;
+	padding: 7px 10px; border-bottom: 1px solid #2c2c2c }
+#crumbs { display: flex; gap: 5px; align-items: baseline; flex-wrap: wrap }
+#crumbs button { background: none; border: 0; padding: 0; cursor: pointer;
+	color: #6cf; font: inherit; text-decoration: underline }
+#crumbs button:last-of-type { color: #ddd; text-decoration: none; cursor: default }
+.sep { color: #555 }
+#total { margin-left: auto; color: #888 }
+#hint { color: #555 }
+#map { position: relative; flex: 1; margin: 3px }
+.cell { position: absolute; box-sizing: border-box; overflow: hidden;
+	border: 1px solid rgba(0, 0, 0, .5); border-radius: 2px }
+.cell:hover { outline: 1px solid #fff; outline-offset: -1px }
+.lbl { padding: 0 3px; font-size: 10px; line-height: 14px; color: #fff; white-space: nowrap;
+	overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px rgba(0, 0, 0, .85) }
+#tip { position: fixed; display: none; z-index: 2; pointer-events: none; max-width: 70ch;
+	padding: 4px 7px; border: 1px solid #444; border-radius: 3px; background: #000e }
+</style>
+<div id="head"><span id="crumbs"></span><span id="hint">click to zoom, esc to go up</span><span id="total"></span></div>
+<div id="map"></div>
+<div id="tip"></div>
+<script>
+var DATA = ${JSON.stringify(data).replace(/</g, "\\u003c")};
+var trail = [DATA], MAXD = 6;
+var map = document.getElementById("map"), tip = document.getElementById("tip");
+
+function fmt(b) { return b < 1024 ? b + " B" : (b / 1024).toFixed(1) + " KiB" }
+function hue(s) {
+	var h = 0;
+	for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+	return h % 360;
+}
+// bytes charged to a node itself become a real child, so that a parent's area
+// stays the sum of what is drawn inside it
+function kids(n) {
+	var c = n.c.slice();
+	if (n.s > 0 && c.length) c.push({ n: "(self)", s: n.s, t: n.s, c: [] });
+	return c.sort(function (a, b) { return b.t - a.t });
+}
+function worst(row, sum, side) {
+	var mx = -Infinity, mn = Infinity;
+	for (var i = 0; i < row.length; i++) {
+		if (row[i] > mx) mx = row[i];
+		if (row[i] < mn) mn = row[i];
+	}
+	var s2 = sum * sum, l2 = side * side;
+	return Math.max(l2 * mx / s2, s2 / (l2 * mn));
+}
+function squarify(nodes, x, y, w, h) {
+	var out = [], total = 0, i = 0;
+	for (var k = 0; k < nodes.length; k++) total += nodes[k].t;
+	if (total <= 0 || w <= 0 || h <= 0) return out;
+	var scale = w * h / total;
+	while (i < nodes.length) {
+		var side = Math.min(w, h);
+		if (side <= 0) break;
+		var row = [], sum = 0, best = Infinity, j = i;
+		while (j < nodes.length) {
+			var v = Math.max(nodes[j].t * scale, 1e-9);
+			row.push(v);
+			var r = worst(row, sum + v, side);
+			if (row.length > 1 && r > best) { row.pop(); break }
+			sum += v; best = r; j++;
+		}
+		var thick = sum / side, off = 0;
+		for (var m = 0; m < row.length; m++) {
+			var len = row[m] / sum * side;
+			out.push(w >= h
+				? { n: nodes[i + m], x: x, y: y + off, w: thick, h: len }
+				: { n: nodes[i + m], x: x + off, y: y, w: len, h: thick });
+			off += len;
+		}
+		if (w >= h) { x += thick; w -= thick } else { y += thick; h -= thick }
+		i = j;
+	}
+	return out;
+}
+// directories and files each take a colour from their own name; symbols inherit
+// the colour of the file they live in, so one file reads as one block
+function draw(node, x, y, w, h, depth, hu, up, frag) {
+	var own = hu === null ? hue(node.n) : hu;
+	var el = document.createElement("div");
+	el.className = "cell";
+	el.style.cssText = "left:" + x + "px;top:" + y + "px;width:" + w + "px;height:" + h +
+		"px;background:hsl(" + own + " 50% " + Math.min(15 + depth * 8, 55) + "%)";
+	el._n = node;
+	el._up = up;
+	frag.appendChild(el);
+	var head = w > 44 && h > 15 ? 14 : 0;
+	if (head) {
+		var lbl = document.createElement("div");
+		lbl.className = "lbl";
+		lbl.textContent = node.n + "  " + fmt(node.t);
+		el.appendChild(lbl);
+	}
+	var c = kids(node);
+	if (depth >= MAXD || !c.length || w - 2 < 12 || h - 2 - head < 12) return;
+	var sub = squarify(c, x + 1, y + 1 + head, w - 2, h - 2 - head), below = up.concat(node.n);
+	for (var i = 0; i < sub.length; i++)
+		draw(sub[i].n, sub[i].x, sub[i].y, sub[i].w, sub[i].h, depth + 1,
+			node.f ? own : hu, below, frag);
+}
+function render() {
+	// a root with one child would spend the whole viewport drawing a border
+	// around it, so walk down until there is a real split to look at
+	while (trail[trail.length - 1].c.length === 1 && !trail[trail.length - 1].s)
+		trail.push(trail[trail.length - 1].c[0]);
+	var root = trail[trail.length - 1];
+	map.textContent = "";
+	var frag = document.createDocumentFragment(), up = trail.map(function (n) { return n.n });
+	var rects = squarify(kids(root), 0, 0, map.clientWidth, map.clientHeight);
+	for (var i = 0; i < rects.length; i++)
+		draw(rects[i].n, rects[i].x, rects[i].y, rects[i].w, rects[i].h, 0, null, up, frag);
+	map.appendChild(frag);
+
+	var crumbs = document.getElementById("crumbs");
+	crumbs.textContent = "";
+	trail.forEach(function (node, i) {
+		var b = document.createElement("button");
+		b.textContent = node.n;
+		b.onclick = function () { trail = trail.slice(0, i + 1); render() };
+		crumbs.appendChild(b);
+		if (i < trail.length - 1) {
+			var sep = document.createElement("span");
+			sep.className = "sep";
+			sep.textContent = "/";
+			crumbs.appendChild(sep);
+		}
+	});
+	document.getElementById("total").textContent =
+		fmt(root.t) + " of " + fmt(DATA.t) + " (" + (root.t / DATA.t * 100).toFixed(1) + "%)";
+}
+map.addEventListener("click", function (e) {
+	var el = e.target.closest(".cell");
+	if (!el || !el._n.c.length) return;
+	trail = trail.concat([el._n]);
+	render();
+});
+map.addEventListener("mousemove", function (e) {
+	var el = e.target.closest(".cell");
+	if (!el) { tip.style.display = "none"; return }
+	var n = el._n;
+	tip.style.display = "block";
+	tip.textContent = el._up.slice(1).concat(n.n).join(" \\u203a ") + " — " + fmt(n.t) +
+		" (" + (n.t / DATA.t * 100).toFixed(2) + "%)" +
+		(n.c.length && n.s ? ", " + fmt(n.s) + " of it own" : "");
+	tip.style.left = Math.min(e.clientX + 12, innerWidth - tip.offsetWidth - 6) + "px";
+	tip.style.top = Math.min(e.clientY + 14, innerHeight - tip.offsetHeight - 6) + "px";
+});
+map.addEventListener("mouseleave", function () { tip.style.display = "none" });
+addEventListener("keydown", function (e) {
+	if ((e.key === "Escape" || e.key === "Backspace") && trail.length > 1) { trail.pop(); render() }
+});
+addEventListener("resize", render);
+render();
+</script>
+`;
+
+export const symbolVisualizer = ({
+	filename,
+	title,
+}: {
+	filename: string;
+	title: string;
+}) => ({
+	name: "symbol-visualizer",
+	async generateBundle(outputOptions: any, bundle: any) {
+		const root = mkNode(title);
+		const chunks = Object.values<any>(bundle).filter((c) => c.type === "chunk");
+		const prefixChunk = chunks.length > 1;
+		let sawMap = false;
+
+		for (const chunk of chunks) {
+			if (!chunk.map) continue;
+			sawMap = true;
+
+			const { code, map } = chunk;
+			const outFile =
+				outputOptions.file ??
+				nodePath.join(outputOptions.dir ?? ".", chunk.fileName);
+			const outDir = nodePath.dirname(nodePath.resolve(outFile));
+			const prefix = prefixChunk ? [chunk.fileName] : [];
+
+			const lineStarts = [0];
+			for (let i = 0; i < code.length; i++)
+				if (code[i] === "\n") lineStarts.push(i + 1);
+
+			const points = decodeMappings(map.mappings)
+				.map((seg) => ({
+					off: Math.min(
+						(lineStarts[seg.line] ?? code.length) + seg.col,
+						code.length
+					),
+					seg,
+				}))
+				.sort((a, b) => a.off - b.off);
+
+			const indexes = new Map<number, SourceIndex | null>();
+			const names = new Map<number, string[]>();
+
+			const bytes = (start: number, end: number) =>
+				end > start ? Buffer.byteLength(code.slice(start, end)) : 0;
+
+			// output ahead of the first mapping is the banner and terser's own glue
+			addBytes(
+				root,
+				[...prefix, "(unmapped)"],
+				bytes(0, points.length ? points[0].off : code.length),
+				-1
+			);
+
+			for (let i = 0; i < points.length; i++) {
+				const { off, seg } = points[i];
+				const len = bytes(
+					off,
+					i + 1 < points.length ? points[i + 1].off : code.length
+				);
+				if (!len) continue;
+
+				let name = names.get(seg.src);
+				if (!name) {
+					const source = map.sources[seg.src];
+					names.set(
+						seg.src,
+						(name = source
+							? nodePath
+									.relative(process.cwd(), nodePath.resolve(outDir, source))
+									.split(nodePath.sep)
+							: ["(unknown)"])
+					);
+				}
+
+				let index = indexes.get(seg.src);
+				if (index === undefined) {
+					const content = map.sourcesContent?.[seg.src];
+					indexes.set(
+						seg.src,
+						(index = content ? buildIndex(map.sources[seg.src], content) : null)
+					);
+				}
+				const fileAt = prefix.length + name.length - 1;
+				if (!index) {
+					addBytes(root, [...prefix, ...name, "(no source)"], len, fileAt);
+					continue;
+				}
+
+				const pos = (index.lineStarts[seg.srcLine] ?? 0) + seg.srcCol;
+				const sym = rangeAt(index.ranges, pos)?.sym;
+				addBytes(
+					root,
+					[...prefix, ...name, ...(sym ? symPath(sym) : ["(top level)"])],
+					len,
+					fileAt
+				);
+			}
+		}
+
+		if (!sawMap) {
+			this.warn(
+				"symbol-visualizer needs output.sourcemap = true to attribute bytes"
+			);
+			return;
+		}
+
+		await fs.promises.mkdir(nodePath.dirname(filename), { recursive: true });
+		await fs.promises.writeFile(
+			filename,
+			symbolTemplate(title, toJson(root, true))
+		);
 	},
 });
