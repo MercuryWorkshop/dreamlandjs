@@ -1,45 +1,46 @@
 // added to every component's root, determines start of scoped css scope
 export let CSS_COMPONENT = "dlc";
 
-// pseudo-classes that take a selector list as their argument. everything else
-// -- :nth-child(2n+1), :nth-of-type(even), :dir(rtl), :lang(en) -- keeps its
-// argument verbatim. rewriting inside those produces a selector the browser
-// rejects, and an unparseable selector makes it drop the whole rule
-let SELECTOR_ARG = [
-	"is",
-	"where",
-	"not",
-	"has",
-	"matches",
-	"any",
-	"host",
-	"host-context",
-];
+// pseudo-classes that take a selector list as their argument. everything else --
+// :nth-child(2n+1), :nth-of-type(even), :dir(rtl), :lang(en) -- keeps its argument
+// verbatim, because rewriting inside those produces a selector the browser rejects,
+// and an unparseable selector makes it drop the whole rule.
+//
+// :host()/:host-context() are left out on purpose: components render into the light
+// dom, so a :host() rule never applies whether or not its argument is scoped. so is
+// the `of S` of :nth-child(An+B of S), which leaves S unscoped -- that only shifts
+// which siblings get counted, never which elements can match
+let SELECTOR_ARG = ["is", "where", "not", "has"];
 let IDENT = /[-\w\P{ASCII}]/u;
 // a run of these ends one compound selector and starts the next
 let SEPARATOR = /[\s>+~,]/;
 
-// index just past the `close` matching the bracket at `i`, stepping over nested
-// pairs, strings and escapes. selectors reaching here come from CSSOM, so they
-// are already known to balance -- a truncated one just consumes the remainder
-let matching = (sel: string, i: number, close: string): number => {
-	let open = sel[i];
-	let depth = 0;
-	let quote = "";
-
-	for (; i < sel.length; i++) {
-		let c = sel[i];
-		if (quote) {
-			if (c == "\\") i++;
-			else if (c == quote) quote = "";
-		} else if (c == "'" || c == '"') quote = c;
-		else if (c == "\\") i++;
-		else if (c == open) depth++;
-		else if (c == close && !--depth) return i + 1;
-	}
-
-	return sel.length;
-};
+// index just past the `close` matching the bracket at `offset`, stepping over
+// nested pairs, strings and escapes. selectors reaching here come from CSSOM, so
+// they are already known to balance -- a truncated one consumes the remainder.
+//
+// split("") rather than [...text]: findIndex hands back an index into the array it
+// walked, and only splitting by code unit keeps that usable as a string offset. a
+// class name may hold astral characters (`.\u{1F600}` is a valid selector), and
+// iterating those by code point would slide every later index out from under us
+let matching = (
+	text: string,
+	offset: number,
+	close: string,
+	nesting = 0,
+	open = text[offset],
+	quote = "",
+	escape = false
+): number =>
+	text
+		.split("")
+		.findIndex(
+			(x, i) =>
+				i >= offset &&
+				(escape ? (escape = false) : x == "\\" ? !(escape = true) : true) &&
+				(quote = quote == x ? "" : quote || (/['"]/.test(x) ? x : "")) == "" &&
+				(nesting += x == open ? 1 : x == close ? -1 : 0) == 0
+		) + 1 || text.length;
 
 // rewrites `sel` so that every compound selector in it also has to match `.tag`.
 //
@@ -130,15 +131,11 @@ export let rewriteSelector = (
 
 			pseudoElAt = el ? (pseudoElAt < 0 ? at : pseudoElAt) : -1;
 		} else if (SEPARATOR.test(c)) {
-			// collapse the whole run: `  >  ` is one child combinator, and the
-			// whitespace around a `,` is not a descendant combinator
 			let end = i;
-			let sep = " ";
-			while (end < sel.length && SEPARATOR.test(sel[end])) {
-				if (!/\s/.test(sel[end])) sep = sel[end];
-				end++;
-			}
-			separate(sep);
+			while (end < sel.length && SEPARATOR.test(sel[end])) end++;
+			// the run collapses to its combinator: `  >  ` is one child combinator,
+			// and whitespace around a `,` is not a descendant combinator
+			separate(sel.slice(i, end).trim() || " ");
 			i = end;
 		} else {
 			out += c;

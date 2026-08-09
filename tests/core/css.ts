@@ -175,6 +175,20 @@ test("css/scope: scope class placement", () => {
 		['a[href="a>b"]::after', 'a[href="a>b"]:where(.T)::after'],
 		["input[type=text]", "input[type=text]:where(.T)"],
 		[".a\\:b", ".a\\:b:where(.T)"],
+
+		// bracket matching indexes by code unit. an astral character in a class name
+		// or attribute value is two of those, and walking by code point instead
+		// would return an offset that slices the closing bracket off
+		['[data-x="\u{1F600}"]', '[data-x="\u{1F600}"]:where(.T)'],
+		["\u{1F600}", "\u{1F600}:where(.T)"],
+		[".a[x=\u{1F600}] .b", ".a[x=\u{1F600}]:where(.T) .b:where(.T)"],
+		[":is(.\u{1F600}, .b)", ":is(.\u{1F600}:where(.T),.b:where(.T)):where(.T)"],
+
+		// only :is/:where/:not/:has take a selector argument. :host() is not in that
+		// set -- components render into the light dom, so a :host() rule never
+		// applies whether or not its argument is scoped
+		[":host(.a)", ":host(.a):where(.T)"],
+		[":nth-child(2n of .foo)", ":nth-child(2n of .foo):where(.T)"],
 	];
 
 	for (let [input, want] of cases)

@@ -9,6 +9,7 @@ import nodeResolve from "@rollup/plugin-node-resolve";
 import { visualizer } from "rollup-plugin-visualizer";
 import {
 	classToDecl,
+	defaultParamFolder,
 	globalHoister,
 	instanceofHoister,
 	propertyHoister,
@@ -122,6 +123,7 @@ function common({
 		}),
 		...(hoist
 			? [
+					defaultParamFolder(),
 					globalHoister(HOISTS),
 					propertyHoister(),
 					stringHoister(),

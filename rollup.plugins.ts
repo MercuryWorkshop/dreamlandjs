@@ -747,8 +747,14 @@ export const globalHoister = (patterns: string[]) => {
 						// Skip if it looks like a declaration (let/const/var/class/function before it)
 						let j = idx - 1;
 						while (j >= 0 && /\s/.test(code[j])) j--;
-						// Check for property access: don't replace x.Object
-						if (j >= 0 && code[j] === ".") {
+						// Check for property access: don't replace x.Object. a spread
+						// ends in a dot too, and `...Array` is a plain reference --
+						// only bail on a dot that isn't the tail of a `...`
+						if (
+							j >= 0 &&
+							code[j] === "." &&
+							code.slice(j - 2, j + 1) !== "..."
+						) {
 							idx++;
 							continue;
 						}
@@ -1187,6 +1193,306 @@ export const typeofHoister = () => ({
 				rewritten.appendRight(lastImportIndex, helperDecl);
 			}
 
+			return {
+				code: rewritten.toString(),
+				map: rewritten.generateMap({ hires: true }),
+			};
+		},
+	},
+});
+
+// every name a parameter or declarator pattern binds
+const patternNames = (pat: any, out: string[] = []): string[] => {
+	if (!pat) return out;
+	switch (pat.type) {
+		case "Identifier":
+			out.push(pat.name);
+			break;
+		case "ObjectPattern":
+			pat.properties.forEach((p: any) =>
+				patternNames(p.type === "Property" ? p.value : p.argument, out)
+			);
+			break;
+		case "ArrayPattern":
+			pat.elements.forEach((e: any) => patternNames(e, out));
+			break;
+		case "AssignmentPattern":
+			patternNames(pat.left, out);
+			break;
+		case "RestElement":
+			patternNames(pat.argument, out);
+			break;
+	}
+	return out;
+};
+
+const eachChild = (node: any, fn: (child: any) => void) => {
+	for (const key in node) {
+		if (key === "type" || key === "start" || key === "end") continue;
+		const value = node[key];
+		if (Array.isArray(value)) {
+			for (const child of value)
+				if (child && typeof child.type === "string") fn(child);
+		} else if (value && typeof value.type === "string") fn(value);
+	}
+};
+
+// `false` from the visitor prunes that subtree
+const walkAst = (
+	node: any,
+	visit: (node: any, parent: any) => any,
+	parent: any = null
+) => {
+	if (!node) return;
+	if (visit(node, parent) === false) return;
+	eachChild(node, (child) => walkAst(child, visit, node));
+};
+
+// every identifier an expression reads, ignoring non-computed property names
+const identsRead = (node: any): Set<string> => {
+	const names = new Set<string>();
+	walkAst(node, (n) => {
+		if (n.type === "MemberExpression" && !n.computed) {
+			walkAst(n.object, (o) => {
+				if (o.type === "Identifier") names.add(o.name);
+			});
+			return false;
+		}
+		if (
+			n.type === "Property" &&
+			!n.computed &&
+			n.key.type === "Identifier" &&
+			!n.shorthand
+		) {
+			walkAst(n.value, (v) => {
+				if (v.type === "Identifier") names.add(v.name);
+			});
+			return false;
+		}
+		if (n.type === "Identifier") names.add(n.name);
+	});
+	return names;
+};
+
+// Folds a function's leading `let` group into default parameters:
+//
+//     let f = (a, b) => { let x = a.p, y = b.q; return x + y };
+//     ->
+//     let f = (a, b, x = a.p, y = b.q) => { return x + y };
+//
+// terser collapses that to `(a,b,x=a.p,y=b.q)=>x+y`, so this pass only performs
+// the move -- the block collapse, the renaming and any follow-on shrinking stay
+// terser's job. Worth ~5 bytes per declaration group, and it is a transform terser
+// neither performs itself nor undoes, so the two compose.
+//
+// Sound only when every call site passes at most `params.length` arguments, so a
+// moved binding always initializes from its default. That is the whole risk:
+// `.map(f)` hands the callback an index and `.forEach(f)` an index and the array,
+// either of which would land in a slot this pass assumes is empty. So a candidate
+// has to prove its call sites, and anything that cannot is left alone.
+//
+// Runs after rollup has flattened the modules into one scope, which is what makes
+// the call sites checkable at all -- a per-module transform hook cannot see them.
+export const defaultParamFolder = (internalPrefix = "_") => ({
+	name: "default-param-folder",
+	renderChunk: {
+		order: "pre" as const,
+		handler(code: string) {
+			const ast = this.parse(code);
+
+			// a top-level name is unique in the flattened chunk unless something
+			// below the top level rebinds it, which `shadowed` catches
+			const exported = new Set<string>();
+			const shadowed = new Set<string>();
+			const topLevelFns = new Map<string, any>();
+			// identifier -> the parent of each of its references
+			const refParents = new Map<string, any[]>();
+			// property name -> the call nodes invoking it, and whether it is ever
+			// touched outside callee position (which would make it escape)
+			const methodCalls = new Map<string, any[]>();
+			const methodEscapes = new Set<string>();
+
+			// the declarations a name may be bound by without that counting as
+			// shadowing -- everything else below the top level does
+			const topLevelDecls = new Set<any>();
+
+			for (const stmt of (ast as any).body) {
+				if (stmt.type === "ExportNamedDeclaration") {
+					for (const spec of stmt.specifiers || [])
+						exported.add(spec.local.name);
+					for (const decl of stmt.declaration?.declarations || [])
+						patternNames(decl.id).forEach((n) => exported.add(n));
+					if (stmt.declaration?.type === "VariableDeclaration")
+						topLevelDecls.add(stmt.declaration);
+				}
+				if (stmt.type === "VariableDeclaration") {
+					topLevelDecls.add(stmt);
+					for (const decl of stmt.declarations)
+						if (
+							decl.id.type === "Identifier" &&
+							decl.init &&
+							FUNCTION_NODE_TYPES.has(decl.init.type)
+						)
+							topLevelFns.set(decl.id.name, decl.init);
+				}
+			}
+
+			walkAst(ast, (node, parent) => {
+				if (FUNCTION_NODE_TYPES.has(node.type))
+					for (const param of node.params)
+						patternNames(param).forEach((n) => {
+							if (topLevelFns.has(n)) shadowed.add(n);
+						});
+				if (node.type === "VariableDeclarator" && !topLevelDecls.has(parent))
+					patternNames(node.id).forEach((n) => {
+						if (topLevelFns.has(n)) shadowed.add(n);
+					});
+
+				const isPropertyName =
+					parent?.type === "MemberExpression" &&
+					parent.property === node &&
+					!parent.computed;
+				if (node.type === "Identifier" && parent && !isPropertyName) {
+					if (!refParents.has(node.name)) refParents.set(node.name, []);
+					refParents.get(node.name)!.push(parent);
+				}
+
+				if (
+					node.type === "MemberExpression" &&
+					!node.computed &&
+					node.property.type === "Identifier"
+				) {
+					const name = node.property.name;
+					if (parent?.type === "CallExpression" && parent.callee === node) {
+						if (!methodCalls.has(name)) methodCalls.set(name, []);
+						methodCalls.get(name)!.push(parent);
+					} else methodEscapes.add(name);
+				}
+			});
+
+			const argsFit = (call: any, arity: number) =>
+				call.arguments.length <= arity &&
+				!call.arguments.some((a: any) => a.type === "SpreadElement");
+
+			const candidates: any[] = [];
+
+			// module-scope arrows whose every reference is a direct call. the moment
+			// one is used as a value -- handed to .map, stored in an object, exported
+			// -- its call sites stop being knowable and it drops out here
+			for (const [name, fn] of topLevelFns) {
+				if (
+					fn.type !== "ArrowFunctionExpression" ||
+					exported.has(name) ||
+					shadowed.has(name)
+				)
+					continue;
+				const refs = refParents.get(name) || [];
+				const calls = refs.filter((p) => p.type !== "VariableDeclarator");
+				if (
+					calls.length &&
+					calls.every(
+						(parent) =>
+							parent.type === "CallExpression" &&
+							parent.callee?.name === name &&
+							argsFit(parent, fn.params.length)
+					)
+				)
+					candidates.push(fn);
+			}
+
+			// class methods the project has already marked internal by naming. these
+			// are the names terser's property mangler rewrites, so by the project's
+			// own contract no caller outside the chunk can even spell them
+			walkAst(ast, (node) => {
+				if (node.type !== "MethodDefinition" || node.kind !== "method") return;
+				if (node.computed || !node.key.name?.startsWith(internalPrefix)) return;
+				if (methodEscapes.has(node.key.name)) return;
+				const calls = methodCalls.get(node.key.name) || [];
+				if (
+					calls.length &&
+					calls.every((c) => argsFit(c, node.value.params.length))
+				)
+					candidates.push(node.value);
+			});
+
+			const rewritten = new MagicString(code);
+			let folded = 0;
+
+			for (const fn of candidates) {
+				if (fn.body.type !== "BlockStatement") continue;
+				if (fn.params.some((p: any) => p.type === "RestElement")) continue;
+				// only the leading group moves: anything after a statement cannot,
+				// without reordering effects
+				const decl = fn.body.body[0];
+				if (decl?.type !== "VariableDeclaration" || decl.kind === "var")
+					continue;
+
+				const moved = decl.declarations.flatMap((d: any) => patternNames(d.id));
+				const paramNames = new Set(
+					fn.params.flatMap((p: any) => patternNames(p))
+				);
+				if (moved.some((n: string) => paramNames.has(n))) continue;
+
+				// a moved initializer evaluates in the parameter scope, which cannot
+				// see the body scope. and once the parameter list goes non-simple the
+				// two scopes split for real, so a `var` of a moved name stops aliasing
+				const bodyBindings = new Set<string>();
+				let hasVar = false;
+				let usesArguments = false;
+				for (const stmt of fn.body.body.slice(1))
+					walkAst(stmt, (n) => {
+						if (n.type === "VariableDeclaration") {
+							if (n.kind === "var") hasVar = true;
+							for (const d of n.declarations)
+								patternNames(d.id).forEach((x) => bodyBindings.add(x));
+						}
+						if (
+							(n.type === "FunctionDeclaration" ||
+								n.type === "ClassDeclaration") &&
+							n.id
+						)
+							bodyBindings.add(n.id.name);
+						if (n.type === "Identifier" && n.name === "arguments")
+							usesArguments = true;
+					});
+				if (hasVar) continue;
+				// arrows have no `arguments`; for anything else the object would go
+				// from mapped to unmapped
+				if (usesArguments && fn.type !== "ArrowFunctionExpression") continue;
+
+				let safe = true;
+				const declared = new Set<string>();
+				for (const d of decl.declarations) {
+					for (const name of d.init ? identsRead(d.init) : [])
+						if (
+							bodyBindings.has(name) ||
+							(moved.includes(name) && !declared.has(name))
+						) {
+							safe = false;
+							break;
+						}
+					if (!safe) break;
+					patternNames(d.id).forEach((n) => declared.add(n));
+				}
+				if (!safe) continue;
+
+				// splice the declarators in as trailing parameters. this always wins:
+				// `let ` and the `;` go away, at most a `,` comes back
+				const decls = code.slice(
+					decl.declarations[0].start,
+					decl.declarations[decl.declarations.length - 1].end
+				);
+				const lastParam = fn.params[fn.params.length - 1];
+				if (lastParam) rewritten.appendLeft(lastParam.end, `,${decls}`);
+				else {
+					const open = code.indexOf("(", fn.start);
+					rewritten.appendLeft(code.indexOf(")", open), decls);
+				}
+				rewritten.remove(decl.start, decl.end);
+				folded++;
+			}
+
+			if (!folded) return null;
 			return {
 				code: rewritten.toString(),
 				map: rewritten.generateMap({ hires: true }),

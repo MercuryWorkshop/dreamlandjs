@@ -1,4 +1,4 @@
-import { COMMA_TOKEN, WEAKMAP } from "../consts";
+import { NO_CHANGE, WEAKMAP } from "../consts";
 import { deref, ObjectProp } from "../utils";
 import { InitializingPointer, Pointer } from "./pointers";
 import { useTrap, useTrapMap } from "./use";
@@ -16,7 +16,7 @@ interface InternalStateful {
 
 export type Stateful<T extends object> = T & {
 	/// THIS IS A SEALED MARKER TYPE. do not try accessing it
-	readonly [COMMA_TOKEN]: unique symbol;
+	readonly [NO_CHANGE]: unique symbol;
 };
 
 let getInternal = (stateful: Stateful<any>): InternalStateful =>
