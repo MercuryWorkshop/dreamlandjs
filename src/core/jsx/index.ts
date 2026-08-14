@@ -10,7 +10,7 @@ import {
 import { Pointer, maybeListen } from "../state/pointers";
 import { createState, stateProxy, Stateful } from "../state/state";
 import { Delegate, DelegateListener } from "../delegate";
-import { mapChild } from "./child";
+import { flattenChildRet, mapChild } from "./child";
 import { NO_CHANGE } from "../consts";
 
 export let currentComponentCx:
@@ -214,12 +214,12 @@ function _jsx(
 			children
 		);
 
-		iterateChildren(children, (child) => {
-			let ret = mapChild(child, el, lastCssIdent);
-			ret.forEach((x) => {
-				if (x.parentNode !== el) el.appendChild(x);
-			});
-		});
+		// `undefined` means "no children prop at all" -- mapping it would render a
+		// placeholder comment into every childless element
+		if (children !== undefined)
+			flattenChildRet(mapChild(children, el, lastCssIdent)).forEach(
+				(x) => x.parentNode !== el && el.appendChild(x)
+			);
 
 		let classList = el.classList;
 

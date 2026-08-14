@@ -44,11 +44,10 @@ export class Node {
 	insertBefore(node: Node, anchor: Node) {
 		this.removeChild(node);
 		node.parent = this;
-		this.childNodes.splice(
-			this.childNodes.findIndex((x) => x === anchor),
-			0,
-			node
-		);
+		// a null/absent anchor means append, per the DOM spec -- findIndex would
+		// return -1 and splice(-1) inserts before the *last* child instead
+		let idx = this.childNodes.findIndex((x) => x === anchor);
+		this.childNodes.splice(idx < 0 ? this.childNodes.length : idx, 0, node);
 	}
 
 	toStandard(): DomNode {

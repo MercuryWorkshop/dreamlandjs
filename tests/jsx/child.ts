@@ -2,6 +2,50 @@ import { CommentClass, jsxTest, NodeClass, TextClass } from "./harness.ts";
 import { check } from "../harness.ts";
 import { createState, css, jsx } from "dreamland/core";
 
+// A pointer child renders as a single leading anchor comment followed by its
+// content; there is no closing marker. Arrays contribute no nodes of their own,
+// so `<div>{use(x)}</div>` with a scalar is 2 nodes and with a 3-element array
+// is 4, at any nesting depth.
+let shape = (el: Node) =>
+	[...el.childNodes]
+		.map((n: any) =>
+			n.nodeType === 3
+				? JSON.stringify(n.data)
+				: n.nodeType === 8
+					? "!"
+					: // happy-dom exposes nodeName, the ssr vdom exposes `type`
+						"<" + (n.nodeName || n.type).toLowerCase() + ">"
+		)
+		.join(",");
+
+// both dom impls report a detached node's parent, but with different absent values
+let detached = (n: any) => n.parentNode == null;
+
+// counts the DOM mutations the reconciler issues on a specific parent. Needed
+// because a broken LIS still produces correct output -- it just reinserts
+// everything -- so only op counts can catch it.
+let instrument = (el: any) => {
+	let counts = { insert: 0, remove: 0 };
+	let ib = el.insertBefore.bind(el);
+	let rc = el.removeChild.bind(el);
+	// the ssr vdom's insertBefore detaches the node first; that internal call
+	// isn't a reconciler decision, so don't count it
+	let moving = false;
+	el.insertBefore = (a: any, b: any) => {
+		counts.insert++;
+		moving = true;
+		try {
+			return ib(a, b);
+		} finally {
+			moving = false;
+		}
+	};
+	el.removeChild = (a: any) => (moving || counts.remove++, rc(a));
+	return counts;
+};
+
+// --- static children -----------------------------------------------------------
+
 jsxTest("basic", () => {
 	let dom = jsx("div", {
 		children: ["abc", 0, null, undefined],
@@ -28,6 +72,18 @@ jsxTest("basic", () => {
 	);
 });
 
+jsxTest("no-children-renders-nothing", () => {
+	// an absent children prop must not produce a placeholder comment
+	check("element with no children prop is empty").assertEq(
+		jsx("span", {}).childNodes.length,
+		0
+	);
+	check("empty children array is empty").assertEq(
+		jsx("span", { children: [] }).childNodes.length,
+		0
+	);
+});
+
 jsxTest("fragments/nested", () => {
 	let dom = jsx("div", {
 		children: ["a", ["b", ["c", ["d"]]]],
@@ -43,6 +99,33 @@ jsxTest("fragments/nested", () => {
 	});
 });
 
+jsxTest("blacklist-and-falsy", () => {
+	// false/true render as comments; 0 and "" are falsy but NOT blacklisted
+	let dom = jsx("div", { children: [false, true, 0, ""] });
+
+	check("4 children").assertEq(dom.childNodes.length, 4);
+	check("`false` -> Comment").assertInstance(dom.childNodes[0], CommentClass);
+	check("`true` -> Comment").assertInstance(dom.childNodes[1], CommentClass);
+	check("`0` -> Text").assertInstance(dom.childNodes[2], TextClass);
+	check('`0` text is "0"').assertEq((dom.childNodes[2] as Text).data, "0");
+	check('`""` -> Text').assertInstance(dom.childNodes[3], TextClass);
+	check('`""` text is empty').assertEq((dom.childNodes[3] as Text).data, "");
+});
+
+jsxTest("static-element-child", () => {
+	// a plain element child is appended as-is, with no comment wrappers
+	let span = jsx("span", {});
+	let dom = jsx("div", { children: ["before", span, "after"] });
+
+	check("3 children, no wrappers").assertEq(dom.childNodes.length, 3);
+	check("text before").assertEq((dom.childNodes[0] as Text).data, "before");
+	check("element child is the same node").assertEq(dom.childNodes[1], span);
+	check("element child is a Node").assertInstance(dom.childNodes[1], NodeClass);
+	check("text after").assertEq((dom.childNodes[2] as Text).data, "after");
+});
+
+// --- pointer region shape ------------------------------------------------------
+
 jsxTest("pointers/basic", () => {
 	let state = createState({
 		a: "abc" as any,
@@ -57,20 +140,18 @@ jsxTest("pointers/basic", () => {
 
 	let after = "";
 
-	check("12 child elements created").assertEq(dom.childNodes.length, 12);
+	check("8 child elements created").assertEq(dom.childNodes.length, 8);
 
 	function checkSet(
 		el: string,
 		i: number,
 		fn: (str: string, node: Node) => void
 	) {
-		check(
-			`\`${el}\` pointer child has beginning comment wrapper${after}`
-		).assertInstance(dom.childNodes[i * 3], CommentClass);
-		fn(`\`${el}\` pointer child`, dom.childNodes[i * 3 + 1]);
-		check(
-			`\`${el}\` pointer child has ending comment wrapper${after}`
-		).assertInstance(dom.childNodes[i * 3 + 2], CommentClass);
+		check(`\`${el}\` pointer child has an anchor${after}`).assertInstance(
+			dom.childNodes[i * 2],
+			CommentClass
+		);
+		fn(`\`${el}\` pointer child`, dom.childNodes[i * 2 + 1]);
 	}
 
 	checkSet("a", 0, (child, node) => {
@@ -98,7 +179,7 @@ jsxTest("pointers/basic", () => {
 
 	after = " after rotate";
 
-	check("12 child elements after rotate").assertEq(dom.childNodes.length, 12);
+	check("8 child elements after rotate").assertEq(dom.childNodes.length, 8);
 
 	checkSet("a", 0, (child, node) => {
 		check(`${child} is Comment`).assertInstance(node, CommentClass);
@@ -124,33 +205,13 @@ jsxTest("pointers/fragments", () => {
 		x: ["a", "b", "c", "d"],
 	});
 
-	let dom = jsx("div", {
-		children: [use(state.x)],
-	});
+	let dom = jsx("div", { children: [use(state.x)] });
 
-	check("6 child elements created").assertEq(dom.childNodes.length, 6);
-	check(`\`x\` pointer child has beginning comment wrapper`).assertInstance(
-		dom.childNodes[0],
-		CommentClass
-	);
-	["a", "b", "c", "d"].forEach((c, i) => {
-		check(`"${c}" child is Text`).assertInstance(
-			dom.childNodes[i + 1],
-			TextClass
-		);
-		check(`"${c}" child has "${c}" text`).assertEq(
-			(dom.childNodes[i + 1] as Text).data,
-			c
-		);
-	});
-	check(`\`x\` pointer child has ending comment wrapper`).assertInstance(
-		dom.childNodes[5],
-		CommentClass
-	);
+	check("anchor + 4 children").assertEq(shape(dom), `!,"a","b","c","d"`);
 
 	state.x = ["d", "c", "b", "a"];
 
-	check("6 child elements after rotate").assertEq(dom.childNodes.length, 6);
+	check("5 child elements after rotate").assertEq(dom.childNodes.length, 5);
 	["d", "c", "b", "a"].forEach((c, i) => {
 		check(`child ${i} has "${c}" text after rotate`).assertEq(
 			(dom.childNodes[i + 1] as Text).data,
@@ -159,14 +220,53 @@ jsxTest("pointers/fragments", () => {
 	});
 });
 
-// --- behaviors the rewrite is meant to guarantee -------------------------------
+jsxTest("pointers/empty-array", () => {
+	let state = createState({ x: [] as string[] });
+	let dom = jsx("div", { children: [use(state.x)] });
+
+	// an empty array contributes no nodes, so only the anchor is left
+	check("empty: just the anchor").assertEq(dom.childNodes.length, 1);
+	check("anchor is a Comment").assertInstance(dom.childNodes[0], CommentClass);
+
+	state.x = ["a"];
+	check("grow from empty").assertEq(shape(dom), `!,"a"`);
+
+	state.x = [];
+	check("shrink back to empty").assertEq(dom.childNodes.length, 1);
+});
+
+jsxTest("pointers/nested-array", () => {
+	let state = createState({ x: ["a", ["b", "c"]] as any });
+	let dom = jsx("div", { children: [use(state.x)] });
+
+	// nested arrays flatten and add no markers of their own
+	check("anchor + 3 flattened").assertEq(shape(dom), `!,"a","b","c"`);
+
+	state.x = ["x", ["y", "z"]];
+	check("still flat after update").assertEq(shape(dom), `!,"x","y","z"`);
+});
+
+jsxTest("mixed-static-pointer-order", () => {
+	let state = createState({ x: "mid" });
+	let dom = jsx("div", { children: ["a", use(state.x), "b"] });
+
+	check("pointer sits between its static siblings").assertEq(
+		shape(dom),
+		`"a",!,"mid","b"`
+	);
+
+	state.x = "MID";
+	check("order preserved on update").assertEq(shape(dom), `"a",!,"MID","b"`);
+});
+
+// --- node reuse ----------------------------------------------------------------
 
 jsxTest("pointers/text-reuse", () => {
 	let state = createState({ x: "a" });
 	let dom = jsx("div", { children: [use(state.x)] });
 
 	let text = dom.childNodes[1];
-	check("3 nodes (wrappers + content)").assertEq(dom.childNodes.length, 3);
+	check("anchor + content").assertEq(dom.childNodes.length, 2);
 	check("content is Text").assertInstance(text, TextClass);
 	check("initial data").assertEq((text as Text).data, "a");
 
@@ -179,57 +279,121 @@ jsxTest("pointers/text-reuse", () => {
 		(dom.childNodes[1] as Text).data,
 		"b"
 	);
-	check("still 3 nodes").assertEq(dom.childNodes.length, 3);
+	check("still 2 nodes").assertEq(dom.childNodes.length, 2);
 
 	state.x = "c";
 	check("text node still reused").assertEq(dom.childNodes[1], text);
 	check("data updated again").assertEq((dom.childNodes[1] as Text).data, "c");
 });
 
-jsxTest("pointers/nested", () => {
-	let inner = createState({ y: "1" });
-	let outer = createState({ show: true as boolean });
+jsxTest("pointers/comment-reuse", () => {
+	let state = createState({ x: null as any });
+	let dom = jsx("div", { children: [use(state.x)] });
 
-	let dom = jsx("div", {
-		children: [use(outer.show).map((s) => (s ? use(inner.y) : "off"))],
-	});
+	let comment = dom.childNodes[1];
+	check("blacklisted value -> Comment").assertInstance(comment, CommentClass);
 
-	// outer-start, inner-start, text, inner-end, outer-end
-	check("5 nodes when nested pointer is active").assertEq(
-		dom.childNodes.length,
-		5
-	);
-	let text = dom.childNodes[2];
-	check("nested content is Text").assertInstance(text, TextClass);
-	check("nested initial data").assertEq((text as Text).data, "1");
+	state.x = undefined;
+	check("comment reused for undefined").assertEq(dom.childNodes[1], comment);
+	state.x = false;
+	check("comment reused for false").assertEq(dom.childNodes[1], comment);
+	check("still 2 nodes").assertEq(dom.childNodes.length, 2);
+});
 
-	// updating the inner pointer must update only the inner region, in place
-	inner.y = "2";
-	check("nested text reused on inner update").assertEq(dom.childNodes[2], text);
-	check("nested data updated").assertEq((dom.childNodes[2] as Text).data, "2");
-	check("structure unchanged on inner update").assertEq(
-		dom.childNodes.length,
-		5
-	);
+jsxTest("pointers/list-grow-shrink", () => {
+	let state = createState({ x: ["a", "b"] as string[] });
+	let dom = jsx("div", { children: [use(state.x)] });
 
-	// collapsing the outer pointer rebuilds the region into a single text node
-	outer.show = false;
-	check("3 nodes after outer collapses").assertEq(dom.childNodes.length, 3);
-	check('collapsed content is "off"').assertEq(
-		(dom.childNodes[1] as Text).data,
-		"off"
-	);
+	check("3 nodes").assertEq(dom.childNodes.length, 3);
+	let ta = dom.childNodes[1];
 
-	// a stale update to the now-detached inner pointer must be a no-op
-	inner.y = "3";
-	check("stale inner update does not resurrect content").assertEq(
-		dom.childNodes.length,
-		3
-	);
-	check("collapsed content still off").assertEq(
-		(dom.childNodes[1] as Text).data,
-		"off"
-	);
+	state.x = ["a", "b", "c"];
+	check("grew").assertEq(shape(dom), `!,"a","b","c"`);
+	check("first text reused on grow").assertEq(dom.childNodes[1], ta);
+
+	state.x = ["z"];
+	check("shrank").assertEq(shape(dom), `!,"z"`);
+	check("surviving text reused on shrink").assertEq(dom.childNodes[1], ta);
+});
+
+jsxTest("pointers/mixed-array", () => {
+	let span = jsx("span", {});
+	let state = createState({ x: ["a", null, span] as any[] });
+	let dom = jsx("div", { children: [use(state.x)] });
+
+	check("shape").assertEq(shape(dom), `!,"a",!,<span>`);
+	let text = dom.childNodes[1];
+	let comment = dom.childNodes[2];
+
+	state.x = ["b", null, span];
+	check("text reused across mixed update").assertEq(dom.childNodes[1], text);
+	check("text retargeted").assertEq((dom.childNodes[1] as Text).data, "b");
+	check("comment reused").assertEq(dom.childNodes[2], comment);
+	check("node still identical").assertEq(dom.childNodes[3], span);
+});
+
+jsxTest("pointers/scalar-array-transitions", () => {
+	let state = createState({ x: "a" as any });
+	let dom = jsx("div", { children: [use(state.x)] });
+
+	check("scalar").assertEq(shape(dom), `!,"a"`);
+
+	state.x = ["a", "b", "c"];
+	check("scalar -> array").assertEq(shape(dom), `!,"a","b","c"`);
+
+	state.x = "z";
+	check("array -> scalar").assertEq(shape(dom), `!,"z"`);
+});
+
+jsxTest("pointers/node-value", () => {
+	let s1 = jsx("span", {});
+	let s2 = jsx("section", {});
+	let state = createState({ el: s1 as any });
+	let dom = jsx("div", { children: [use(state.el)] });
+
+	check("element value rendered").assertEq(shape(dom), `!,<span>`);
+
+	state.el = s2;
+	check("swapped to other element").assertEq(shape(dom), `!,<section>`);
+	// the Node branch mutates state.node in place; if `old` is flattened after
+	// the map rather than before, the replaced element is never detached
+	check("replaced element is detached").assertEq(detached(s1), true);
+
+	state.el = "text";
+	check("element -> text").assertEq(shape(dom), `!,"text"`);
+	check("second element detached too").assertEq(detached(s2), true);
+});
+
+// --- reconciliation minimality -------------------------------------------------
+
+jsxTest("reconcile/append-is-one-insert", () => {
+	let state = createState({ x: ["a", "b", "c"] as string[] });
+	let dom = jsx("div", { children: [use(state.x)] });
+	let counts = instrument(dom);
+
+	state.x = ["a", "b", "c", "d"];
+	check("appended").assertEq(shape(dom), `!,"a","b","c","d"`);
+	check("exactly one insert").assertEq(counts.insert, 1);
+	check("nothing removed").assertEq(counts.remove, 0);
+});
+
+jsxTest("reconcile/unchanged-is-noop", () => {
+	let state = createState({ x: ["a", "b", "c"] as string[] });
+	let dom = jsx("div", { children: [use(state.x)] });
+	let counts = instrument(dom);
+
+	state.x = ["a", "b", "c"]; // new array, identical contents
+	check("unchanged").assertEq(shape(dom), `!,"a","b","c"`);
+	check("no inserts").assertEq(counts.insert, 0);
+	check("no removes").assertEq(counts.remove, 0);
+});
+
+jsxTest("reconcile/middle-removal", () => {
+	let state = createState({ x: ["a", "b", "c", "d"] as string[] });
+	let dom = jsx("div", { children: [use(state.x)] });
+
+	state.x = ["a", "d"];
+	check("shape").assertEq(shape(dom), `!,"a","d"`);
 });
 
 jsxTest("pointers/list-reorder", () => {
@@ -240,192 +404,35 @@ jsxTest("pointers/list-reorder", () => {
 
 	let dom = jsx("div", { children: [use(state.items)] });
 
-	check("5 nodes").assertEq(dom.childNodes.length, 5);
+	check("4 nodes").assertEq(dom.childNodes.length, 4);
 	check("a @ 1").assertEq(dom.childNodes[1], a);
 	check("b @ 2").assertEq(dom.childNodes[2], b);
 	check("c @ 3").assertEq(dom.childNodes[3], c);
 
+	let counts = instrument(dom);
 	state.items = [c, a, b];
 
-	check("5 nodes after reorder").assertEq(dom.childNodes.length, 5);
+	check("4 nodes after reorder").assertEq(dom.childNodes.length, 4);
 	check("c moved to 1 (same node)").assertEq(dom.childNodes[1], c);
 	check("a moved to 2 (same node)").assertEq(dom.childNodes[2], a);
 	check("b moved to 3 (same node)").assertEq(dom.childNodes[3], b);
+	// the LIS keeps a and b static; only c should be relocated
+	check("only one node moved").assertEq(counts.insert, 1);
+	check("nothing removed").assertEq(counts.remove, 0);
 });
 
-jsxTest("pointers/list-grow-shrink", () => {
-	let state = createState({ x: ["a", "b"] as string[] });
-	let dom = jsx("div", { children: [use(state.x)] });
-
-	check("4 nodes").assertEq(dom.childNodes.length, 4);
-	let ta = dom.childNodes[1];
-
-	state.x = ["a", "b", "c"];
-	check("5 nodes after grow").assertEq(dom.childNodes.length, 5);
-	check("first text reused on grow").assertEq(dom.childNodes[1], ta);
-	check("appended text is c").assertEq((dom.childNodes[3] as Text).data, "c");
-
-	state.x = ["z"];
-	check("3 nodes after shrink").assertEq(dom.childNodes.length, 3);
-	check("surviving text reused on shrink").assertEq(dom.childNodes[1], ta);
-	check("surviving text retargeted to z").assertEq(
-		(dom.childNodes[1] as Text).data,
-		"z"
-	);
-});
-
-// --- remaining static / build-path coverage -----------------------------------
-
-jsxTest("blacklist-and-falsy", () => {
-	// false/true render as comments; 0 and "" are falsy but NOT blacklisted
-	let dom = jsx("div", { children: [false, true, 0, ""] });
-
-	check("4 children").assertEq(dom.childNodes.length, 4);
-	check("`false` -> Comment").assertInstance(dom.childNodes[0], CommentClass);
-	check("`true` -> Comment").assertInstance(dom.childNodes[1], CommentClass);
-	check("`0` -> Text").assertInstance(dom.childNodes[2], TextClass);
-	check('`0` text is "0"').assertEq((dom.childNodes[2] as Text).data, "0");
-	check('`""` -> Text').assertInstance(dom.childNodes[3], TextClass);
-	check('`""` text is empty').assertEq((dom.childNodes[3] as Text).data, "");
-});
-
-jsxTest("static-element-child", () => {
-	// a plain element child is appended as-is, with no comment wrappers
-	let span = jsx("span", {});
-	let dom = jsx("div", { children: ["before", span, "after"] });
-
-	check("3 children, no wrappers").assertEq(dom.childNodes.length, 3);
-	check("text before").assertEq((dom.childNodes[0] as Text).data, "before");
-	check("element child is the same node").assertEq(dom.childNodes[1], span);
-	check("element child is a Node").assertInstance(dom.childNodes[1], NodeClass);
-	check("text after").assertEq((dom.childNodes[2] as Text).data, "after");
-});
-
-// --- _jsx append ordering ------------------------------------------------------
-
-jsxTest("mixed-static-pointer-order", () => {
-	let state = createState({ x: "mid" });
-	let dom = jsx("div", { children: ["a", use(state.x), "b"] });
-
-	// text("a"), [ , text("mid"), ], text("b")
-	check("5 nodes").assertEq(dom.childNodes.length, 5);
-	check("static a first").assertEq((dom.childNodes[0] as Text).data, "a");
-	check("pointer start wrapper").assertInstance(
-		dom.childNodes[1],
-		CommentClass
-	);
-	check("pointer content between siblings").assertEq(
-		(dom.childNodes[2] as Text).data,
-		"mid"
-	);
-	check("pointer end wrapper").assertInstance(dom.childNodes[3], CommentClass);
-	check("static b last").assertEq((dom.childNodes[4] as Text).data, "b");
-
-	// updating the pointer keeps the static siblings put
-	state.x = "MID";
-	check("order preserved on update").assertEq(dom.childNodes.length, 5);
-	check("a still first").assertEq((dom.childNodes[0] as Text).data, "a");
-	check("content updated in place").assertEq(
-		(dom.childNodes[2] as Text).data,
-		"MID"
-	);
-	check("b still last").assertEq((dom.childNodes[4] as Text).data, "b");
-});
-
-// --- scalar pointer: Node values & cross-type transitions ----------------------
-
-jsxTest("pointers/node-value", () => {
-	let s1 = jsx("span", {});
-	let s2 = jsx("section", {});
-	let state = createState({ el: s1 as any });
-	let dom = jsx("div", { children: [use(state.el)] });
-
-	check("3 nodes").assertEq(dom.childNodes.length, 3);
-	check("element value rendered").assertEq(dom.childNodes[1], s1);
-
-	state.el = s2;
-	check("swapped to other element").assertEq(dom.childNodes[1], s2);
-	check("still 3 nodes").assertEq(dom.childNodes.length, 3);
-
-	state.el = "text";
-	check("element -> text").assertInstance(dom.childNodes[1], TextClass);
-	check("text content").assertEq((dom.childNodes[1] as Text).data, "text");
-});
-
-jsxTest("pointers/scalar-array-transitions", () => {
-	let state = createState({ x: "a" as any });
-	let dom = jsx("div", { children: [use(state.x)] });
-
-	check("scalar: 3 nodes").assertEq(dom.childNodes.length, 3);
-
-	// scalar -> array
-	state.x = ["a", "b", "c"];
-	check("array: 5 nodes").assertEq(dom.childNodes.length, 5);
-	check("array data a/b/c").assertEq(
-		[1, 2, 3].map((i) => (dom.childNodes[i] as Text).data).join(""),
-		"abc"
-	);
-
-	// array -> scalar
-	state.x = "z";
-	check("scalar again: 3 nodes").assertEq(dom.childNodes.length, 3);
-	check("scalar content z").assertEq((dom.childNodes[1] as Text).data, "z");
-});
-
-// --- list reconcile: mixed types, comment reuse, nested & pointer elements -----
-
-jsxTest("pointers/mixed-array", () => {
-	let span = jsx("span", {});
-	let state = createState({ x: ["a", null, span] as any[] });
-	let dom = jsx("div", { children: [use(state.x)] });
-
-	// [ , text("a"), comment, span, ]
-	check("5 nodes").assertEq(dom.childNodes.length, 5);
-	let text = dom.childNodes[1];
-	let comment = dom.childNodes[2];
-	check("text element").assertInstance(text, TextClass);
-	check("blacklist element -> comment").assertInstance(comment, CommentClass);
-	check("node element").assertEq(dom.childNodes[3], span);
-
-	state.x = ["b", null, span];
-	check("text reused across mixed update").assertEq(dom.childNodes[1], text);
-	check("text retargeted").assertEq((dom.childNodes[1] as Text).data, "b");
-	check("comment reused").assertEq(dom.childNodes[2], comment);
-	check("node still identical").assertEq(dom.childNodes[3], span);
-});
-
-jsxTest("pointers/nested-array", () => {
-	let state = createState({ x: ["a", ["b", "c"]] as any });
-	let dom = jsx("div", { children: [use(state.x)] });
-
-	// nested arrays flatten: [ , a, b, c, ]
-	check("5 nodes (flattened)").assertEq(dom.childNodes.length, 5);
-	check("flattened a/b/c").assertEq(
-		[1, 2, 3].map((i) => (dom.childNodes[i] as Text).data).join(""),
-		"abc"
-	);
-
-	state.x = ["x", ["y", "z"]];
-	check("still 5 nodes after flattened update").assertEq(
-		dom.childNodes.length,
-		5
-	);
-	check("flattened x/y/z").assertEq(
-		[1, 2, 3].map((i) => (dom.childNodes[i] as Text).data).join(""),
-		"xyz"
-	);
-});
+// --- nested pointers -----------------------------------------------------------
 
 jsxTest("pointers/pointer-in-array", () => {
 	let inner = createState({ v: "1" });
 	let state = createState({ x: ["a", use(inner.v)] as any[] });
 	let dom = jsx("div", { children: [use(state.x)] });
 
-	// outer-start, text("a"), inner-start, text("1"), inner-end, outer-end
-	check("6 nodes").assertEq(dom.childNodes.length, 6);
+	check("outer anchor, text, inner anchor, text").assertEq(
+		shape(dom),
+		`!,"a",!,"1"`
+	);
 	let innerText = dom.childNodes[3];
-	check("array text").assertEq((dom.childNodes[1] as Text).data, "a");
-	check("nested pointer content").assertEq((innerText as Text).data, "1");
 
 	// the pointer element updates independently and in place
 	inner.v = "2";
@@ -434,24 +441,112 @@ jsxTest("pointers/pointer-in-array", () => {
 		(dom.childNodes[3] as Text).data,
 		"2"
 	);
-	check("structure unchanged").assertEq(dom.childNodes.length, 6);
+	check("structure unchanged").assertEq(dom.childNodes.length, 4);
 });
 
-jsxTest("pointers/empty-array", () => {
-	let state = createState({ x: [] as string[] });
+jsxTest("pointers/pointer-of-pointer", () => {
+	let inner = createState({ v: "1" });
+	let outer = createState({ x: use(inner.v) as any });
+	let dom = jsx("div", { children: [use(outer.x)] });
+
+	check("two anchors + text").assertEq(shape(dom), `!,!,"1"`);
+
+	inner.v = "2";
+	check("innermost update in place").assertEq(shape(dom), `!,!,"2"`);
+});
+
+jsxTest("pointers/nested", () => {
+	let inner = createState({ y: "1" });
+	let outer = createState({ show: true as boolean });
+
+	let dom = jsx("div", {
+		children: [use(outer.show).map((s) => (s ? use(inner.y) : "off"))],
+	});
+
+	check("outer anchor, inner anchor, text").assertEq(shape(dom), `!,!,"1"`);
+	let text = dom.childNodes[2];
+
+	// updating the inner pointer must update only the inner region, in place
+	inner.y = "2";
+	check("nested text reused on inner update").assertEq(dom.childNodes[2], text);
+	check("nested data updated").assertEq((dom.childNodes[2] as Text).data, "2");
+	check("structure unchanged on inner update").assertEq(shape(dom), `!,!,"2"`);
+
+	// collapsing the outer pointer drops the inner region's anchor but adopts
+	// its content node rather than allocating a new one
+	outer.show = false;
+	check("collapsed to anchor + text").assertEq(shape(dom), `!,"off"`);
+	check("inner text node reused on collapse").assertEq(dom.childNodes[1], text);
+
+	// a stale update to the now-detached inner pointer must be a no-op
+	inner.y = "3";
+	check("stale inner update does not resurrect content").assertEq(
+		shape(dom),
+		`!,"off"`
+	);
+	check("collapsed content still off").assertEq(
+		(dom.childNodes[1] as Text).data,
+		"off"
+	);
+});
+
+jsxTest("pointers/entering-a-region-reuses-last", () => {
+	let inner = createState({ y: "1" });
+	let outer = createState({ show: false as boolean });
+
+	let dom = jsx("div", {
+		children: [use(outer.show).map((s) => (s ? use(inner.y) : "off"))],
+	});
+
+	check("collapsed initially").assertEq(shape(dom), `!,"off"`);
+	let text = dom.childNodes[1];
+
+	// the new region is seeded with the existing state, so the text node
+	// survives the transition into the pointer
+	outer.show = true;
+	check("expanded").assertEq(shape(dom), `!,!,"1"`);
+	check("text node reused entering the region").assertEq(
+		dom.childNodes[2],
+		text
+	);
+});
+
+jsxTest("pointers/identity-skips-rebuild", () => {
+	let inner = createState({ v: "x" });
+	let ptr = use(inner.v);
+	let state = createState({ x: ["a", ptr] as any[] });
 	let dom = jsx("div", { children: [use(state.x)] });
 
-	// just the wrappers
-	check("empty: 2 nodes").assertEq(dom.childNodes.length, 2);
-	check("start wrapper").assertInstance(dom.childNodes[0], CommentClass);
-	check("end wrapper").assertInstance(dom.childNodes[1], CommentClass);
+	check("initial shape").assertEq(shape(dom), `!,"a",!,"x"`);
+	let anchor = dom.childNodes[2];
+	let text = dom.childNodes[3];
+
+	// a new array holding the *same* pointer object must reuse the region
+	// wholesale rather than resubscribing -- Pointer.listen only ever pushes
+	state.x = ["a", ptr];
+	check("shape unchanged").assertEq(shape(dom), `!,"a",!,"x"`);
+	check("region anchor untouched").assertEq(dom.childNodes[2], anchor);
+	check("region content untouched").assertEq(dom.childNodes[3], text);
+
+	inner.v = "y";
+	check("region still live and singly driven").assertEq(
+		shape(dom),
+		`!,"a",!,"y"`
+	);
+});
+
+jsxTest("pointers/region-dropped-from-array", () => {
+	let inner = createState({ v: "x" });
+	let state = createState({ x: ["a", use(inner.v)] as any[] });
+	let dom = jsx("div", { children: [use(state.x)] });
+
+	check("initial shape").assertEq(shape(dom), `!,"a",!,"x"`);
 
 	state.x = ["a"];
-	check("grow from empty: 3 nodes").assertEq(dom.childNodes.length, 3);
-	check("grown content").assertEq((dom.childNodes[1] as Text).data, "a");
+	check("region content and anchor both removed").assertEq(shape(dom), `!,"a"`);
 
-	state.x = [];
-	check("shrink to empty: 2 nodes").assertEq(dom.childNodes.length, 2);
+	inner.v = "z";
+	check("dropped region stays dead").assertEq(shape(dom), `!,"a"`);
 });
 
 // --- css ident application to children -----------------------------------------
@@ -465,7 +560,7 @@ jsxTest("css/ident-on-children", () => {
 	`;
 
 	// created in plain scope, so neither carries a css ident yet; the grandchild
-	// exercises applyCss's recursion into descendant elements
+	// exercises applyIdent's recursion into descendant elements
 	let grandchild = jsx("b", {});
 	let orphan = jsx("section", { children: [grandchild] });
 	let dom = jsx(Styled, { children: [orphan] });
@@ -489,7 +584,7 @@ jsxTest("css/ident-on-children", () => {
 
 jsxTest("css/skips-nested-component", () => {
 	// a styled child component's subtree must NOT be re-stamped by the parent's
-	// ident — applyCss bails on any element carrying the component marker class
+	// ident -- applyIdent bails on any element carrying the component marker class
 	let Child = function (this: any) {
 		return jsx("span", {});
 	} as any;
