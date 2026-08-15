@@ -1,5 +1,5 @@
 import { DREAMLAND, WEAKMAP } from "../consts";
-import { deref, ObjectProp } from "../utils";
+import { ObjectProp } from "../utils";
 import { InitializingPointer, Pointer } from "./pointers";
 import { useTrap, useTrapMap } from "./use";
 import { StateListenerNode, walkStateListeners } from "./util";
@@ -28,10 +28,10 @@ let callListeners = (
 ) => {
 	internal._listeners.forEach((x) => x(newValue, prop));
 	walkStateListeners(
-		(x) => deref(x._pointer),
+		(ptr, index) => ptr._changed(index!),
 		internal._pointers,
 		prop
-	).forEach((x) => deref(x._pointer)!._changed(x._index!));
+	);
 };
 
 export let _stateListen = <T extends object>(
@@ -46,15 +46,14 @@ export let _stateListen = <T extends object>(
 export let _stateListenRemove = <T extends object>(
 	stateful: Stateful<T>,
 	prop: ObjectProp,
-	listener: WeakRef<Pointer<any>>,
+	listener: Pointer<any>,
 	i: number
-) => {
+) =>
 	walkStateListeners(
-		(n) => !(listener === n._pointer && i === n._index),
+		(ptr, index) => ptr === listener && index === i,
 		getInternal(stateful)._pointers,
 		prop
 	);
-};
 
 export interface StepCollector {
 	_sym: symbol;

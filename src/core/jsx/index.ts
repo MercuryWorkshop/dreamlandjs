@@ -205,7 +205,8 @@ function _jsx(
 			if (val === undefined || val === false) el.removeAttribute(param);
 			else el.setAttribute(param, val);
 		};
-		let classListDirty = false;
+		// last class list only matters when the fastpath is gone due to something setting additional classes on it
+		let lastClassList: string[] | undefined, classList: DOMTokenList;
 
 		el = (DOCUMENT as any)[CREATE_ELEMENT + (xmlns ? "NS" : "")](
 			xmlns || init,
@@ -214,14 +215,12 @@ function _jsx(
 			children
 		);
 
-		// `undefined` means "no children prop at all" -- mapping it would render a
-		// placeholder comment into every childless element
 		if (children !== undefined)
 			flattenChildRet(mapChild(children, el, lastCssIdent)).forEach(
 				(x) => x.parentNode !== el && el.appendChild(x)
 			);
 
-		let classList = el.classList;
+		classList = el.classList;
 
 		for (let attr in props) {
 			if (attr == "children") continue;
@@ -242,24 +241,23 @@ function _jsx(
 					}
 				);
 			} else if (attr == "class") {
-				let oldClasses: string[] = [];
 				maybeListen(val, el, (val: string) => {
 					// document.createElement("div").classList.{add,remove}(...[]) work
 					// document.createElement("div").classList.{add,remove}(...[""]) throw
-					let classes = val.split(" ").filter((x) => x.length);
-					if (classListDirty) {
-						classList.remove(...oldClasses);
-						classList.add(...classes);
+					if (lastClassList) {
+						classList.remove(...lastClassList);
+						classList.add(
+							...(lastClassList = val.split(" ").filter((x) => x.length))
+						);
 					} else {
 						classList.value = val;
 					}
-					oldClasses = classes;
 				});
 			} else if (attr.startsWith("on:")) {
 				el.addEventListener(attr.slice(3), val);
 			} else if (attr.startsWith("class:")) {
 				maybeListen(val, el, (val: boolean) => {
-					classListDirty = true;
+					lastClassList ||= [...classList];
 					classList[val ? "add" : "remove"](attr.slice(6));
 				});
 			} else if (attr.startsWith("attr:")) {
@@ -280,8 +278,8 @@ function _jsx(
 		}
 
 		if (lastCssIdent && ![...classList].find((x) => x.startsWith(CSS_IDENT))) {
+			lastClassList ||= [...classList];
 			classList.add(lastCssIdent);
-			classListDirty = true;
 		}
 
 		// all children would need to also be created with the correct namespace if we were doing this properly

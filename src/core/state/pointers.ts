@@ -1,6 +1,6 @@
 import { DREAMLAND, NO_CHANGE, WEAKMAP } from "../consts";
 import { currentComponentCx } from "../jsx";
-import { deref, ObjectProp } from "../utils";
+import { ObjectProp } from "../utils";
 import {
 	_stateListen,
 	_stateListenRemove,
@@ -118,7 +118,7 @@ export class Pointer<T> {
 		step._state = isStateful(last) ? last : null;
 
 		if (old !== step._state || oldProp !== prop) {
-			if (old) _stateListenRemove(old, oldProp!, this._weak, i);
+			if (old) _stateListenRemove(old, oldProp!, this, i);
 			if (step._state)
 				_stateListen(step._state, (step._lprop = prop), this._weak, i);
 		}
@@ -152,10 +152,15 @@ export class Pointer<T> {
 
 	// @internal
 	_callListeners() {
-		this._listeners.forEach((x) => x(this.value));
-		walkStateListeners((x) => deref(x._pointer), this, "d").forEach((x) =>
-			deref(x._pointer)!._pointerChanged(x._index)
-		);
+		// only snapshot when someone is actually listening: for a mapped pointer
+		// reading .value runs user code, and most pointers in a tree have deps
+		// but no direct listeners
+		let listeners = this._listeners;
+		if (listeners.length) {
+			let value = this.value;
+			listeners.forEach((x) => x(value));
+		}
+		walkStateListeners((ptr, index) => ptr._pointerChanged(index), this, "d");
 	}
 
 	// @internal

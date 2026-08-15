@@ -614,3 +614,64 @@ jsxTest("css/skips-nested-component", () => {
 		false
 	);
 });
+
+// classes the `class` attr did not put there (the css ident, `class:` toggles)
+let ownClasses = (el: any) =>
+	[...el.classList]
+		.filter((x: string) => !x.startsWith("dlcss-") && x !== "dlc")
+		.sort()
+		.join(" ");
+
+jsxTest("class/updates-under-a-css-ident", () => {
+	// the css ident is stamped after the attr loop and marks classList dirty, so
+	// the *first* `class` write goes through the non-dirty path and never splits.
+	// the dirty path still has to know what that write left behind, or every
+	// later update just piles on top of it
+	let state = createState({ c: "a" });
+	let Styled = function () {
+		return jsx("div", { class: use(state.c) });
+	} as any;
+	Styled.style = css`
+		color: red;
+	`;
+
+	let dom: any = jsx(Styled, {});
+	check("initial class applied").assertEq(ownClasses(dom), "a");
+	state.c = "b";
+	check("the previous class is removed, not accumulated").assertEq(
+		ownClasses(dom),
+		"b"
+	);
+});
+
+jsxTest("class/coexists-with-toggles", () => {
+	// `class` may only ever remove what `class` itself added -- classes owned by
+	// `class:` bindings have to survive an unrelated `class` update
+	let state = createState({ c: "a", x: true, y: true });
+	let dom: any = jsx("div", {
+		class: use(state.c),
+		"class:x": use(state.x),
+		"class:y": use(state.y),
+	});
+	check("class and both toggles applied").assertEq(ownClasses(dom), "a x y");
+
+	state.c = "b";
+	check("toggles survive a class update").assertEq(ownClasses(dom), "b x y");
+
+	state.x = false;
+	check("a toggle still turns off").assertEq(ownClasses(dom), "b y");
+
+	state.c = "c";
+	check("class update after a toggle change").assertEq(ownClasses(dom), "c y");
+});
+
+jsxTest("class/toggle-before-class", () => {
+	// attr order is prop order: here classList is already dirty by the time the
+	// `class` handler first runs, so it takes the dirty path with nothing to remove
+	let state = createState({ c: "a", x: true });
+	let dom: any = jsx("div", { "class:x": use(state.x), class: use(state.c) });
+	check("both applied").assertEq(ownClasses(dom), "a x");
+
+	state.c = "b";
+	check("toggle survives").assertEq(ownClasses(dom), "b x");
+});

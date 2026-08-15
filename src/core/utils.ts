@@ -1,8 +1,5 @@
 export type ObjectProp = string | symbol;
 
-export let deref = <T extends object>(x: WeakRef<T>): T | undefined =>
-	x.deref();
-
 export let fatal = () => {
 	throw new Error("dl");
 };

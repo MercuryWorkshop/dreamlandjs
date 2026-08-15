@@ -8,23 +8,24 @@ export interface StateListenerNode {
 }
 
 export let walkStateListeners = (
-	pred: (n: StateListenerNode) => any,
+	drop: (ptr: Pointer<any>, index: number | undefined) => boolean | void,
 	object: any,
 	key: ObjectProp
-): StateListenerNode[] => {
+) => {
 	let prev: StateListenerNode | undefined,
 		current = object[key],
-		arr = [];
+		val: Pointer<any> | undefined;
 	while (current) {
-		if (pred(current)) {
-			arr.push(current);
+		if ((val = current._pointer.deref()) && !drop(val, current._index)) {
 			prev = current;
 		} else if (prev) {
 			prev._next = current._next;
-		} else {
+		} else if (object[key] === current) {
+			// drop only holds when nothing was prepended while we were dispatching;
+			// otherwise leave the dead node linked and let the next walk prune it,
+			// rather than clobbering the new head
 			object[key] = current._next;
 		}
 		current = current._next;
 	}
-	return arr;
 };
