@@ -195,18 +195,19 @@ function _jsx(
 		}
 		currentComponentCx = old;
 	} else {
-		let hydrating = getDom()[6];
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
 		let xmlns = props?.xmlns;
 		let setAttr = (param: string, val: any) => {
-			if (hydrating?.(el)) return;
+			if (getDom()[6]?.(el)) return;
 
 			if (val === undefined || val === false) el.removeAttribute(param);
 			else el.setAttribute(param, val);
 		};
 		// last class list only matters when the fastpath is gone due to something setting additional classes on it
-		let lastClassList: string[] | undefined, classList: DOMTokenList;
+		let lastClassList: string[] | undefined,
+			classList: DOMTokenList,
+			lastChildNode: Node;
 
 		el = (DOCUMENT as any)[CREATE_ELEMENT + (xmlns ? "NS" : "")](
 			xmlns || init,
@@ -216,9 +217,10 @@ function _jsx(
 		);
 
 		if (children !== undefined)
-			flattenChildRet(mapChild(children, el, lastCssIdent)).forEach(
-				(x) => x.parentNode !== el && el.appendChild(x)
-			);
+			flattenChildRet(mapChild(children, el, lastCssIdent)).forEach((x) => {
+				if (x.parentNode !== el) el.insertBefore(x, lastChildNode ? lastChildNode.nextSibling : el.firstChild);
+				lastChildNode = x;
+			});
 
 		classList = el.classList;
 
@@ -262,7 +264,7 @@ function _jsx(
 				});
 			} else if (attr.startsWith("attr:")) {
 				maybeListen(val, el, (val: boolean) => {
-					if (!hydrating?.(el)) (el as any)[attr.slice(5)] = val;
+					if (!getDom()[6]?.(el)) (el as any)[attr.slice(5)] = val;
 				});
 			} else if (
 				attr == "style" &&
