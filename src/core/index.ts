@@ -26,6 +26,6 @@ export {
 export { h, jsx, Fragment } from "./jsx";
 export { setDomImpl, getDom as domImpl, DomImpl } from "./jsx/dom";
 
-export { DREAMLAND, NO_CHANGE } from "./consts";
+export { NO_CHANGE } from "./consts";
 
 defineUse();

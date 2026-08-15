@@ -4,15 +4,16 @@ import {
 	ComponentState,
 	h,
 	Fragment,
-	DREAMLAND,
 	FC,
 	ComponentInstance,
 	NO_CHANGE,
 } from "dreamland/core";
 
+import { INTERNAL } from "./consts";
+
 export type RouteParams = Record<string, string> & {
 	// @internal
-	[DREAMLAND]?: string;
+	[INTERNAL]?: string;
 	[NO_CHANGE]: true;
 };
 
@@ -103,8 +104,8 @@ let matchRoute = (
 	route: string,
 	params: RouteParams
 ): boolean => {
-	if (params[DREAMLAND] || route === "*") {
-		params[DREAMLAND] += "/" + segment;
+	if (params[INTERNAL] || route === "*") {
+		params[INTERNAL] += "/" + segment;
 		return true;
 	} else if (route.startsWith(":")) {
 		// param
@@ -144,13 +145,13 @@ let _route = (
 		if (
 			(!segments.length ||
 				(segments[0] === "" && indexRoute) ||
-				params[DREAMLAND]) &&
+				params[INTERNAL]) &&
 			!route._children.length &&
 			route._show
 		) {
-			if (params[DREAMLAND]) {
-				params["*"] = params[DREAMLAND].slice(10);
-				delete params[DREAMLAND];
+			if (params[INTERNAL]) {
+				params["*"] = params[INTERNAL].slice(10);
+				delete params[INTERNAL];
 			}
 			// route matches fully
 			ret = [route];

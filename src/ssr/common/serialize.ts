@@ -1,5 +1,5 @@
-import { Pointer, DREAMLAND, NO_CHANGE } from "dreamland/core";
-import { SsrData, SsrObject, SsrPointer, SsrValue } from "./types";
+import { NO_CHANGE } from "dreamland/core";
+import { SsrData, SsrObject, SsrValue } from "./types";
 
 export let Json = JSON;
 
@@ -14,18 +14,11 @@ export let serializeState = (
 		else return arr.push(val) - 1;
 	};
 
-	let exportPtr = (ptr: Pointer<any>): SsrPointer => {
-		let zipped = ptr[DREAMLAND]();
-		return zipped ? zipped.map(exportPtr) : { v: _val(ptr.value) };
-	};
-
 	let isUndefined = (x: any): x is undefined => typeof x == "undefined";
 
 	let _val = (val: any): SsrValue | undefined => {
 		if (!["bigint", "function", "object"].includes(typeof val)) {
 			return push(data.v, val);
-		} else if (val instanceof Pointer) {
-			return [4, exportPtr(val)];
 		} else if (val instanceof Map) {
 			let entries = Object.fromEntries(val.entries());
 			return [0, _serialize(entries)];
@@ -71,25 +64,14 @@ export let serializeState = (
 };
 
 export let hydrateState = (data: SsrData, state: SsrObject, target: any) => {
-	let hydratePtr = (ptr: Pointer<any>, data: SsrPointer) => {
-		if (data instanceof Array) {
-			ptr[DREAMLAND]()!.forEach((x, i) => hydratePtr(x, data[i]));
-		} else {
-			ptr.value = _val(data.v, ptr.value, true);
-		}
-	};
-
 	// TODO this is ugly
-	let _val = (val: SsrValue, target?: any, ptr?: boolean): any => {
+	let _val = (val: SsrValue, target?: any): any => {
 		if (typeof val == "number") {
 			return data.v[val];
 		}
 
 		let [type, v] = val as any;
-		if (type == 4) {
-			hydratePtr(target as Pointer<any>, v);
-			return ptr ? NO_CHANGE : target;
-		} else if (type == 2) {
+		if (type == 2) {
 			return new Set(v.map((x: SsrValue) => _val(x, {})));
 		} else if (type == 0) {
 			let t = {};

@@ -1,4 +1,4 @@
-import { DREAMLAND, NO_CHANGE, WEAKMAP } from "../consts";
+import { NO_CHANGE } from "../consts";
 import { currentComponentCx } from "../jsx";
 import { ObjectProp } from "../utils";
 import {
@@ -8,11 +8,13 @@ import {
 	Stateful,
 	StepCollector,
 	stepCollectors,
+	InternalStateful,
+	_callStateListeners,
 } from "./state";
 import { useTrap, UseTrapMap, useTrapMap } from "./use";
 import { StateListenerNode, walkStateListeners } from "./util";
 
-let constraints: WeakMap<any, Pointer<any>[]> = WEAKMAP();
+let constraints: WeakMap<any, Pointer<any>[]> = new WeakMap();
 
 const enum PointerType {
 	Regular = 0,
@@ -30,7 +32,6 @@ type StateStep = {
 	_state?: Stateful<any>;
 	_lprop?: ObjectProp;
 };
-export type PointerListener<T> = (val: T) => void;
 type InternalPointer<T> =
 	| {
 			readonly _type: PointerType.Regular;
@@ -51,9 +52,6 @@ type InternalPointer<T> =
 	  };
 type InternalRegularPointer<T> = InternalPointer<T> & {
 	readonly _type: PointerType.Regular;
-};
-type InternalZippedPointer<T> = InternalPointer<T> & {
-	readonly _type: PointerType.Zipped;
 };
 
 export interface InitializingPointer {
@@ -90,6 +88,8 @@ export let initializeStep = (
 type Truthy<T> = NonNullable<Exclude<T, false | 0 | "" | null | undefined>>;
 type Falsy<T> = Extract<T, false | 0 | "" | null | undefined>;
 
+export type PointerListener<T> = (val: T) => void;
+
 export class Pointer<T> {
 	// @internal
 	declare _id?: symbol;
@@ -103,7 +103,9 @@ export class Pointer<T> {
 	// @internal
 	_listeners: PointerListener<T>[] = [];
 	// @internal
-	declare d /* _deps */?: StateListenerNode;
+	declare d /* _deps */?: StateListenerNode<Pointer<T>, number | undefined>;
+	// @internal
+	declare p /* _proxied */?: StateListenerNode<InternalStateful, ObjectProp>;
 
 	// @internal
 	_recalculate(i: number, ptr: InternalRegularPointer<T>, step: StateStep) {
@@ -151,14 +153,17 @@ export class Pointer<T> {
 	}
 
 	// @internal
-	_callListeners() {
-		// only snapshot when someone is actually listening: for a mapped pointer
-		// reading .value runs user code, and most pointers in a tree have deps
-		// but no direct listeners
-		let listeners = this._listeners;
-		if (listeners.length) {
-			let value = this.value;
+	_callListeners(this: Pointer<T>) {
+		let listeners = this._listeners,
+			value: T;
+		if (listeners.length || this.p) {
+			value = this.value;
 			listeners.forEach((x) => x(value));
+			walkStateListeners(
+				(internal, key) => _callStateListeners(internal, key, value),
+				this,
+				"p"
+			);
 		}
 		walkStateListeners((ptr, index) => ptr._pointerChanged(index), this, "d");
 	}
@@ -219,10 +224,6 @@ export class Pointer<T> {
 		this._set(val);
 	}
 
-	[DREAMLAND](): ReadonlyArray<Pointer<any>> | undefined {
-		return (this._ptr as InternalZippedPointer<T>)._ptrs;
-	}
-
 	[Symbol.toPrimitive]() {
 		if (useTrap) useTrapMap.set((this._id ||= Symbol()), this);
 		return this._id;
@@ -230,7 +231,7 @@ export class Pointer<T> {
 
 	// @internal
 	_listenDep(ptr: WeakRef<Pointer<any>>, i?: number): void {
-		this.d = { _pointer: ptr, _index: i, _next: this.d };
+		this.d = { _value: ptr, _index: i, _next: this.d };
 	}
 	listen(func: PointerListener<T>) {
 		this._listeners.push(func);

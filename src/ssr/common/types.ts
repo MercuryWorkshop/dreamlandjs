@@ -2,9 +2,7 @@ export type SsrValue =
 	| number /* JSON serialized value in SsrData */
 	| [0 /* map */ | 1 /* object */, SsrObject]
 	| [2 /* set */ | 3 /* array */, SsrValue[]]
-	| [4 /* pointer */, SsrPointer]
 	| undefined;
-export type SsrPointer = SsrPointer[] | { v: SsrValue /* values index */ };
 export type SsrObject = [
 	number /* keys index */,
 	SsrValue /* values index */,
