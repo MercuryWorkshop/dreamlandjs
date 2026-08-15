@@ -1,6 +1,6 @@
 import { CommentClass, jsxTest, NodeClass, TextClass } from "./harness.ts";
 import { check } from "../harness.ts";
-import { createState, css, jsx } from "dreamland/core";
+import { createState, css, jsx } from "../../dist/core.js";
 
 // A pointer child renders as a single leading anchor comment followed by its
 // content; there is no closing marker. Arrays contribute no nodes of their own,

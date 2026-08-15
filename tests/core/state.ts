@@ -1,6 +1,6 @@
 import { test, check, checkAlive, checkFreed } from "../harness.ts";
 
-import { createState } from "dreamland/core";
+import { createState } from "../../dist/core.js";
 
 test("basic", () => {
 	// the pointer is constrained to `listenOne`, which the harness keeps alive for

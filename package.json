@@ -12,10 +12,8 @@
 	"bugs": "https://github.com/MercuryWorkshop/dreamlandjs/issues",
 	"license": "MIT",
 	"scripts": {
-		"build": "node build.ts",
-		"build:dev": "node build.ts --config-dev",
-		"build:prod": "node build.ts --config-prod",
-		"build:seq": "rollup -c",
+		"build": "rollup -c",
+		"build:dev": "rollup -c --config-dev",
 		"watch": "rollup -cw --config-dev",
 		"format": "prettier -w .",
 		"lint": "eslint",

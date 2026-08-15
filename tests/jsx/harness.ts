@@ -1,8 +1,8 @@
 import { test } from "../harness.ts";
 import type { TestFunction } from "../harness.ts";
-import { setDomImpl, domImpl } from "dreamland/core";
-import type { DomImpl } from "dreamland/core";
-import { __unstable_newVdom } from "dreamland/ssr/server";
+import { setDomImpl, domImpl } from "../../dist/core.js";
+import type { DomImpl } from "../../dist/core.js";
+import { __unstable_newVdom } from "../../dist/ssr.server.js";
 import { Window } from "happy-dom";
 
 type Dom = [dom: DomImpl, node: any, comment: any, text: any];
