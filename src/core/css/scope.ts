@@ -42,12 +42,15 @@ let matching = (
 				(nesting += x == open ? 1 : x == close ? -1 : 0) == 0
 		) + 1 || text.length;
 
-// rewrites `sel` so that every compound selector in it also has to match `.tag`.
+// rewrites `sel` so that every compound selector in it also has to match `[tag]`.
 //
-// `:where()` contributes no specificity, so with `.tag` on every element of the
+// `:where()` contributes no specificity, so with `[tag]` on every element of the
 // component this is an identity transform: same elements matched, same cascade.
 // scoping every compound rather than only the subject is what keeps a selector
 // from reaching through a child component's subtree.
+//
+// the ident is an attribute rather than a class so it shares no namespace with
+// user-controlled `class` bindings, which would otherwise clobber it
 export let rewriteSelector = (
 	sel: string,
 	tag: string,
@@ -55,8 +58,8 @@ export let rewriteSelector = (
 ): string => {
 	let out = "";
 	// index in `out` where the current compound's trailing run of pseudo-elements
-	// begins, or -1. nothing may follow a pseudo-element, so the scope class has
-	// to be spliced in ahead of one
+	// begins, or -1. nothing may follow a pseudo-element, so the scope selector
+	// has to be spliced in ahead of one
 	let pseudoElAt = -1;
 	// index in `out` where the current compound begins
 	let start = 0;
@@ -68,7 +71,7 @@ export let rewriteSelector = (
 		// an empty compound is a leading/trailing separator, not something to scope
 		if (inGlobal || global || out.length == start) return;
 		let at = pseudoElAt < 0 ? out.length : pseudoElAt;
-		out = out.slice(0, at) + `:where(.${tag})` + out.slice(at);
+		out = out.slice(0, at) + `:where([${tag}])` + out.slice(at);
 	};
 
 	while (i < sel.length) {
@@ -116,7 +119,7 @@ export let rewriteSelector = (
 			} else {
 				out +=
 					!el && name == "scope"
-						? `.${tag}.${CSS_COMPONENT}`
+						? `[${tag}][${CSS_COMPONENT}]`
 						: sel.slice(i, end);
 				i = end;
 			}

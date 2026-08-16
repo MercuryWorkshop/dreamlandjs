@@ -1251,29 +1251,193 @@ const walkAst = (
 	eachChild(node, (child) => walkAst(child, visit, node));
 };
 
-// every identifier an expression reads, ignoring non-computed property names
+// the names a statement list binds in its own scope. `var` is left out on
+// purpose: it hoists out of the list it is written in, so it belongs to the
+// enclosing function instead
+const lexicalNames = (stmts: any[]): string[] =>
+	stmts.flatMap((stmt) =>
+		stmt.type === "VariableDeclaration" && stmt.kind !== "var"
+			? stmt.declarations.flatMap((d: any) => patternNames(d.id))
+			: (stmt.type === "FunctionDeclaration" ||
+						stmt.type === "ClassDeclaration") &&
+				  stmt.id
+				? [stmt.id.name]
+				: []
+	);
+
+// every `var` below `node`, all of which hoist to the nearest enclosing function
+const varNames = (node: any, out: string[] = []): string[] => {
+	walkAst(node, (n) => {
+		if (FUNCTION_NODE_TYPES.has(n.type)) return false;
+		if (n.type === "VariableDeclaration" && n.kind === "var")
+			n.declarations.forEach((d: any) => patternNames(d.id, out));
+	});
+	return out;
+};
+
+// every identifier an expression reads *freely*. a name the expression itself
+// binds -- a nested function's parameter, a `let` in a nested block, a catch
+// param -- can only ever resolve inside the expression, so moving the
+// expression cannot change what it means and it is not a read. non-computed
+// property names, labels and `new.target` are not reads either.
+//
+// the scope tracking is what keeps an unrelated name collision from reading as
+// a capture: a nested arrow's own `at` is not the body's `at`.
 const identsRead = (node: any): Set<string> => {
 	const names = new Set<string>();
-	walkAst(node, (n) => {
-		if (n.type === "MemberExpression" && !n.computed) {
-			walkAst(n.object, (o) => {
-				if (o.type === "Identifier") names.add(o.name);
-			});
-			return false;
+
+	const visitBlock = (stmts: any[], scopes: Set<string>[]) => {
+		const inner = [...scopes, new Set(lexicalNames(stmts))];
+		for (const stmt of stmts) visit(stmt, inner);
+	};
+
+	// a binding pattern reads only its defaults and computed keys -- the names it
+	// binds are collected by whichever node introduced the scope
+	const visitPattern = (pat: any, scopes: Set<string>[]) => {
+		if (!pat) return;
+		switch (pat.type) {
+			case "Identifier":
+				break;
+			case "ObjectPattern":
+				for (const prop of pat.properties)
+					if (prop.type === "Property") {
+						if (prop.computed) visit(prop.key, scopes);
+						visitPattern(prop.value, scopes);
+					} else visitPattern(prop.argument, scopes);
+				break;
+			case "ArrayPattern":
+				pat.elements.forEach((e: any) => visitPattern(e, scopes));
+				break;
+			case "AssignmentPattern":
+				visitPattern(pat.left, scopes);
+				visit(pat.right, scopes);
+				break;
+			case "RestElement":
+				visitPattern(pat.argument, scopes);
+				break;
+			// a target that is not an identifier -- `[a.b] = x` -- reads `a`
+			default:
+				visit(pat, scopes);
 		}
-		if (
-			n.type === "Property" &&
-			!n.computed &&
-			n.key.type === "Identifier" &&
-			!n.shorthand
-		) {
-			walkAst(n.value, (v) => {
-				if (v.type === "Identifier") names.add(v.name);
-			});
-			return false;
+	};
+
+	const visit = (n: any, scopes: Set<string>[]) => {
+		if (!n || typeof n.type !== "string") return;
+		switch (n.type) {
+			case "Identifier":
+				if (!scopes.some((s) => s.has(n.name))) names.add(n.name);
+				return;
+
+			case "MemberExpression":
+				visit(n.object, scopes);
+				if (n.computed) visit(n.property, scopes);
+				return;
+
+			case "Property":
+			case "PropertyDefinition":
+			case "MethodDefinition":
+				if (n.computed) visit(n.key, scopes);
+				visit(n.value, scopes);
+				return;
+
+			case "MetaProperty":
+			case "BreakStatement":
+			case "ContinueStatement":
+				return;
+
+			case "LabeledStatement":
+				visit(n.body, scopes);
+				return;
+
+			case "FunctionDeclaration":
+			case "FunctionExpression":
+			case "ArrowFunctionExpression": {
+				const scope = new Set<string>();
+				// a function expression's own name is in scope inside it
+				if (n.id) scope.add(n.id.name);
+				for (const param of n.params)
+					patternNames(param).forEach((x) => scope.add(x));
+				const inner = [...scopes, scope];
+				// defaults and computed keys in the parameter list read from the
+				// function's own scope
+				for (const param of n.params) visitPattern(param, inner);
+				if (n.body.type === "BlockStatement") {
+					varNames(n.body).forEach((x) => scope.add(x));
+					visitBlock(n.body.body, inner);
+				} else visit(n.body, inner);
+				return;
+			}
+
+			case "ClassDeclaration":
+			case "ClassExpression": {
+				const inner = n.id ? [...scopes, new Set([n.id.name])] : scopes;
+				visit(n.superClass, inner);
+				visit(n.body, inner);
+				return;
+			}
+
+			case "BlockStatement":
+			case "StaticBlock":
+				visitBlock(n.body, scopes);
+				return;
+
+			case "ForStatement": {
+				const inner =
+					n.init?.type === "VariableDeclaration" && n.init.kind !== "var"
+						? [...scopes, new Set(lexicalNames([n.init]))]
+						: scopes;
+				visit(n.init, inner);
+				visit(n.test, inner);
+				visit(n.update, inner);
+				visit(n.body, inner);
+				return;
+			}
+
+			case "ForInStatement":
+			case "ForOfStatement": {
+				const inner =
+					n.left.type === "VariableDeclaration" && n.left.kind !== "var"
+						? [...scopes, new Set(lexicalNames([n.left]))]
+						: scopes;
+				visit(n.left, inner);
+				visit(n.right, inner);
+				visit(n.body, inner);
+				return;
+			}
+
+			case "CatchClause": {
+				const inner = [...scopes, new Set(patternNames(n.param))];
+				visitPattern(n.param, inner);
+				visitBlock(n.body.body, inner);
+				return;
+			}
+
+			// every case shares one block scope, so the declarations of all of them
+			// have to be collected before any case body is walked
+			case "SwitchStatement": {
+				visit(n.discriminant, scopes);
+				const inner = [
+					...scopes,
+					new Set(lexicalNames(n.cases.flatMap((c: any) => c.consequent))),
+				];
+				for (const c of n.cases) {
+					visit(c.test, inner);
+					c.consequent.forEach((s: any) => visit(s, inner));
+				}
+				return;
+			}
+
+			case "VariableDeclarator":
+				visitPattern(n.id, scopes);
+				visit(n.init, scopes);
+				return;
+
+			default:
+				eachChild(n, (child) => visit(child, scopes));
 		}
-		if (n.type === "Identifier") names.add(n.name);
-	});
+	};
+
+	visit(node, []);
 	return names;
 };
 
@@ -1323,6 +1487,8 @@ export const defaultParamFolder = (internalPrefix = "_") => ({
 				if (stmt.type === "ExportNamedDeclaration") {
 					for (const spec of stmt.specifiers || [])
 						exported.add(spec.local.name);
+					// deliberately not collected into `topLevelFns`: everything an
+					// `export` declares is in `exported`, so it could never fold anyway
 					for (const decl of stmt.declaration?.declarations || [])
 						patternNames(decl.id).forEach((n) => exported.add(n));
 					if (stmt.declaration?.type === "VariableDeclaration")
@@ -1381,7 +1547,11 @@ export const defaultParamFolder = (internalPrefix = "_") => ({
 
 			// module-scope arrows whose every reference is a direct call. the moment
 			// one is used as a value -- handed to .map, stored in an object, exported
-			// -- its call sites stop being knowable and it drops out here
+			// -- its call sites stop being knowable and it drops out here.
+			//
+			// `exported` is only the chunk's own exports: a name a source module
+			// exported to a sibling is just a local by the time rollup has flattened
+			// them, so scoping helpers like rewriteSelector still fold
 			for (const [name, fn] of topLevelFns) {
 				if (
 					fn.type !== "ArrowFunctionExpression" ||
@@ -1403,11 +1573,16 @@ export const defaultParamFolder = (internalPrefix = "_") => ({
 					candidates.push(fn);
 			}
 
-			// class methods the project has already marked internal by naming. these
-			// are the names terser's property mangler rewrites, so by the project's
-			// own contract no caller outside the chunk can even spell them
+			// methods the project has already marked internal by naming. these are the
+			// names terser's property mangler rewrites, so by the project's own
+			// contract no caller outside the chunk can even spell them. Object-literal
+			// methods are `Property` nodes (`method: true`), whereas class methods are
+			// `MethodDefinition` nodes.
 			walkAst(ast, (node) => {
-				if (node.type !== "MethodDefinition" || node.kind !== "method") return;
+				const isClassMethod =
+					node.type === "MethodDefinition" && node.kind === "method";
+				const isObjectMethod = node.type === "Property" && node.method;
+				if (!isClassMethod && !isObjectMethod) return;
 				if (node.computed || !node.key.name?.startsWith(internalPrefix)) return;
 				if (methodEscapes.has(node.key.name)) return;
 				const calls = methodCalls.get(node.key.name) || [];
@@ -1424,13 +1599,20 @@ export const defaultParamFolder = (internalPrefix = "_") => ({
 			for (const fn of candidates) {
 				if (fn.body.type !== "BlockStatement") continue;
 				if (fn.params.some((p: any) => p.type === "RestElement")) continue;
-				// only the leading group moves: anything after a statement cannot,
-				// without reordering effects
-				const decl = fn.body.body[0];
-				if (decl?.type !== "VariableDeclaration" || decl.kind === "var")
-					continue;
+				// Only the leading declaration run moves: anything after a statement
+				// cannot move without reordering effects. Keep the declarations as a
+				// run so consecutive `let`s (rather than only one `let` group) can be
+				// folded together.
+				const leadingDecls: any[] = [];
+				for (const stmt of fn.body.body) {
+					if (stmt.type !== "VariableDeclaration" || stmt.kind === "var") break;
+					leadingDecls.push(stmt);
+				}
+				if (!leadingDecls.length) continue;
 
-				const moved = decl.declarations.flatMap((d: any) => patternNames(d.id));
+				const moved = leadingDecls.flatMap((d) =>
+					d.declarations.flatMap((x: any) => patternNames(x.id))
+				);
 				const paramNames = new Set(
 					fn.params.flatMap((p: any) => patternNames(p))
 				);
@@ -1438,23 +1620,17 @@ export const defaultParamFolder = (internalPrefix = "_") => ({
 
 				// a moved initializer evaluates in the parameter scope, which cannot
 				// see the body scope. and once the parameter list goes non-simple the
-				// two scopes split for real, so a `var` of a moved name stops aliasing
-				const bodyBindings = new Set<string>();
+				// two scopes split for real, so a `var` of a moved name stops aliasing.
+				// both scans stay deliberately wide: a `var` nested anywhere hoists
+				// back out to the body scope, and a nested arrow's `arguments` is this
+				// function's
+				const rest = fn.body.body.slice(leadingDecls.length);
 				let hasVar = false;
 				let usesArguments = false;
-				for (const stmt of fn.body.body.slice(1))
+				for (const stmt of rest)
 					walkAst(stmt, (n) => {
-						if (n.type === "VariableDeclaration") {
-							if (n.kind === "var") hasVar = true;
-							for (const d of n.declarations)
-								patternNames(d.id).forEach((x) => bodyBindings.add(x));
-						}
-						if (
-							(n.type === "FunctionDeclaration" ||
-								n.type === "ClassDeclaration") &&
-							n.id
-						)
-							bodyBindings.add(n.id.name);
+						if (n.type === "VariableDeclaration" && n.kind === "var")
+							hasVar = true;
 						if (n.type === "Identifier" && n.name === "arguments")
 							usesArguments = true;
 					});
@@ -1463,35 +1639,48 @@ export const defaultParamFolder = (internalPrefix = "_") => ({
 				// from mapped to unmapped
 				if (usesArguments && fn.type !== "ArrowFunctionExpression") continue;
 
+				// only what the body binds at its own top level can capture a name out
+				// from under a moved initializer. a `let` inside a nested block was
+				// never in scope where the declaration used to sit either, so it is not
+				// a conflict -- and the one declaration that would reach out of a block,
+				// `var`, is what the scan above already bails on
+				const bodyBindings = new Set(lexicalNames(rest));
+
 				let safe = true;
 				const declared = new Set<string>();
-				for (const d of decl.declarations) {
-					for (const name of d.init ? identsRead(d.init) : [])
-						if (
-							bodyBindings.has(name) ||
-							(moved.includes(name) && !declared.has(name))
-						) {
-							safe = false;
-							break;
-						}
+				for (const decl of leadingDecls) {
+					for (const d of decl.declarations) {
+						for (const name of d.init ? identsRead(d.init) : [])
+							if (
+								bodyBindings.has(name) ||
+								(moved.includes(name) &&
+									!declared.has(name) &&
+									!FUNCTION_NODE_TYPES.has(d.init?.type))
+							) {
+								safe = false;
+								break;
+							}
+						if (!safe) break;
+						patternNames(d.id).forEach((n) => declared.add(n));
+					}
 					if (!safe) break;
-					patternNames(d.id).forEach((n) => declared.add(n));
 				}
 				if (!safe) continue;
 
-				// splice the declarators in as trailing parameters. this always wins:
-				// `let ` and the `;` go away, at most a `,` comes back
-				const decls = code.slice(
-					decl.declarations[0].start,
-					decl.declarations[decl.declarations.length - 1].end
-				);
+				// Splice the declarators in as trailing parameters. This always wins:
+				// the declaration keywords and semicolons go away, at most a `,` comes
+				// back.
+				const decls = leadingDecls
+					.flatMap((decl) => decl.declarations)
+					.map((d: any) => code.slice(d.start, d.end))
+					.join(",");
 				const lastParam = fn.params[fn.params.length - 1];
 				if (lastParam) rewritten.appendLeft(lastParam.end, `,${decls}`);
 				else {
 					const open = code.indexOf("(", fn.start);
 					rewritten.appendLeft(code.indexOf(")", open), decls);
 				}
-				rewritten.remove(decl.start, decl.end);
+				for (const decl of leadingDecls) rewritten.remove(decl.start, decl.end);
 				folded++;
 			}
 

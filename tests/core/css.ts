@@ -49,7 +49,7 @@ test("css/scope: wpt corpus is an identity transform in scope", () => {
 	let doc = fixture();
 	let all = [...doc.querySelectorAll("*")] as any[];
 	let setScope = (on: boolean) =>
-		all.forEach((e) => (on ? e.classList.add(TAG) : e.classList.remove(TAG)));
+		all.forEach((e) => (on ? e.setAttribute(TAG, "") : e.removeAttribute(TAG)));
 	let ids = (list: any) => [...list].map((e: any) => e.id).join(",");
 
 	let changed: string[] = [];
@@ -73,7 +73,7 @@ test("css/scope: wpt corpus is an identity transform in scope", () => {
 
 		let out = rewriteSelector(t.selector, TAG);
 
-		// with .T on every element, :where(.T) is satisfied everywhere and adds no
+		// with [T] on every element, :where([T]) is satisfied everywhere and adds no
 		// specificity, so the rewrite has to select exactly what it started with
 		let got: string;
 		try {
@@ -89,8 +89,8 @@ test("css/scope: wpt corpus is an identity transform in scope", () => {
 			continue;
 		}
 
-		// and with .T on nothing, it has to select nothing. this is the half that
-		// catches a *missing* scope class: under-scoping only ever over-matches, so
+		// and with [T] on nothing, it has to select nothing. this is the half that
+		// catches a *missing* scope selector: under-scoping only ever over-matches, so
 		// it is invisible to the check above
 		setScope(false);
 		let escapes = ids(doc.querySelectorAll(out));
@@ -137,58 +137,61 @@ test("css/scope: wpt corpus stays valid css after rewriting", () => {
 	).assertEq(unsupported.length < 20, true);
 });
 
-test("css/scope: scope class placement", () => {
+test("css/scope: scope selector placement", () => {
 	let cases: [string, string][] = [
 		// every compound is scoped, not just the subject -- otherwise a selector
 		// reaches through into a child component's subtree
-		[".a", ".a:where(.T)"],
-		["div", "div:where(.T)"],
-		["*", "*:where(.T)"],
-		[".a .b", ".a:where(.T) .b:where(.T)"],
-		[".a>.b", ".a:where(.T)>.b:where(.T)"],
-		[".a  >  .b", ".a:where(.T)>.b:where(.T)"],
-		[".a+.b~.c d", ".a:where(.T)+.b:where(.T)~.c:where(.T) d:where(.T)"],
-		[".a, .b", ".a:where(.T),.b:where(.T)"],
-		["a:hover", "a:hover:where(.T)"],
+		[".a", ".a:where([T])"],
+		["div", "div:where([T])"],
+		["*", "*:where([T])"],
+		[".a .b", ".a:where([T]) .b:where([T])"],
+		[".a>.b", ".a:where([T])>.b:where([T])"],
+		[".a  >  .b", ".a:where([T])>.b:where([T])"],
+		[".a+.b~.c d", ".a:where([T])+.b:where([T])~.c:where([T]) d:where([T])"],
+		[".a, .b", ".a:where([T]),.b:where([T])"],
+		["a:hover", "a:hover:where([T])"],
 
-		// nothing may follow a pseudo-element, so the class goes in front of one
-		[".a::before", ".a:where(.T)::before"],
-		[".a::first-line::before", ".a:where(.T)::first-line::before"],
-		["::slotted(.x)", ":where(.T)::slotted(.x)"],
-		[".a::part(x)", ".a:where(.T)::part(x)"],
+		// nothing may follow a pseudo-element, so the scope selector goes in front of one
+		[".a::before", ".a:where([T])::before"],
+		[".a::first-line::before", ".a:where([T])::first-line::before"],
+		["::slotted(.x)", ":where([T])::slotted(.x)"],
+		[".a::part(x)", ".a:where([T])::part(x)"],
 
 		// arguments that are selector lists get rewritten...
-		[".a:not(.b)", ".a:not(.b:where(.T)):where(.T)"],
-		[".a:is(.b, .c)", ".a:is(.b:where(.T),.c:where(.T)):where(.T)"],
-		[".a:has(> .b)", ".a:has(>.b:where(.T)):where(.T)"],
+		[".a:not(.b)", ".a:not(.b:where([T])):where([T])"],
+		[".a:is(.b, .c)", ".a:is(.b:where([T]),.c:where([T])):where([T])"],
+		[".a:has(> .b)", ".a:has(>.b:where([T])):where([T])"],
 
 		// ...and arguments that are not, are left exactly alone
-		["li:nth-child(odd)", "li:nth-child(odd):where(.T)"],
-		["li:nth-child(2n+1)", "li:nth-child(2n+1):where(.T)"],
-		["li:nth-last-child(-n+3)", "li:nth-last-child(-n+3):where(.T)"],
-		["tr:nth-of-type(even)", "tr:nth-of-type(even):where(.T)"],
-		[":dir(rtl)", ":dir(rtl):where(.T)"],
-		[":lang(en-US)", ":lang(en-US):where(.T)"],
+		["li:nth-child(odd)", "li:nth-child(odd):where([T])"],
+		["li:nth-child(2n+1)", "li:nth-child(2n+1):where([T])"],
+		["li:nth-last-child(-n+3)", "li:nth-last-child(-n+3):where([T])"],
+		["tr:nth-of-type(even)", "tr:nth-of-type(even):where([T])"],
+		[":dir(rtl)", ":dir(rtl):where([T])"],
+		[":lang(en-US)", ":lang(en-US):where([T])"],
 
 		// separators and colons inside attribute values and escapes are literal
-		['[data-x="a, b"]', '[data-x="a, b"]:where(.T)'],
-		['a[href="a>b"]::after', 'a[href="a>b"]:where(.T)::after'],
-		["input[type=text]", "input[type=text]:where(.T)"],
-		[".a\\:b", ".a\\:b:where(.T)"],
+		['[data-x="a, b"]', '[data-x="a, b"]:where([T])'],
+		['a[href="a>b"]::after', 'a[href="a>b"]:where([T])::after'],
+		["input[type=text]", "input[type=text]:where([T])"],
+		[".a\\:b", ".a\\:b:where([T])"],
 
 		// bracket matching indexes by code unit. an astral character in a class name
 		// or attribute value is two of those, and walking by code point instead
 		// would return an offset that slices the closing bracket off
-		['[data-x="\u{1F600}"]', '[data-x="\u{1F600}"]:where(.T)'],
-		["\u{1F600}", "\u{1F600}:where(.T)"],
-		[".a[x=\u{1F600}] .b", ".a[x=\u{1F600}]:where(.T) .b:where(.T)"],
-		[":is(.\u{1F600}, .b)", ":is(.\u{1F600}:where(.T),.b:where(.T)):where(.T)"],
+		['[data-x="\u{1F600}"]', '[data-x="\u{1F600}"]:where([T])'],
+		["\u{1F600}", "\u{1F600}:where([T])"],
+		[".a[x=\u{1F600}] .b", ".a[x=\u{1F600}]:where([T]) .b:where([T])"],
+		[
+			":is(.\u{1F600}, .b)",
+			":is(.\u{1F600}:where([T]),.b:where([T])):where([T])",
+		],
 
 		// only :is/:where/:not/:has take a selector argument. :host() is not in that
 		// set -- components render into the light dom, so a :host() rule never
 		// applies whether or not its argument is scoped
-		[":host(.a)", ":host(.a):where(.T)"],
-		[":nth-child(2n of .foo)", ":nth-child(2n of .foo):where(.T)"],
+		[":host(.a)", ":host(.a):where([T])"],
+		[":nth-child(2n of .foo)", ":nth-child(2n of .foo):where([T])"],
 	];
 
 	for (let [input, want] of cases)
@@ -201,13 +204,16 @@ test("css/scope: :global and :scope", () => {
 		// sits in out of scoping entirely
 		[":global(.x)", ".x"],
 		[".a:global(.x)", ".a.x"],
-		[":global(.x) .b", ".x .b:where(.T)"],
-		[".a :global(.x .y) .b", ".a:where(.T) .x .y .b:where(.T)"],
+		[":global(.x) .b", ".x .b:where([T])"],
+		[".a :global(.x .y) .b", ".a:where([T]) .x .y .b:where([T])"],
 		// ...but only that compound: the selector around it still scopes
-		[".a:has(:global(.x))", ".a:has(.x):where(.T)"],
-		[":is(.a, :global(.b)) .c", ":is(.a:where(.T),.b):where(.T) .c:where(.T)"],
+		[".a:has(:global(.x))", ".a:has(.x):where([T])"],
+		[
+			":is(.a, :global(.b)) .c",
+			":is(.a:where([T]),.b):where([T]) .c:where([T])",
+		],
 
-		[":scope .a", `.T.${CSS_COMPONENT}:where(.T) .a:where(.T)`],
+		[":scope .a", `[T][${CSS_COMPONENT}]:where([T]) .a:where([T])`],
 	];
 
 	for (let [input, want] of cases)
@@ -237,6 +243,6 @@ test("css/scope: :global survives the cssom round-trip", () => {
 	check("selector round-trips").assertEq(back, ".a:global(.x) .b");
 	check("and rewrites from the round-tripped form").assertEq(
 		rewriteSelector(back, TAG),
-		".a.x .b:where(.T)"
+		".a.x .b:where([T])"
 	);
 });

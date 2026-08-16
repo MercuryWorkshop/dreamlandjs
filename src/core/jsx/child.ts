@@ -1,9 +1,9 @@
 import { MAP } from "../consts";
-import { CSS_COMPONENT } from "../css";
+import { CSS_COMPONENT, CSS_IDENT } from "../css";
 import { Pointer } from "../state/pointers";
 import { findLIS } from "../utils";
 import { ComponentChild } from "./definitions";
-import { CSS_IDENT, getDom } from "./dom";
+import { getDom } from "./dom";
 
 const enum ChildStateType {
 	Text = 1,
@@ -31,17 +31,15 @@ interface ChildStateArray extends Array<MapChildRet> {
 type MapChildRet = ChildState | ChildStateArray;
 
 let applyIdent = (child: any, cssIdent?: string, identOverride?: string) => {
-	let list: DOMTokenList = child.classList;
-	if (list) {
-		let arr = [...list];
-		if (arr.find((x) => x == CSS_COMPONENT)) return;
-
+	let arr: string[] = child.getAttributeNames?.();
+	if (arr && !arr.includes(CSS_COMPONENT)) {
 		let other = arr.find((x) => x.startsWith(CSS_IDENT));
+
 		if (!other) {
-			list.add(identOverride || cssIdent!);
-		} else if (identOverride && other !== identOverride) {
-			list.remove(other);
-			list.add(identOverride);
+			child.setAttribute(identOverride || cssIdent!, "");
+		} else if (identOverride && other != identOverride) {
+			child.removeAttribute(other);
+			child.setAttribute(identOverride, "");
 		}
 
 		child.childNodes.forEach((x: any) =>
@@ -104,7 +102,7 @@ export let mapChild = (
 			ret._inner = mapChild(v, parent, cssIdent, child._cssIdent, ret._inner);
 
 			// pretty sure it's not possible to put a pointer child in not a htmlelement
-			if (!getDom()[6]?.(parent as HTMLElement)) {
+			if (!getDom()[5]?.(parent as HTMLElement)) {
 				current = flattenChildRet(ret._inner);
 				oldToIndex = MAP(old.map((x, i) => [x, i]));
 				// undefined -> NaN (falsy), 0 -> 1 (truthy), n -> n+1 (truthy)

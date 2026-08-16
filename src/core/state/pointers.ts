@@ -1,4 +1,4 @@
-import { NO_CHANGE } from "../consts";
+import { NO_CHANGE, WEAKMAP } from "../consts";
 import { currentComponentCx } from "../jsx";
 import { ObjectProp } from "../utils";
 import {
@@ -14,7 +14,7 @@ import {
 import { useTrap, UseTrapMap, useTrapMap } from "./use";
 import { StateListenerNode, walkStateListeners } from "./util";
 
-let constraints: WeakMap<any, Pointer<any>[]> = new WeakMap();
+let constraints: WeakMap<any, Pointer<any>[]> = WEAKMAP();
 
 const enum PointerType {
 	Regular = 0,

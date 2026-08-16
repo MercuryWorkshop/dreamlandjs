@@ -550,6 +550,13 @@ jsxTest("pointers/region-dropped-from-array", () => {
 });
 
 // --- css ident application to children -----------------------------------------
+//
+// the scope ident and the `dlc` component marker are attributes, not classes, so
+// they share no namespace with user-controlled `class` bindings
+
+let identOf = (el: any) =>
+	el.getAttributeNames().find((c: string) => c.startsWith("dlcss-"));
+let hasIdent = (el: any) => !!identOf(el);
 
 jsxTest("css/ident-on-children", () => {
 	let Styled = function (this: any) {
@@ -565,11 +572,8 @@ jsxTest("css/ident-on-children", () => {
 	let orphan = jsx("section", { children: [grandchild] });
 	let dom = jsx(Styled, { children: [orphan] });
 
-	let hasIdent = (el: any) =>
-		[...el.classList].some((c: string) => c.startsWith("dlcss-"));
-
 	check("component root marked").assertEq(
-		[...(dom as any).classList].includes("dlc"),
+		(dom as any).hasAttribute("dlc"),
 		true
 	);
 	check("child element inherits the component's css ident").assertEq(
@@ -582,9 +586,36 @@ jsxTest("css/ident-on-children", () => {
 	);
 });
 
+jsxTest("css/ident-is-dom-normalized", () => {
+	// the ident is an attribute *name*, and setAttribute lowercases those on html
+	// elements. applyIdent reads names back out of getAttributeNames to decide
+	// whether a child is already stamped and by whom, so an ident that is not
+	// already lowercase never compares equal to the one sitting on the element --
+	// and component names are conventionally PascalCase, so it never would be
+	let PascalCase = function (this: any) {
+		return jsx("div", { children: [jsx("span", {})] });
+	} as any;
+	PascalCase.style = css`
+		color: red;
+	`;
+
+	let dom: any = jsx(PascalCase, {});
+	let id: string = dom.$.id;
+
+	check("the generated ident needs no normalizing").assertEq(
+		id,
+		id.toLowerCase()
+	);
+	check("root is stamped under exactly that name").assertEq(identOf(dom), id);
+	check("and so is a child applyIdent walked to").assertEq(
+		identOf(dom.childNodes[0]),
+		id
+	);
+});
+
 jsxTest("css/skips-nested-component", () => {
 	// a styled child component's subtree must NOT be re-stamped by the parent's
-	// ident -- applyIdent bails on any element carrying the component marker class
+	// ident -- applyIdent bails on any element carrying the component marker
 	let Child = function (this: any) {
 		return jsx("span", {});
 	} as any;
@@ -599,34 +630,29 @@ jsxTest("css/skips-nested-component", () => {
 	`;
 
 	let dom = jsx(Parent, {});
-	let parentIdent = [...(dom as any).classList].find((c: string) =>
-		c.startsWith("dlcss-")
-	);
+	let parentIdent = identOf(dom);
 	let childRoot = dom.childNodes[0] as any;
 
 	check("nested component root is a component").assertEq(
-		[...childRoot.classList].includes("dlc"),
+		childRoot.hasAttribute("dlc"),
 		true
 	);
 	check("parent ident exists").assertEq(!!parentIdent, true);
 	check("nested component is NOT re-stamped with the parent ident").assertEq(
-		[...childRoot.classList].includes(parentIdent),
+		childRoot.hasAttribute(parentIdent),
 		false
 	);
 });
 
-// classes the `class` attr did not put there (the css ident, `class:` toggles)
-let ownClasses = (el: any) =>
-	[...el.classList]
-		.filter((x: string) => !x.startsWith("dlcss-") && x !== "dlc")
-		.sort()
-		.join(" ");
+// the css ident and the component marker live in attributes, so classList holds
+// only what `class` / `class:` put there
+let ownClasses = (el: any) => [...el.classList].sort().join(" ");
 
 jsxTest("class/updates-under-a-css-ident", () => {
-	// the css ident is stamped after the attr loop and marks classList dirty, so
-	// the *first* `class` write goes through the non-dirty path and never splits.
-	// the dirty path still has to know what that write left behind, or every
-	// later update just piles on top of it
+	// the ident used to be a class, which put a second writer into classList and
+	// forced every `class` update through the remove-then-add path. now that it is
+	// an attribute, `class` owns classList outright and takes the wholesale path --
+	// which still has to replace what the previous write left, not pile onto it
 	let state = createState({ c: "a" });
 	let Styled = function () {
 		return jsx("div", { class: use(state.c) });
@@ -674,4 +700,190 @@ jsxTest("class/toggle-before-class", () => {
 
 	state.c = "b";
 	check("toggle survives").assertEq(ownClasses(dom), "b x");
+});
+
+// --- idents stamped from outside the owning _jsx call ---------------------------
+//
+// these are what keeps the ident out of classList. `lastClassList` is the "someone
+// else owns classes here" flag, and it is a closure local of the _jsx call that
+// built the element -- only that call's own `class:` toggles ever set it. applyIdent
+// is a third writer running from the *parent's* _jsx, so it can never arm the flag,
+// and back when the ident was a class a later `class` update took the wholesale
+// `classList.value = val` path and dropped it. The element kept rendering, it just
+// silently stopped being styled.
+//
+// the shape is reachable whenever an element got no ident of its own, i.e.
+// currentComponentCx was unset when it was built -- which is every element built
+// inside a pointer listener, since only delegates restore that context.
+
+jsxTest("css/ident-survives-external-stamp", () => {
+	// built outside any component, so no ident of its own and the fastpath stays armed
+	let state = createState({ c: "a" });
+	let orphan: any = jsx("section", { class: use(state.c) });
+
+	let Styled = function (this: any) {
+		return jsx("div", { children: this.children });
+	} as any;
+	Styled.style = css`
+		color: red;
+	`;
+	jsx(Styled, { children: [orphan] });
+
+	check("applyIdent stamped it").assertEq(hasIdent(orphan), true);
+	state.c = "b";
+	check("class updated").assertEq(ownClasses(orphan), "b");
+	check("ident survives the class update").assertEq(hasIdent(orphan), true);
+});
+
+jsxTest("css/ident-survives-pointer-stamp", () => {
+	// same, but stamped through the identOverride path rather than the plain one
+	let state = createState({ c: "a", show: true });
+	let orphan: any = jsx("section", { class: use(state.c) });
+
+	let Styled = function (this: any) {
+		return jsx("div", { children: use(state.show).and(orphan) });
+	} as any;
+	Styled.style = css`
+		color: red;
+	`;
+	jsx(Styled, {});
+
+	check("pointer child stamped").assertEq(hasIdent(orphan), true);
+	state.c = "b";
+	check("ident survives the class update").assertEq(hasIdent(orphan), true);
+});
+
+jsxTest("css/ident-survives-stamp-in-list", () => {
+	// the shape this actually shows up as: rows rebuilt by a list update are built
+	// inside a pointer listener, so they never get an ident from their own _jsx
+	let state = createState({ items: [1], c: "a" });
+	let rows: any[] = [];
+
+	let List = function () {
+		return jsx("div", {
+			children: use(state.items).mapEach(() => {
+				let row = jsx("li", { class: use(state.c) });
+				rows.push(row);
+				return row;
+			}),
+		});
+	} as any;
+	List.style = css`
+		color: red;
+	`;
+
+	jsx(List, {});
+	state.items = [1, 2];
+
+	let row = rows[rows.length - 1];
+	check("rebuilt row stamped").assertEq(hasIdent(row), true);
+	state.c = "b";
+	check("ident survives the class update").assertEq(hasIdent(row), true);
+});
+
+// --- component ownership matrix -------------------------------------------------
+//
+// formalized from the manual colour-check repro in dl-test. an element is *owned*
+// by the component whose body lexically created it, never by the component it ends
+// up nested inside -- so slotted children keep the slotting component's ident and
+// are not restyled by their host. covers the four ways an element can arrive:
+// written in the body, produced by a pointer, slotted in, and slotted in through
+// a pointer, each at two nesting depths.
+
+// every test element carries `w<N>` naming its expected owner, plus a unique label
+let walkTagged = (el: any, out: any[] = []) => {
+	if (!el.classList) return out;
+	if ([...el.classList].some((c: string) => /^w\d$/.test(c))) out.push(el);
+	el.childNodes.forEach((c: any) => walkTagged(c, out));
+	return out;
+};
+
+jsxTest("css/ownership-matrix", () => {
+	let state = createState({ ref: 0 });
+	let mk = (label: string, owner: number) =>
+		jsx("div", { class: `${label} w${owner}` });
+	let mkDyn = (label: string, owner: number) =>
+		use(state.ref).map(() => mk(label, owner));
+
+	let box1: any, box2: any;
+
+	let Box2 = function (this: any) {
+		return jsx("div", {
+			children: [mk("box2-own", 2), mkDyn("box2-own-dyn", 2), this.children],
+		});
+	} as any;
+	Box2.style = css`
+		color: green;
+	`;
+
+	let Box1 = function (this: any) {
+		return jsx("div", {
+			children: [mk("box1-own", 1), mkDyn("box1-own-dyn", 1), this.children],
+		});
+	} as any;
+	Box1.style = css`
+		color: blue;
+	`;
+
+	let Root = function () {
+		return jsx("div", {
+			children: [
+				mk("root-own", 0),
+				mkDyn("root-own-dyn", 0),
+				(box1 = jsx(Box1, {
+					children: [
+						// written in Root's body, so Box1 must not claim them
+						mk("root-slotted", 0),
+						mkDyn("root-slotted-dyn", 0),
+						(box2 = jsx(Box2, { children: [mk("root-slotted-deep", 0)] })),
+					],
+				})),
+			],
+		});
+	} as any;
+	Root.style = css`
+		color: red;
+	`;
+
+	let dom: any = jsx(Root, {});
+	// read from each cx rather than off the dom, so every comparison below is the
+	// ident the library generated against the one the dom actually stored
+	let owners = () => [dom.$.id, box1.$.id, box2.$.id];
+
+	check("the three components have distinct idents").assertEq(
+		new Set(owners()).size,
+		3
+	);
+
+	let mismatches = () => {
+		let want = owners();
+		return (
+			walkTagged(dom)
+				.map((el: any) => {
+					let classes = [...el.classList];
+					let label = classes.find(
+						(c: string) => !c.startsWith("dlcss-") && !/^w\d$/.test(c)
+					);
+					let n = +classes.find((c: string) => /^w\d$/.test(c))!.slice(1);
+					return identOf(el) === want[n]
+						? null
+						: `${label}: want w${n} (${want[n]}) got ${identOf(el) || "(none)"}`;
+				})
+				.filter(Boolean)
+				.join("\n  ") || "none"
+		);
+	};
+
+	// a broken walk would make the mismatch check vacuously pass
+	check("all nine tagged elements found").assertEq(walkTagged(dom).length, 9);
+	check("every element is owned by the component that wrote it").assertEq(
+		mismatches(),
+		"none"
+	);
+
+	// the pointer-built elements are rebuilt outside any component context, so this
+	// is the half that exercises identOverride rather than the stamp in _jsx
+	state.ref = 1;
+	check("still nine after a rebuild").assertEq(walkTagged(dom).length, 9);
+	check("ownership survives a pointer rebuild").assertEq(mismatches(), "none");
 });

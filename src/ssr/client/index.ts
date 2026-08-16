@@ -163,8 +163,7 @@ export let hydrate = async (
 			}
 			return node || old[3](x);
 		},
-		(x) => data.i[idx + 1] || old[4](x),
-		old[5],
+		(init, style) => data.i[idx + 1] || old[4](init, style),
 		hydrating,
 		(_init, _state, cx) => {
 			if (cx?.state?.root instanceof old[1] && !hydrating(cx.state?.root))

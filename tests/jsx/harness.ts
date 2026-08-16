@@ -12,7 +12,6 @@ export let TextClass: any;
 export let CommentClass: any;
 
 function createHappyDom(): Dom {
-	let componentCssInfo = new Map();
 	let window = new Window();
 	return [
 		[
@@ -21,7 +20,6 @@ function createHappyDom(): Dom {
 			(text) => new window.Text(text),
 			(text) => new window.Comment(text),
 			(init) => init.name + "-" + window.crypto.randomUUID(),
-			componentCssInfo,
 			() => false,
 		],
 		window.Node,

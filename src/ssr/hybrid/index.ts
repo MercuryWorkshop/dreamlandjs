@@ -90,7 +90,6 @@ export let mountOne = (
 		old[3],
 		old[4],
 		old[5],
-		old[6],
 		(init, state, cx) => {
 			if (init === component) {
 				if (init.style) {

@@ -1,11 +1,13 @@
-import { MAP } from "../consts";
 import { genuid } from "../css";
 import { Component, ComponentContext, ComponentState } from "./definitions";
 
-export let CSS_IDENT = "dlcss-";
+export let CREATE_ELEMENT = "createElement" as const;
 
 type NodeConstructor = (text?: string) => any;
-type CssUidGenerator = (init: Component<any, any>) => string;
+type CssUidGenerator = (
+	init: Component<any, any>,
+	style: HTMLStyleElement
+) => string;
 type IsHydrating = (el: HTMLElement) => boolean;
 type SsrTransformCallback = <T extends Component<any, any>>(
 	init: T,
@@ -21,7 +23,6 @@ export type DomImpl = [
 	new_Text: NodeConstructor,
 	new_Comment: NodeConstructor,
 	gencssuid: CssUidGenerator,
-	cssinfo: Map<any, any>,
 	hydrating?: IsHydrating,
 	ssrTransform?: SsrTransformCallback,
 	cxs?: CxList,
@@ -29,19 +30,13 @@ export type DomImpl = [
 	mounts?: CbRetList,
 ];
 
-export interface CssInfo {
-	_id: string;
-	_vars: [string, (props: any) => any][];
-}
-let componentCssInfo: Map<Component, CssInfo> = MAP();
 let defaultDom: DomImpl = [
 	globalThis.document,
 	globalThis.Node,
 	(text) => new Text(text),
 	(text) => new Comment(text),
 	// js-valid but selector-invalid chars can make it into init.name
-	(init) => init.name.replace(/[^\w-]/g, "_") + "-" + genuid(),
-	componentCssInfo,
+	(init) => init.name.replaceAll(/[^\w-]/g, "_") + "-" + genuid(),
 	() => false,
 ];
 export let getDom: () => DomImpl = () => defaultDom;

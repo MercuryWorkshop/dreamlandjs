@@ -1,4 +1,4 @@
-import { getDom, CSS_IDENT, CssInfo } from "./dom";
+import { getDom, CREATE_ELEMENT } from "./dom";
 import { CSS_COMPONENT } from "../css";
 import {
 	Component,
@@ -38,8 +38,6 @@ export let _createDelegate = <T>(): Delegate<T> => {
 
 	return delegate;
 };
-
-let CREATE_ELEMENT = "createElement" as const;
 
 let setStyle = (
 	el: HTMLElement,
@@ -89,21 +87,10 @@ function _jsx(
 	let el: HTMLElement;
 
 	if (typeof init === "function") {
-		let [
-			,
-			,
-			,
-			,
-			genCssUid,
-			componentCssInfo,
-			hydrating,
-			ssrTransform,
-			cxs,
-			inits,
-			mounts,
-		] = getDom();
+		let [, , , , genCssUid, hydrating, ssrTransform, cxs, inits, mounts] =
+			getDom();
+
 		let state = createState({ children }) as Stateful<any>;
-		let cssInfo: CssInfo | undefined = componentCssInfo.get(init);
 		let tmp;
 
 		for (let attr in props) {
@@ -129,27 +116,11 @@ function _jsx(
 			}
 		});
 
-		if (init.style) {
-			let style = init.style;
-			let styleEl = DOCUMENT[CREATE_ELEMENT]("style");
-			if (!cssInfo) {
-				cssInfo = { _id: CSS_IDENT + genCssUid(init), _vars: [] };
-				let cssString = style._build(style, cssInfo);
-
-				if (!hydrating?.(styleEl)) {
-					styleEl.setAttribute(CSS_COMPONENT, init.name);
-					styleEl.setAttribute(CSS_IDENT + "id", cssInfo._id);
-
-					DOCUMENT.head.append(styleEl);
-					style._rewrite(styleEl, cssString, cssInfo._id);
-				}
-				componentCssInfo.set(init, cssInfo);
-			}
-		}
-
+		let style = init.style;
+		let cssId = style?._get(DOCUMENT, hydrating, genCssUid, init);
 		let cx = {
 			state,
-			id: cssInfo?._id,
+			id: cssId,
 			[NO_CHANGE]: [],
 		} as ComponentContext<any>;
 
@@ -161,23 +132,23 @@ function _jsx(
 		state.root = el;
 
 		dev: {
-			if (cssInfo && !(el instanceof NODE))
+			if (cssId && !(el instanceof NODE))
 				throw new Error("Fragment/data components cannot have CSS");
 		}
 
 		if (el instanceof NODE) {
 			dev: {
-				if ((el as ComponentInstance<any>).$ && cssInfo)
+				if ((el as ComponentInstance<any>).$ && cssId)
 					throw new Error("Wrapper components cannot have CSS");
 			}
 
 			if (!(el as ComponentInstance<any>).$)
 				(el as ComponentInstance<any>).$ = cx;
 
-			if (cssInfo) {
-				el.classList.add(CSS_COMPONENT);
-				cssInfo._vars.forEach(([id, func]) =>
-					setStyle(el, func(cx.state), el.style, id)
+			if (cssId) {
+				el.setAttribute(CSS_COMPONENT, "");
+				style!._vars!.forEach(([i, func]) =>
+					setStyle(el, func(cx.state), el.style, `--${cssId}-${i}`)
 				);
 			}
 		}
@@ -199,7 +170,7 @@ function _jsx(
 		// we know it's an svg element if it has the xmlns attribute
 		let xmlns = props?.xmlns;
 		let setAttr = (param: string, val: any) => {
-			if (getDom()[6]?.(el)) return;
+			if (getDom()[5]?.(el)) return;
 
 			if (val === undefined || val === false) el.removeAttribute(param);
 			else el.setAttribute(param, val);
@@ -218,7 +189,11 @@ function _jsx(
 
 		if (children !== undefined)
 			flattenChildRet(mapChild(children, el, lastCssIdent)).forEach((x) => {
-				if (x.parentNode !== el) el.insertBefore(x, lastChildNode ? lastChildNode.nextSibling : el.firstChild);
+				if (x.parentNode !== el)
+					el.insertBefore(
+						x,
+						lastChildNode ? lastChildNode.nextSibling : el.firstChild
+					);
 				lastChildNode = x;
 			});
 
@@ -264,7 +239,7 @@ function _jsx(
 				});
 			} else if (attr.startsWith("attr:")) {
 				maybeListen(val, el, (val: boolean) => {
-					if (!getDom()[6]?.(el)) (el as any)[attr.slice(5)] = val;
+					if (!getDom()[5]?.(el)) (el as any)[attr.slice(5)] = val;
 				});
 			} else if (
 				attr == "style" &&
@@ -279,9 +254,8 @@ function _jsx(
 			}
 		}
 
-		if (lastCssIdent && ![...classList].find((x) => x.startsWith(CSS_IDENT))) {
-			lastClassList ||= [...classList];
-			classList.add(lastCssIdent);
+		if (lastCssIdent) {
+			el.setAttribute(lastCssIdent, "");
 		}
 
 		// all children would need to also be created with the correct namespace if we were doing this properly

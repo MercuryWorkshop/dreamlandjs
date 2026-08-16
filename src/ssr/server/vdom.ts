@@ -130,6 +130,14 @@ export class Element extends Node {
 		if (key === "class") this.classList.value = "";
 		this.attributes.delete(key);
 	}
+	// applyIdent walks this to find the scope ident; without it every stamp it
+	// would apply is silently skipped during ssr
+	getAttributeNames() {
+		return [...this.attributes.keys()];
+	}
+	hasAttribute(key: string) {
+		return this.attributes.has(key);
+	}
 
 	replaceWith(el: Element) {
 		if (!this.parent) throw new Error("element has no parent");
@@ -295,7 +303,6 @@ export let newVDom = () => {
 			identArr.set(elArr.length, ret);
 			return ret;
 		},
-		new Map(),
 		undefined, // enables "ssr mode"
 		undefined,
 		undefined,
