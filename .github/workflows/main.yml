@@ -59,7 +59,7 @@ jobs:
           cache: "pnpm"
 
       - name: Install pnpm dependencies
-        run: pnpm install
+        run: pnpm install --filter dreamland
 
       - name: Build Dreamland
         run: pnpm build

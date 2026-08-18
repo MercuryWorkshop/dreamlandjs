@@ -31,7 +31,7 @@
 	"dependencies": {
 		"@mdi/js": "^7.4.47",
 		"@rollup/browser": "^4.62.2",
-		"dreamland": "link:..",
+		"dreamland": "workspace:*",
 		"monaco-editor": "^0.55.1"
 	}
 }
