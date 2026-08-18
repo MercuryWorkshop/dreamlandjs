@@ -11,7 +11,7 @@ import {
 } from "domhandler";
 import { parseDocument } from "htmlparser2";
 import renderToString from "dom-serializer";
-import { SSR_ID } from "../common/consts";
+import { SSR_DATA, SSR_ID } from "../common/consts";
 
 export class Node {
 	_id!: number;
@@ -298,9 +298,10 @@ export let newVDom = () => {
 		Node,
 		(text?: any) => push(new Text("" + text)),
 		(text?: any) => push(new Comment("" + text)),
-		() => {
+		(_component, style) => {
 			let ret = "" + identArr.size;
 			identArr.set(elArr.length, ret);
+			(style as any as Style).setAttribute(SSR_DATA, ret);
 			return ret;
 		},
 		undefined, // enables "ssr mode"
