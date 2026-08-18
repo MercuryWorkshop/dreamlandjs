@@ -97,13 +97,15 @@ export default defineConfig({
 });
 ```
 
-This just sets the following vite esbuild config:
+This just sets the following vite oxc config:
 
 ```js
 {
-	esbuild: {
-		jsx: "automatic",
-		jsxImportSource: "dreamland"
+	oxc: {
+		jsx: {
+			runtime: "automatic",
+			importSource: "dreamland"
+		},
 	}
 }
 ```
