@@ -26,7 +26,7 @@
 		"format": "prettier -w .",
 		"lint": "eslint",
 		"test": "bash tests/run.sh tests/core/ tests/jsx/ tests/util/",
-		"all": "pnpm format && pnpm lint && pnpm build && pnpm test && dust -sbo b dist/{core,{js,jsx}-runtime,router,ssr.{client,hybrid,server},motion,vite,util}.js",
+		"all": "pnpm format && pnpm lint && pnpm build && pnpm test && dust -sbo b dist/{core,{js,jsx}-runtime,router,ssr.{client,server},motion,vite,util}.js",
 		"prepack": "npm run build"
 	},
 	"exports": {
@@ -59,11 +59,6 @@
 			"types": "./dist/ssr.server.d.ts",
 			"development": "./dist/dev/ssr.server.js",
 			"default": "./dist/ssr.server.js"
-		},
-		"./ssr/hybrid": {
-			"types": "./dist/ssr.hybrid.d.ts",
-			"development": "./dist/dev/ssr.hybrid.js",
-			"default": "./dist/ssr.hybrid.js"
 		},
 		"./ssr/client": {
 			"types": "./dist/ssr.client.d.ts",

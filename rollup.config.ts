@@ -306,11 +306,6 @@ const configs = () => {
 			visualize: true,
 		}),
 		...cfg({
-			input: ["src/ssr", "hybrid/index.ts"],
-			output: "ssr.hybrid",
-			visualize: true,
-		}),
-		...cfg({
 			input: ["src/router", "index.tsx"],
 			output: "router",
 			visualize: true,
