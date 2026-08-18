@@ -887,3 +887,144 @@ jsxTest("css/ownership-matrix", () => {
 	check("still nine after a rebuild").assertEq(walkTagged(dom).length, 9);
 	check("ownership survives a pointer rebuild").assertEq(mismatches(), "none");
 });
+
+// --- the two ways ownership is *not* the renderer --------------------------------
+//
+// the matrix above is written entirely inside component bodies, so every element in
+// it has an owner and every pointer in it has one too. these are the two shapes
+// where that does not hold: an element built with no component context (which has to
+// fall back to whoever renders it) and an element built by one component but
+// rendered by another (which has to keep the ident it already has). both arrive
+// through the same mapChild walk, and it has to answer them differently.
+
+jsxTest("css/ident-falls-back-for-an-unowned-pointer", () => {
+	// built out here rather than in a body, so there is no cx to capture and nothing
+	// to inherit; the map runs unowned on every read, initial and rebuild alike
+	let state = createState({ n: 0 });
+	let ptr = use(state.n).map(() => jsx("li", {}));
+
+	let Styled = function () {
+		return jsx("ul", { children: [ptr] });
+	} as any;
+	Styled.style = css`
+		color: red;
+	`;
+
+	let dom: any = jsx(Styled, {});
+	let id: string = dom.$.id;
+
+	check("content adopts the ident of the component rendering it").assertEq(
+		identOf(dom.childNodes[1]),
+		id
+	);
+
+	// the rebuild is the half that matters: the pointer has no cx to restore, so
+	// without the walk's own ident the row comes back unstamped and stops matching
+	state.n = 1;
+	check("and keeps it across a rebuild").assertEq(
+		identOf(dom.childNodes[1]),
+		id
+	);
+});
+
+jsxTest("css/a-map-is-owned-where-it-is-written", () => {
+	// what a map builds belongs to the body the callback was written in, which is the
+	// cx `.map()` captured -- not the cx of the pointer it reads from. those are the
+	// same thing for `use(x).map(f)` written in one go, and only come apart once the
+	// source pointer is handed across a component boundary
+	let state = createState({ n: 0 });
+	let src: any;
+
+	let Src = function () {
+		src = use(state.n);
+		return jsx("i", {});
+	} as any;
+	Src.style = css`
+		color: green;
+	`;
+	let source: any = jsx(Src, {});
+
+	// written in Mapper's body, so Mapper owns the row even though Src owns the source
+	let Mapper = function () {
+		return jsx("div", { children: [src.map(() => jsx("span", {}))] });
+	} as any;
+	Mapper.style = css`
+		color: red;
+	`;
+	let mapper: any = jsx(Mapper, {});
+
+	// written out here with no cx to capture, so it falls back to whoever renders it
+	let unowned = src.map(() => jsx("span", {}));
+	let Renderer = function () {
+		return jsx("div", { children: [unowned] });
+	} as any;
+	Renderer.style = css`
+		color: blue;
+	`;
+	let renderer: any = jsx(Renderer, {});
+
+	let row = (dom: any) => identOf(dom.childNodes[1]);
+
+	check("the three components have distinct idents").assertEq(
+		new Set([source.$.id, mapper.$.id, renderer.$.id]).size,
+		3
+	);
+	check("a map written in a body is owned by that body").assertEq(
+		row(mapper),
+		mapper.$.id
+	);
+	check("and not by the owner of the pointer it reads").assertEq(
+		row(mapper) === source.$.id,
+		false
+	);
+	check("an unowned map is adopted by the component rendering it").assertEq(
+		row(renderer),
+		renderer.$.id
+	);
+
+	// the rebuild reads through the same getter, so it has to answer the same way
+	state.n = 1;
+	check("ownership survives a rebuild").assertEq(row(mapper), mapper.$.id);
+	check("adoption survives a rebuild").assertEq(row(renderer), renderer.$.id);
+});
+
+jsxTest("css/foreign-element-keeps-its-owner", () => {
+	// built inside Owner, so Owner stamped it -- but never attached there
+	let held: any;
+	let Owner = function () {
+		held = jsx("span", {});
+		return jsx("i", {});
+	} as any;
+	Owner.style = css`
+		color: green;
+	`;
+	let owner: any = jsx(Owner, {});
+
+	// handed to a second component through a pointer that Renderer owns. the pointer
+	// is the renderer's, the element is not, and the element wins
+	let state = createState({ v: 0 });
+	let Renderer = function () {
+		return jsx("div", { children: [use(state.v).map(() => held)] });
+	} as any;
+	Renderer.style = css`
+		color: red;
+	`;
+	let dom: any = jsx(Renderer, {});
+
+	check("the two components have distinct idents").assertEq(
+		owner.$.id === dom.$.id,
+		false
+	);
+	check("Owner stamped it when it was built").assertEq(
+		identOf(held),
+		owner.$.id
+	);
+	check("rendering it elsewhere does not re-stamp it").assertEq(
+		identOf(dom.childNodes[1]),
+		owner.$.id
+	);
+	check("and it is not the renderer's").assertEq(
+		identOf(dom.childNodes[1]) === dom.$.id,
+		false
+	);
+});

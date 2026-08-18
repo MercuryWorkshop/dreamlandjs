@@ -30,21 +30,15 @@ interface ChildStateArray extends Array<MapChildRet> {
 }
 type MapChildRet = ChildState | ChildStateArray;
 
-let applyIdent = (child: any, cssIdent?: string, identOverride?: string) => {
+let applyIdent = (child: any, cssIdent: string) => {
 	let arr: string[] = child.getAttributeNames?.();
+	// walk until we reach a component boundary
 	if (arr && !arr.includes(CSS_COMPONENT)) {
-		let other = arr.find((x) => x.startsWith(CSS_IDENT));
+		// paint any unowned nodes
+		if (!arr.some((x) => x.startsWith(CSS_IDENT)))
+			child.setAttribute(cssIdent, "");
 
-		if (!other) {
-			child.setAttribute(identOverride || cssIdent!, "");
-		} else if (identOverride && other != identOverride) {
-			child.removeAttribute(other);
-			child.setAttribute(identOverride, "");
-		}
-
-		child.childNodes.forEach((x: any) =>
-			applyIdent(x, cssIdent, identOverride)
-		);
+		child.childNodes.forEach((x: any) => applyIdent(x, cssIdent));
 	}
 };
 
@@ -64,7 +58,6 @@ export let mapChild = (
 	child: ComponentChild,
 	parent: Node,
 	cssIdent?: string,
-	identOverride?: string,
 	last?: MapChildRet
 ): MapChildRet => {
 	let [, NODE, new_Text, new_Comment] = getDom();
@@ -86,12 +79,13 @@ export let mapChild = (
 			LIS: number[],
 			lisIdx: number,
 			anchor: Node,
+			ident = child._cx?.id || cssIdent,
 			val = child.value;
 		let ret: PointerChildState = {
 			_type: ChildStateType.Pointer,
 			_anchor: new_Comment("["),
 			_ptr: child,
-			_inner: mapChild(val, parent, cssIdent, child._cssIdent, last),
+			_inner: mapChild(val, parent, ident, last),
 		};
 
 		child.constrain(ret._anchor).listen((v) => {
@@ -99,7 +93,7 @@ export let mapChild = (
 			val = v;
 
 			old = flattenChildRet(ret._inner); // since reused nodes are modified inplace
-			ret._inner = mapChild(v, parent, cssIdent, child._cssIdent, ret._inner);
+			ret._inner = mapChild(v, parent, ident, ret._inner);
 
 			// pretty sure it's not possible to put a pointer child in not a htmlelement
 			if (!getDom()[5]?.(parent as HTMLElement)) {
@@ -135,7 +129,7 @@ export let mapChild = (
 		// point of holding onto the state
 		if (last?._type == ChildStateType.Node && last._node === child) return last;
 
-		if (cssIdent || identOverride) applyIdent(child, cssIdent, identOverride);
+		if (cssIdent) applyIdent(child, cssIdent);
 
 		if (last?._type == ChildStateType.Node) {
 			last._node = child;
@@ -145,7 +139,7 @@ export let mapChild = (
 	} else if (child instanceof Array) {
 		if (!(last instanceof Array)) last = [last] as any as ChildStateArray;
 		return child.map((x, i) =>
-			mapChild(x, parent, cssIdent, identOverride, (last as ChildStateArray)[i])
+			mapChild(x, parent, cssIdent, (last as ChildStateArray)[i])
 		) as ChildStateArray;
 	} else {
 		if (last?._type == ChildStateType.Text) {

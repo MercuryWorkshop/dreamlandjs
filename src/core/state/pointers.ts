@@ -1,5 +1,6 @@
 import { NO_CHANGE, WEAKMAP } from "../consts";
-import { currentComponentCx } from "../jsx";
+import { currentComponentCx, CxListener, withCx } from "../cx";
+import { ComponentContext } from "../jsx/definitions";
 import { ObjectProp } from "../utils";
 import {
 	_stateListen,
@@ -96,12 +97,12 @@ export class Pointer<T> {
 	// @internal
 	_weak = new WeakRef(this);
 	// @internal
-	declare _cssIdent?: string;
+	declare _cx?: ComponentContext<any>;
 
 	// @internal
 	declare _ptr: InternalPointer<T>;
 	// @internal
-	_listeners: PointerListener<T>[] = [];
+	_listeners: CxListener<T>[] = [];
 	// @internal
 	declare d /* _deps */?: StateListenerNode<Pointer<T>, number | undefined>;
 	// @internal
@@ -158,7 +159,7 @@ export class Pointer<T> {
 			value: T;
 		if (listeners.length || this.p) {
 			value = this.value;
-			listeners.forEach((x) => x(value));
+			listeners.forEach(([a, b]) => withCx(b, a, value));
 			walkStateListeners(
 				(internal, key) => _callStateListeners(internal, key, value),
 				this,
@@ -183,7 +184,7 @@ export class Pointer<T> {
 			internal._ptrs.forEach((x) => x._listenDep(this._weak));
 		}
 
-		if (currentComponentCx) this.constrain(currentComponentCx);
+		if ((this._cx = currentComponentCx)) this.constrain(currentComponentCx);
 	}
 
 	get value(): T {
@@ -192,7 +193,7 @@ export class Pointer<T> {
 		if (ptr._type == PointerType.Regular) {
 			return followPath(ptr._state, ptr._path);
 		} else if (ptr._type == PointerType.Mapped) {
-			return ptr._map(ptr._ptr.value);
+			return withCx(this._cx, ptr._map, ptr._ptr.value);
 		} else if (ptr._type == PointerType.Zipped) {
 			return ptr._ptrs.map((x) => x.value) as any;
 		}
@@ -212,7 +213,10 @@ export class Pointer<T> {
 			] = val;
 			return true;
 		} else if (ptr._type == PointerType.Mapped) {
-			if (ptr._reverse && (recalculated = ptr._reverse(val)) !== NO_CHANGE) {
+			if (
+				ptr._reverse &&
+				(recalculated = withCx(this._cx, ptr._reverse, val)) !== NO_CHANGE
+			) {
 				ptr._ptr.value = recalculated;
 				return true;
 			}
@@ -234,7 +238,7 @@ export class Pointer<T> {
 		this.d = { _value: ptr, _index: i, _next: this.d };
 	}
 	listen(func: PointerListener<T>) {
-		this._listeners.push(func);
+		this._listeners.push([func, currentComponentCx]);
 	}
 
 	zip<Ptrs extends ReadonlyArray<Pointer<any>>>(

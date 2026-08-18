@@ -9,35 +9,9 @@ import {
 } from "./definitions";
 import { Pointer, maybeListen } from "../state/pointers";
 import { createState, stateProxy, Stateful } from "../state/state";
-import { Delegate, DelegateListener } from "../delegate";
 import { flattenChildRet, mapChild } from "./child";
 import { NO_CHANGE } from "../consts";
-
-export let currentComponentCx:
-	| ComponentContext<Component<any, any>>
-	| undefined;
-
-// has to be here since it assigns currentComponentCx and terser is terrible at inlining iifes fully
-export let _createDelegate = <T>(): Delegate<T> => {
-	let listeners: DelegateListener<T>[] = [];
-
-	let delegate = ((value: any): void =>
-		listeners.forEach((x) => {
-			let old = currentComponentCx;
-			currentComponentCx = x._cx;
-			x._callback(value);
-			currentComponentCx = old;
-		})) as Delegate<T>;
-
-	delegate.listen = (_callback: (value: T) => void) => {
-		listeners.push({
-			_callback,
-			_cx: currentComponentCx,
-		});
-	};
-
-	return delegate;
-};
+import { currentComponentCx, withCx } from "../cx";
 
 let setStyle = (
 	el: HTMLElement,
@@ -49,11 +23,6 @@ let setStyle = (
 		if (v === undefined) style.removeProperty(k);
 		else style.setProperty(k, v);
 	});
-
-let iterateChildren = (children: any, cb: (child: any) => void) => {
-	if (children instanceof Array) children.forEach(cb);
-	else if (children) cb(children);
-};
 
 function _jsx<T extends Component<any, any>>(
 	init: T,
@@ -73,7 +42,6 @@ function _jsx(
 	props ||= {};
 
 	let [DOCUMENT, NODE] = getDom();
-	let lastCssIdent = currentComponentCx?.id;
 
 	dev: {
 		if (!["string", "function"].includes(typeof init))
@@ -107,15 +75,6 @@ function _jsx(
 
 		ssrTransform?.(init, state);
 
-		iterateChildren(children, (child) => {
-			// any pointers passed as children were unable to inherit the currentCssIdent.
-			// we add the currentCssIdent (which is of the parent) here since we know that the pointer came from the parent.
-			// this might break if pointers of elements are being passed as props but oh well
-			if (child instanceof Pointer) {
-				child._cssIdent ||= lastCssIdent;
-			}
-		});
-
 		let style = init.style;
 		let cssId = style?._get(DOCUMENT, hydrating, genCssUid, init);
 		let cx = {
@@ -124,11 +83,8 @@ function _jsx(
 			[NO_CHANGE]: [],
 		} as ComponentContext<any>;
 
-		let old = currentComponentCx;
 		state.cx = cx;
-		currentComponentCx = cx;
-		el = init.call(state);
-		currentComponentCx = old;
+		el = withCx(cx, init, state, state);
 		state.root = el;
 
 		dev: {
@@ -155,20 +111,19 @@ function _jsx(
 
 		ssrTransform?.(init, state, cx);
 
-		currentComponentCx = cx;
-		tmp = cx.init?.();
+		tmp = cx.init && withCx(cx, cx.init);
 		inits?.push(tmp);
 
 		if (el instanceof NODE && hydrating?.(el)) cxs?.push(cx);
 		else if (hydrating) {
-			tmp = cx.mount?.();
+			tmp = cx.mount && withCx(cx, cx.mount);
 			mounts?.push(tmp);
 		}
-		currentComponentCx = old;
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
 		let xmlns = props?.xmlns;
+		let lastCssIdent = currentComponentCx?.id;
 		let setAttr = (param: string, val: any) => {
 			if (getDom()[5]?.(el)) return;
 
