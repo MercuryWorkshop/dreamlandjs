@@ -11,6 +11,14 @@
 	"author": "Mercury Workshop",
 	"bugs": "https://github.com/MercuryWorkshop/dreamlandjs/issues",
 	"license": "MIT",
+	"//browserslist": "dreamland's documented support floor. keep in sync with site/src/docs/getting-started.mdx",
+	"browserslist": [
+		"chrome >= 88",
+		"edge >= 88",
+		"firefox >= 79",
+		"safari >= 14.1",
+		"ios_saf >= 14.5"
+	],
 	"scripts": {
 		"build": "rollup -c",
 		"build:dev": "rollup -c --config-dev",
@@ -92,12 +100,16 @@
 	],
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
+		"@mdn/browser-compat-data": "^8.0.11",
 		"@rollup/plugin-node-resolve": "^16.0.3",
 		"@rollup/plugin-strip": "^3.0.4",
 		"@rollup/plugin-terser": "^1.0.0",
 		"@rollup/plugin-typescript": "^12.3.0",
 		"@types/node": "^26.0.1",
-		"eslint": "^10.5.0",
+		"browserslist": "^4.28.8",
+		"eslint": "^10.8.1",
+		"eslint-plugin-compat": "^7.0.2",
+		"eslint-plugin-es-x": "^10.0.0",
 		"globals": "^17.7.0",
 		"happy-dom": "^20.10.6",
 		"magic-string": "^0.30.21",

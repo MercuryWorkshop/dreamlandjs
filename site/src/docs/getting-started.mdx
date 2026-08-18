@@ -9,7 +9,7 @@ This means you'll either need a bundler or an importmap to use it.
 Additionally, dreamland exposes one global (the `use` function) with `Object.defineProperty` so it doesn't play nice with multiple versions in the dependency tree.
 Sadly `use` can't be exported via ESM as the state system requires it to actually be a getter that returns a function.
 
-dreamland targets the oldest browsers that support `:where()` (which is needed for dreamland's scoped CSS - similar to how Svelte needs it), which are **Chrome 88**, **Firefox 78**, and **Safari 14**. Transpilers can be used to run dreamland core on older versions, but scoped CSS will break.
+dreamland targets **Chrome 88**, **Firefox 79**, and **Safari 14.1** (due to usage of `:where()` in scoped CSS and `WeakRef`s in the state system). Transpilers and polyfills can be used to run dreamland on older versions, but scoped CSS will break.
 
 ## Pure JS
 

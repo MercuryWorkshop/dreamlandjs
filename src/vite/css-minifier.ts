@@ -1,5 +1,5 @@
 import type { Plugin } from "vite";
-import { transform } from "lightningcss";
+import { Targets, transform } from "lightningcss";
 import MagicString from "magic-string";
 import type { FilterPattern } from "vite";
 import { createFilter } from "vite";
@@ -7,6 +7,7 @@ import { createFilter } from "vite";
 export type CssMinifierOptions = {
 	include?: FilterPattern;
 	exclude?: FilterPattern;
+	targets?: Targets;
 };
 
 export let cssMinifier = (options: CssMinifierOptions = {}): Plugin => {
@@ -162,6 +163,7 @@ export let cssMinifier = (options: CssMinifierOptions = {}): Plugin => {
 							filename: id,
 							code: Buffer.from(combined),
 							minify: true,
+							targets: options.targets,
 						});
 						let minified = result.code.toString();
 
