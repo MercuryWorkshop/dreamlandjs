@@ -62,8 +62,8 @@ export interface InitializingPointer {
 }
 
 let unwrapStep = (val: StateStep): any => unwrapValue(val._prop);
-let followPath = (obj: any, path: ReadonlyArray<StateStep>): any =>
-	path.reduce((acc, x) => acc[unwrapStep(x)], obj);
+let followPath = (obj: any, path: ReadonlyArray<StateStep>): any => path.length - 1 ? 
+	path.reduce((acc, x) => acc[unwrapStep(x)], obj) : obj[unwrapStep(path[0])];
 
 let newPtr = (ptr: InternalPointer<any>) => new Pointer<any>(ptr);
 

@@ -12,10 +12,11 @@ const enum ChildStateType {
 	Pointer = 4,
 }
 
+// Comment and Node have _value to reduce object shapes
 type ChildState =
 	| { _type: ChildStateType.Text; _node: Text; _value: string | number }
-	| { _type: ChildStateType.Comment; _node: Comment }
-	| { _type: ChildStateType.Node; _node: Node }
+	| { _type: ChildStateType.Comment; _node: Comment; _value: number }
+	| { _type: ChildStateType.Node; _node: Node; _value: number }
 	| {
 			_type: ChildStateType.Pointer;
 			_anchor: Comment;
@@ -71,7 +72,7 @@ export let mapChild = (
 	if (child == null || typeof child == "boolean") {
 		return last?._type == ChildStateType.Comment
 			? last
-			: { _type: ChildStateType.Comment, _node: new_Comment("") };
+			: { _type: ChildStateType.Comment, _node: new_Comment(""), _value: 0 };
 	} else if (child instanceof Pointer) {
 		let old: Node[],
 			current: Node[],
@@ -132,7 +133,7 @@ export let mapChild = (
 			last._node = child;
 			return last;
 		}
-		return { _type: ChildStateType.Node, _node: child };
+		return { _type: ChildStateType.Node, _node: child, _value: 0 };
 	} else if (child instanceof Array) {
 		if (!(last instanceof Array)) last = [last] as any as ChildStateArray;
 		return child.map((x, i) =>
@@ -145,8 +146,8 @@ export let mapChild = (
 		}
 		return {
 			_type: ChildStateType.Text,
-			_value: child,
 			_node: new_Text(child as any),
+			_value: child,
 		};
 	}
 };

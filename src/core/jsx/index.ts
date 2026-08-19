@@ -58,7 +58,8 @@ function _jsx(
 		let [, , , , genCssUid, hydrating, ssrTransform, cxs, inits, mounts] =
 			getDom();
 
-		let state = createState({ children }) as Stateful<any>;
+		let _state: any = { children };
+		let state = createState(_state) as Stateful<any>;
 		let tmp;
 
 		for (let attr in props) {
@@ -69,7 +70,7 @@ function _jsx(
 			if (val instanceof Pointer) {
 				stateProxy(state, attr, val);
 			} else {
-				state[attr] = val;
+				_state[attr] = val;
 			}
 		}
 
@@ -83,9 +84,9 @@ function _jsx(
 			[NO_CHANGE]: [],
 		} as ComponentContext<any>;
 
-		state.cx = cx;
+		_state.cx = cx;
 		el = withCx(cx, init, state, state);
-		state.root = el;
+		_state.root = el;
 
 		dev: {
 			if (cssId && !(el instanceof NODE))
