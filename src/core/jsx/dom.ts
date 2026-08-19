@@ -3,31 +3,37 @@ import { Component, ComponentContext, ComponentState } from "./definitions";
 
 export let CREATE_ELEMENT = "createElement" as const;
 
-type NodeConstructor = (text?: string) => any;
-type CssUidGenerator = (
+export const enum DomLifecycleState {
+	Init = 1,
+	Mount = 2,
+}
+
+export type DomNodeConstructor = (text?: string) => any;
+export type DomCssUidGenerator = (
 	init: Component<any, any>,
 	style: HTMLStyleElement
 ) => string;
-type IsHydrating = (el: HTMLElement) => boolean;
-type SsrTransformCallback = <T extends Component<any, any>>(
+export type DomIsAdopted = (el: HTMLElement) => boolean;
+export type DomComponentCallback = <T extends Component<any, any>>(
 	init: T,
 	state: ComponentState<T>,
 	cx?: ComponentContext<T>
 ) => void;
-type CxList = ComponentContext<Component<any, any>>[];
-type CbRetList = (Promise<any> | any)[];
+export type DomLifecycleCallback = <T extends Component<any, any>>(
+	state: DomLifecycleState,
+	cx: ComponentContext<T>,
+	result: any | Promise<any>
+) => void;
 
 export type DomImpl = [
 	document: any,
 	Node: any,
-	new_Text: NodeConstructor,
-	new_Comment: NodeConstructor,
-	gencssuid: CssUidGenerator,
-	hydrating?: IsHydrating,
-	ssrTransform?: SsrTransformCallback,
-	cxs?: CxList,
-	inits?: CbRetList,
-	mounts?: CbRetList,
+	new_Text: DomNodeConstructor,
+	new_Comment: DomNodeConstructor,
+	gencssuid: DomCssUidGenerator,
+	isAdopted: DomIsAdopted,
+	lifecycle: DomLifecycleCallback,
+	component?: DomComponentCallback,
 ];
 
 let defaultDom: DomImpl = [
@@ -38,6 +44,7 @@ let defaultDom: DomImpl = [
 	// js-valid but selector-invalid chars can make it into init.name
 	(init) => init.name.replaceAll(/[^\w-]/g, "_") + "-" + genuid(),
 	() => false,
+	() => {},
 ];
 export let getDom: () => DomImpl = () => defaultDom;
 

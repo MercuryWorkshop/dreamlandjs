@@ -1,4 +1,4 @@
-import { getDom, CREATE_ELEMENT } from "./dom";
+import { getDom, CREATE_ELEMENT, DomLifecycleState } from "./dom";
 import { CSS_COMPONENT } from "../css";
 import {
 	Component,
@@ -55,12 +55,10 @@ function _jsx(
 	let el: HTMLElement;
 
 	if (typeof init === "function") {
-		let [, , , , genCssUid, hydrating, ssrTransform, cxs, inits, mounts] =
-			getDom();
+		let [, , , , genCssUid, isAdopted, lifecycle, componentCb] = getDom();
 
 		let _state: any = { children };
 		let state = createState(_state) as Stateful<any>;
-		let tmp;
 
 		for (let attr in props) {
 			if (attr == "children") continue;
@@ -74,10 +72,10 @@ function _jsx(
 			}
 		}
 
-		ssrTransform?.(init, state);
+		componentCb?.(init, state);
 
 		let style = init.style;
-		let cssId = style?._get(DOCUMENT, hydrating, genCssUid, init);
+		let cssId = style?._get(DOCUMENT, isAdopted, genCssUid, init);
 		let cx = {
 			state,
 			id: cssId,
@@ -110,23 +108,17 @@ function _jsx(
 			}
 		}
 
-		ssrTransform?.(init, state, cx);
+		componentCb?.(init, state, cx);
 
-		tmp = cx.init && withCx(cx, cx.init);
-		inits?.push(tmp);
-
-		if (el instanceof NODE && hydrating?.(el)) cxs?.push(cx);
-		else if (hydrating) {
-			tmp = cx.mount && withCx(cx, cx.mount);
-			mounts?.push(tmp);
-		}
+		if (cx.init) lifecycle(DomLifecycleState.Init, cx, withCx(cx, cx.init));
+		if (cx.mount) lifecycle(DomLifecycleState.Mount, cx, withCx(cx, cx.mount));
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
 		let xmlns = props?.xmlns;
 		let lastCssIdent = currentComponentCx?.id;
 		let setAttr = (param: string, val: any) => {
-			if (getDom()[5]?.(el)) return;
+			if (getDom()[5](el)) return;
 
 			if (val === undefined || val === false) el.removeAttribute(param);
 			else el.setAttribute(param, val);
@@ -195,7 +187,7 @@ function _jsx(
 				});
 			} else if (attr.startsWith("attr:")) {
 				maybeListen(val, el, (val: boolean) => {
-					if (!getDom()[5]?.(el)) (el as any)[attr.slice(5)] = val;
+					if (!getDom()[5](el)) (el as any)[attr.slice(5)] = val;
 				});
 			} else if (
 				attr == "style" &&

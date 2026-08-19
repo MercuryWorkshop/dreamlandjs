@@ -304,10 +304,15 @@ export let newVDom = () => {
 			(style as any as Style).setAttribute(SSR_DATA, ret);
 			return ret;
 		},
-		undefined, // enables "ssr mode"
-		undefined,
-		undefined,
-		promises,
-		promises,
+		() => false,
+		(_state, _cx, result) => {
+			promises.push(result);
+		},
+		(_init, _state, cx) => {
+			if (cx) {
+				// we are in ssr, no running mounts
+				cx.mount = undefined;
+			}
+		},
 	] as const satisfies DomImpl;
 };

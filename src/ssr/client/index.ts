@@ -1,8 +1,8 @@
 import {
-	Component,
 	ComponentContext,
 	DomImpl,
 	domImpl,
+	DomLifecycleState,
 	jsx,
 	setDomImpl,
 } from "dreamland/core";
@@ -54,8 +54,6 @@ export let hydrate = async (
 		}
 	}
 
-	let els: [number, HTMLElement][] = [];
-
 	let rootIdx = +ssr.getAttribute(SSR_ID)!;
 	let idx = -1;
 	let getInternal = (idx: number) => {
@@ -65,7 +63,6 @@ export let hydrate = async (
 				? ssr
 				: ssr.querySelector<HTMLElement>(selector) ||
 					head.querySelector<HTMLElement>(selector);
-		if (ret) els.push([idx, ret]);
 		return ret;
 	};
 	let getRelative = () => {
@@ -81,7 +78,7 @@ export let hydrate = async (
 			hydrateState(data, ssr as SsrObject, cx.state);
 		}
 	};
-	let hydrating = (x: HTMLElement) => x.hasAttribute(SSR_ID);
+	let adopted = (x: HTMLElement) => x.hasAttribute(SSR_ID);
 
 	for (let [parent, offset, len] of data.t) {
 		let text = getInternal(parent)!.childNodes[offset] as Text;
@@ -90,7 +87,6 @@ export let hydrate = async (
 
 	let _old = domImpl,
 		old = _old();
-	let cxs: ComponentContext<Component<any, any>>[] = [];
 	let inits: (Promise<any> | any)[] = [];
 	let mounts: typeof inits = [];
 	let vdom = [
@@ -164,14 +160,14 @@ export let hydrate = async (
 			return node || old[3](x);
 		},
 		(init, style) => style.getAttribute(SSR_DATA) || old[4](init, style),
-		hydrating,
-		(_init, _state, cx) => {
-			if (cx?.state?.root instanceof old[1] && !hydrating(cx.state?.root))
-				hydrateCx(cx);
+		adopted,
+		(stage, _cx, res) => {
+			if (stage == DomLifecycleState.Init) inits.push(res);
+			else mounts.push(res);
 		},
-		cxs,
-		inits,
-		mounts,
+		(_init, _state, cx) => {
+			if (cx) hydrateCx(cx);
+		},
 	] as const satisfies DomImpl;
 
 	setDomImpl(() => vdom);
@@ -180,11 +176,6 @@ export let hydrate = async (
 		await Promise.all(inits.splice(0));
 	}
 	setDomImpl(_old);
-
-	cxs.map((x) => {
-		hydrateCx(x);
-		mounts.push(x.mount?.());
-	});
 
 	await Promise.all(mounts);
 

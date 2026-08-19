@@ -24,7 +24,17 @@ export {
 	JSX,
 } from "./jsx/definitions";
 export { h, jsx, Fragment } from "./jsx";
-export { setDomImpl, getDom as domImpl, DomImpl } from "./jsx/dom";
+export {
+	setDomImpl,
+	getDom as domImpl,
+	DomImpl,
+	DomNodeConstructor,
+	DomCssUidGenerator,
+	DomIsAdopted,
+	DomComponentCallback,
+	DomLifecycleState,
+	DomLifecycleCallback,
+} from "./jsx/dom";
 
 export { NO_CHANGE } from "./consts";
 
