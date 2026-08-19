@@ -69,6 +69,15 @@ export interface StepCollector {
 
 export let stepCollectors: StepCollector[] = [];
 
+// do not close over anything otherwise it'll keep stuff alive
+let stepCollectorHandler: ProxyHandler<StepCollector> = {
+	get(collector, p, receiver) {
+		if (p === Symbol.toPrimitive) return () => collector._sym;
+		collector._ptr._path.push(p as ObjectProp);
+		return receiver;
+	},
+};
+
 export let createState = <T extends object>(target: T): Stateful<T> => {
 	let internal: InternalStateful = {
 		_listeners: [],
@@ -80,30 +89,19 @@ export let createState = <T extends object>(target: T): Stateful<T> => {
 			if (p === DREAMLAND) return internal;
 
 			if (useTrap) {
-				let sym = Symbol();
-				let ptr: InitializingPointer = {
+				let _sym = Symbol();
+				let _ptr: InitializingPointer = {
 					_state: ret,
 					_path: [p],
 				} as any;
-				let collector;
-				if (!(collector = stepCollectors.pop())) {
-					collector = {
-						_proxy: new Proxy(
-							{},
-							{
-								get(target, p, receiver) {
-									if (p === Symbol.toPrimitive) return () => collector!._sym;
-									collector!._ptr._path.push(p);
-									return receiver;
-								},
-							}
-						),
-					} as any;
+				let collector = stepCollectors.pop() || ({} as StepCollector);
+				if (!collector._proxy) {
+					collector._proxy = new Proxy(collector, stepCollectorHandler);
 				}
-				collector._sym = sym;
-				collector._ptr = ptr;
-				ptr._collector = collector;
-				useTrapMap.set(sym, ptr);
+				collector._sym = _sym;
+				collector._ptr = _ptr;
+				_ptr._collector = collector;
+				useTrapMap.set(_sym, _ptr);
 
 				return collector._proxy;
 			}

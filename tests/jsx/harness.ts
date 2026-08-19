@@ -54,3 +54,23 @@ export let jsxTest: typeof test = (name, fn) => {
 	test(name, () => runTest(createSsrVdom(), fn), "dlssr-dom");
 	test(name, () => runTest(createHappyDom(), fn), "happy-dom");
 };
+
+// A pointer child renders as a single leading anchor comment followed by its
+// content; there is no closing marker. Arrays contribute no nodes of their own,
+// so `<div>{use(x)}</div>` with a scalar is 2 nodes and with a 3-element array
+// is 4, at any nesting depth.
+export let shape = (el: Node) =>
+	[...el.childNodes]
+		.map((n: any) =>
+			n.nodeType === 3
+				? JSON.stringify(n.data)
+				: n.nodeType === 8
+					? "!"
+					: // happy-dom exposes nodeName, the ssr vdom exposes `type`
+						"<" + (n.nodeName || n.type).toLowerCase() + ">"
+		)
+		.join(",");
+
+// the css ident and the component marker live in attributes, so classList holds
+// only what `class` / `class:` put there
+export let ownClasses = (el: any) => [...el.classList].sort().join(" ");

@@ -14,7 +14,7 @@ import {
 // the server sent -- the same node objects, not equivalent replacements -- and
 // every binding is live.
 
-ssrTest("ssr/hydrate: static tree round-trips", async () => {
+ssrTest("static tree round-trips", async () => {
 	let Leaf = function () {
 		return jsx("span", { children: "leaf" });
 	};
@@ -32,41 +32,38 @@ ssrTest("ssr/hydrate: static tree round-trips", async () => {
 	check("client matches server").assertEq(norm(r.client), norm(r.body));
 });
 
-ssrTest(
-	"ssr/hydrate: adopts server nodes instead of rebuilding them",
-	async () => {
-		let App = function () {
-			return jsx("main", {
-				children: [
-					jsx("p", { children: "one" }),
-					jsx("ul", {
-						children: [1, 2, 3].map((i) => jsx("li", { children: "" + i })),
-					}),
-				],
-			});
-		};
+ssrTest("adopts server nodes instead of rebuilding them", async () => {
+	let App = function () {
+		return jsx("main", {
+			children: [
+				jsx("p", { children: "one" }),
+				jsx("ul", {
+					children: [1, 2, 3].map((i) => jsx("li", { children: "" + i })),
+				}),
+			],
+		});
+	};
 
-		let win = mountDocument(await serverRender(App));
-		let before = [...win.document.body.querySelectorAll("*")];
-		let root = await hydrateIn(win, App);
-		let after = [...win.document.body.querySelectorAll("*")];
+	let win = mountDocument(await serverRender(App));
+	let before = [...win.document.body.querySelectorAll("*")];
+	let root = await hydrateIn(win, App);
+	let after = [...win.document.body.querySelectorAll("*")];
 
-		check("no elements added or dropped").assertEq(after.length, before.length);
-		// identity, not equality: a fresh element with the same tag passes a markup
-		// comparison while having lost every server-rendered attribute and leaving
-		// the original orphaned in the tree
-		check("every element is the same object").assertEq(
-			after.every((x, i) => x === before[i]),
-			true
-		);
-		check("hydrate returns the server root").assertEq(
-			root,
-			win.document.body.firstElementChild
-		);
-	}
-);
+	check("no elements added or dropped").assertEq(after.length, before.length);
+	// identity, not equality: a fresh element with the same tag passes a markup
+	// comparison while having lost every server-rendered attribute and leaving
+	// the original orphaned in the tree
+	check("every element is the same object").assertEq(
+		after.every((x, i) => x === before[i]),
+		true
+	);
+	check("hydrate returns the server root").assertEq(
+		root,
+		win.document.body.firstElementChild
+	);
+});
 
-ssrTest("ssr/hydrate: listeners bind to the adopted elements", async () => {
+ssrTest("listeners bind to the adopted elements", async () => {
 	let state = createState({ clicks: 0 });
 	let App = function () {
 		return jsx("main", {
@@ -87,7 +84,7 @@ ssrTest("ssr/hydrate: listeners bind to the adopted elements", async () => {
 	check("dom updated through the server node").assertEq(span.textContent, "1");
 });
 
-ssrTest("ssr/hydrate: pointer-driven attributes stay live", async () => {
+ssrTest("pointer-driven attributes stay live", async () => {
 	let state = createState({ cls: "a", flag: false });
 	let App = function () {
 		return jsx("main", {
@@ -111,7 +108,7 @@ ssrTest("ssr/hydrate: pointer-driven attributes stay live", async () => {
 	check("property updates after hydration").assertEq((div as any).inert, true);
 });
 
-ssrTest("ssr/hydrate: null pointer children round-trip", async () => {
+ssrTest("null pointer children round-trip", async () => {
 	let state = createState({ value: null as string | null });
 	let App = function () {
 		return jsx("main", { children: [use(state.value), jsx("hr", {})] });
@@ -131,7 +128,7 @@ ssrTest("ssr/hydrate: null pointer children round-trip", async () => {
 	);
 });
 
-ssrTest("ssr/hydrate: adjacent text nodes are re-split", async () => {
+ssrTest("adjacent text nodes are re-split", async () => {
 	// the server emits these as two text nodes; the html parser merges them into
 	// one, so the payload has to carry enough to cut it apart again or every
 	// later child index in this parent is off by one
@@ -149,7 +146,7 @@ ssrTest("ssr/hydrate: adjacent text nodes are re-split", async () => {
 	check("markup is unchanged").assertEq(norm(r.client), norm(r.body));
 });
 
-ssrTest("ssr/hydrate: svg elements round-trip", async () => {
+ssrTest("svg elements round-trip", async () => {
 	let App = function () {
 		return jsx("main", {
 			children: jsx("svg", {
@@ -176,42 +173,39 @@ ssrTest("ssr/hydrate: svg elements round-trip", async () => {
 	);
 });
 
-ssrTest(
-	"ssr/hydrate: component css is installed once and scopes match",
-	async () => {
-		let Styled: any = function () {
-			return jsx("div", { children: "styled" });
-		};
-		Styled.style = css`
-			:scope {
-				color: red;
-			}
-		`;
-		let App = function () {
-			return jsx("main", { children: [jsx(Styled, {}), jsx(Styled, {})] });
-		};
+ssrTest("component css is installed once and scopes match", async () => {
+	let Styled: any = function () {
+		return jsx("div", { children: "styled" });
+	};
+	Styled.style = css`
+		:scope {
+			color: red;
+		}
+	`;
+	let App = function () {
+		return jsx("main", { children: [jsx(Styled, {}), jsx(Styled, {})] });
+	};
 
-		let r = await roundTrip(App);
-		let styles = [...r.win.document.head.querySelectorAll("style")];
+	let r = await roundTrip(App);
+	let styles = [...r.win.document.head.querySelectorAll("style")];
 
-		check("one stylesheet for two instances").assertEq(styles.length, 1);
-		check("client did not append another").assertEq(
-			r.win.document.querySelectorAll("style").length,
-			1
-		);
+	check("one stylesheet for two instances").assertEq(styles.length, 1);
+	check("client did not append another").assertEq(
+		r.win.document.querySelectorAll("style").length,
+		1
+	);
 
-		// both instances must carry the scope attribute the server baked into the
-		// stylesheet -- a mismatch here renders the component unstyled
-		let ident = styles[0].getAttribute("dlcss-id")!;
-		let divs = [...r.win.document.querySelectorAll("div")];
-		check("ident is present").assertEq(!!ident, true);
-		check("scope ident is on both instances").assertEq(
-			divs.length === 2 && divs.every((d) => d.hasAttribute(ident)),
-			true
-		);
-		check("stylesheet text uses that ident").assertEq(
-			styles[0].textContent!.includes(ident),
-			true
-		);
-	}
-);
+	// both instances must carry the scope attribute the server baked into the
+	// stylesheet -- a mismatch here renders the component unstyled
+	let ident = styles[0].getAttribute("dlcss-id")!;
+	let divs = [...r.win.document.querySelectorAll("div")];
+	check("ident is present").assertEq(!!ident, true);
+	check("scope ident is on both instances").assertEq(
+		divs.length === 2 && divs.every((d) => d.hasAttribute(ident)),
+		true
+	);
+	check("stylesheet text uses that ident").assertEq(
+		styles[0].textContent!.includes(ident),
+		true
+	);
+});

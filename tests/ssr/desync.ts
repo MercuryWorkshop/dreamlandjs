@@ -13,7 +13,7 @@ import {
 // tests pin down how far the damage is allowed to spread.
 
 ssrTest(
-	"KNOWN BUG ssr/desync: an extra client element does not destroy its siblings",
+	"KNOWN BUG: an extra client element does not destroy its siblings",
 	async () => {
 		let client = false;
 		let Middle = function () {
@@ -63,7 +63,7 @@ ssrTest(
 );
 
 ssrTest(
-	"KNOWN BUG ssr/desync: a missing client element does not destroy its siblings",
+	"KNOWN BUG: a missing client element does not destroy its siblings",
 	async () => {
 		// the mirror case: the server rendered a node the client does not, so the
 		// counter runs ahead instead of behind
@@ -110,7 +110,7 @@ ssrTest(
 );
 
 ssrTest(
-	"KNOWN BUG ssr/desync: a tag mismatch does not adopt the wrong element",
+	"KNOWN BUG: a tag mismatch does not adopt the wrong element",
 	async () => {
 		// createElement looks the id up and uses whatever comes back. the dev build
 		// warns about the tag mismatch but still adopts it, so bindings meant for a
@@ -136,7 +136,7 @@ ssrTest(
 	}
 );
 
-ssrTest("ssr/desync: identical trees leave the counter aligned", async () => {
+ssrTest("identical trees leave the counter aligned", async () => {
 	// the control for the tests above: no divergence, so nothing is created that
 	// the server did not send and the markup is byte-identical
 	let Row = function (this: any) {
@@ -164,7 +164,7 @@ ssrTest("ssr/desync: identical trees leave the counter aligned", async () => {
 });
 
 ssrTest(
-	"KNOWN BUG ssr/desync: a client-only component does not shift its siblings",
+	"KNOWN BUG: a client-only component does not shift its siblings",
 	async () => {
 		// component instantiation order is what any per-component payload key would
 		// be counted against, so an extra component is the coarsest divergence there is
