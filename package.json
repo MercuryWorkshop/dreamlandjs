@@ -25,7 +25,7 @@
 		"watch": "rollup -cw --config-dev",
 		"format": "prettier -w .",
 		"lint": "eslint",
-		"test": "bash tests/run.sh tests/core/ tests/jsx/ tests/util/",
+		"test": "bash tests/run.sh tests/core/ tests/jsx/ tests/util/ tests/ssr/",
 		"all": "pnpm format && pnpm lint && pnpm build && pnpm test && dust -sbo b dist/{core,{js,jsx}-runtime,router,ssr.{client,server},motion,vite,util}.js",
 		"prepack": "npm run build"
 	},

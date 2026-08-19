@@ -71,7 +71,7 @@ export let mapChild = (
 	if (child == null || typeof child == "boolean") {
 		return last?._type == ChildStateType.Comment
 			? last
-			: { _type: ChildStateType.Comment, _node: new_Comment() };
+			: { _type: ChildStateType.Comment, _node: new_Comment("") };
 	} else if (child instanceof Pointer) {
 		let old: Node[],
 			current: Node[],
@@ -95,32 +95,29 @@ export let mapChild = (
 			old = flattenChildRet(ret._inner); // since reused nodes are modified inplace
 			ret._inner = mapChild(v, parent, ident, ret._inner);
 
-			// pretty sure it's not possible to put a pointer child in not a htmlelement
-			if (!getDom()[5]?.(parent as HTMLElement)) {
-				current = flattenChildRet(ret._inner);
-				oldToIndex = MAP(old.map((x, i) => [x, i]));
-				// undefined -> NaN (falsy), 0 -> 1 (truthy), n -> n+1 (truthy)
-				LIS = findLIS(
-					current.map((x) => oldToIndex.get(x)!).filter((x) => x + 1)
-				);
-				lisIdx = 0;
+			current = flattenChildRet(ret._inner);
+			oldToIndex = MAP(old.map((x, i) => [x, i]));
+			// undefined -> NaN (falsy), 0 -> 1 (truthy), n -> n+1 (truthy)
+			LIS = findLIS(
+				current.map((x) => oldToIndex.get(x)!).filter((x) => x + 1)
+			);
+			lisIdx = 0;
 
-				anchor = ret._anchor;
-				current.forEach((child) => {
-					// LIS is a subsequence of the reused indices in current order, so one
-					// cursor picks out the stay-put nodes without a second lookup table.
-					// the +1 makes an absent index NaN, which never matches a spent LIS
-					if (oldToIndex.get(child)! + 1 === LIS[lisIdx] + 1) lisIdx++;
-					else parent.insertBefore(child, anchor.nextSibling);
-					oldToIndex.delete(child);
-					anchor = child;
-				});
+			anchor = ret._anchor;
+			current.forEach((child) => {
+				// LIS is a subsequence of the reused indices in current order, so one
+				// cursor picks out the stay-put nodes without a second lookup table.
+				// the +1 makes an absent index NaN, which never matches a spent LIS
+				if (oldToIndex.get(child)! + 1 === LIS[lisIdx] + 1) lisIdx++;
+				else parent.insertBefore(child, anchor.nextSibling);
+				oldToIndex.delete(child);
+				anchor = child;
+			});
 
-				// whatever is left unclaimed is exactly the dropped set
-				oldToIndex.forEach(
-					(_, x) => x.parentNode === parent && parent.removeChild(x)
-				);
-			}
+			// whatever is left unclaimed is exactly the dropped set
+			oldToIndex.forEach(
+				(_, x) => x.parentNode === parent && parent.removeChild(x)
+			);
 		});
 
 		return ret;
