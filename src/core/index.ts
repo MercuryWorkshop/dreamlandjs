@@ -12,7 +12,7 @@ export {
 
 export { createDelegate, Delegate } from "./delegate";
 
-export { css } from "./css";
+export { css, CssInit } from "./css";
 
 export {
 	ComponentChild,
