@@ -4,8 +4,10 @@ import "./state";
 export { Pointer } from "./state/pointers";
 export {
 	Stateful,
+	StatefulListener,
 	createState,
 	stateListen,
+	stateListenRemove,
 	stateProxy,
 	isStateful,
 } from "./state/state";

@@ -128,6 +128,37 @@ ssrTest("null pointer children round-trip", async () => {
 	);
 });
 
+ssrTest("a mid-render value keeps later child offsets aligned", async () => {
+	// the body runs before init settles, so both sides stamp a placeholder comment
+	// for the empty value. the server then resolves it, drops the placeholder and
+	// emits a text node -- which the client can only locate by child index. the
+	// client's own placeholder is briefly in the dom at that index, so an offset
+	// read after it is inserted lands on the comment instead of the text
+	let App: any = function (this: any) {
+		this.title = undefined as string | undefined;
+		this.cx.init = async () => {
+			await Promise.resolve();
+			this.title = "resolved";
+		};
+		return jsx("main", { children: use(this.title) });
+	};
+
+	let r = await roundTrip(App);
+	let main = r.win.document.body.firstElementChild;
+
+	check("server emitted a text node").assertEq(
+		norm(r.body),
+		"<main><!--[-->resolved</main>"
+	);
+	check("client matches server").assertEq(norm(r.client), norm(r.body));
+	check("no leftover placeholder").assertEq(shape(main), '!,"resolved"');
+
+	// the binding has to own the server's text node rather than the placeholder it
+	// was meant to replace, or updates are written into a comment and never show
+	r.root.$.state.title = "updated";
+	check("updates reach the text node").assertEq(shape(main), '!,"updated"');
+});
+
 ssrTest("adjacent text nodes are re-split", async () => {
 	// the server emits these as two text nodes; the html parser merges them into
 	// one, so the payload has to carry enough to cut it apart again or every

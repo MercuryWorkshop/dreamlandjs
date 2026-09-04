@@ -4,8 +4,9 @@ import { Component, ComponentContext, ComponentState } from "./definitions";
 export let CREATE_ELEMENT = "createElement" as const;
 
 export const enum DomLifecycleState {
-	Init = 1,
-	Mount = 2,
+	Load = 1,
+	Init = 2,
+	Mount = 3,
 }
 
 export type DomNodeConstructor = (text?: string) => any;

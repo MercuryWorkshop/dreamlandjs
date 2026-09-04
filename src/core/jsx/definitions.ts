@@ -51,9 +51,8 @@ type ComponentCx<StatefulProps extends { [DREAMLAND]?: never } & object> = {
 	state: Stateful<StatefulProps>;
 	id?: string;
 
-	// Run on client and server (return value not accessible)
+	load?: () => Promise<any> | any;
 	init?: () => Promise<any> | any;
-	// Run only on client (return value not accessible)
 	mount?: () => Promise<any> | any;
 } & {
 	[K in keyof DLComponentContextExtraProps]?: DLComponentContextExtraProps[K];

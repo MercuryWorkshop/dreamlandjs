@@ -12,6 +12,7 @@ import {
 import { parseDocument } from "htmlparser2";
 import renderToString from "dom-serializer";
 import { SSR_DATA, SSR_ID } from "../common/consts";
+import { ObjectMap, WatchedState, watchState } from "../common/serialize";
 
 export class Node {
 	_id!: number;
@@ -110,6 +111,7 @@ export class Element extends Node {
 	classList = new ClassList();
 
 	component: ComponentContext<any> | undefined;
+	watchedState: WatchedState | undefined;
 
 	style = new CSSOM.CSSStyleDeclaration();
 
@@ -272,6 +274,8 @@ export let newVDom = () => {
 
 	let identArr: Map<number, string> = new Map();
 
+	let objectMap: ObjectMap = new Map();
+
 	let promises: (Promise<any> | any)[] = [];
 
 	return [
@@ -285,6 +289,7 @@ export let newVDom = () => {
 
 			elArr,
 			identArr,
+			objectMap,
 
 			promises,
 
@@ -308,10 +313,20 @@ export let newVDom = () => {
 		(_state, _cx, result) => {
 			promises.push(result);
 		},
-		(_init, _state, cx) => {
+		(_init, state, cx) => {
 			if (cx) {
 				// we are in ssr, no running mounts
 				cx.mount = undefined;
+				let load = cx.load;
+				if (load) {
+					cx.load = async () => {
+						(state.root as any as Element).watchedState = await watchState(
+							state,
+							objectMap,
+							load
+						);
+					};
+				}
 			}
 		},
 	] as const satisfies DomImpl;

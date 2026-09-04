@@ -131,6 +131,14 @@ export let stateListen = <T extends object>(
 ) => {
 	state[DREAMLAND]._listeners.push(func);
 };
+export let stateListenRemove = <T extends object>(
+	state: Stateful<T>,
+	func: StatefulListener
+) => {
+	state[DREAMLAND]._listeners = state[DREAMLAND]._listeners.filter(
+		(x) => x !== func
+	);
+};
 
 export let stateProxy = <T extends object, Key extends keyof T & ObjectProp>(
 	state: Stateful<T>,

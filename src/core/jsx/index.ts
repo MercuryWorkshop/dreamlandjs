@@ -1,4 +1,9 @@
-import { getDom, CREATE_ELEMENT, DomLifecycleState } from "./dom";
+import {
+	getDom,
+	CREATE_ELEMENT,
+	DomLifecycleState as Lifecycle,
+	DomLifecycleCallback,
+} from "./dom";
 import { CSS_COMPONENT } from "../css";
 import {
 	Component,
@@ -24,6 +29,23 @@ let setStyle = (
 		else style.setProperty(k, v);
 	});
 
+let runLifecycle = (
+	lifecycle: DomLifecycleCallback,
+	stage: Lifecycle,
+	cx: ComponentContext<any>,
+	cb?: () => Pointer<any> | any,
+	prev?: Pointer<any> | any
+): Pointer<any> | any => {
+	let ret;
+	if (!cb) return prev;
+	ret =
+		prev && prev instanceof Promise
+			? prev.then(() => withCx(cx, cb))
+			: withCx(cx, cb);
+	lifecycle(stage, cx, ret);
+	return ret;
+};
+
 function _jsx<T extends Component<any, any>>(
 	init: T,
 	props: Record<string, any> | null,
@@ -41,24 +63,33 @@ function _jsx(
 ): HTMLElement {
 	props ||= {};
 
-	let [DOCUMENT, NODE] = getDom();
-
 	dev: {
 		if (!["string", "function"].includes(typeof init))
 			throw new Error("invalid component");
 	}
 
+	let [DOCUMENT, NODE] = getDom();
 	let children = props.children;
+	let el: HTMLElement;
+
 	if (init === Fragment) return children;
 	if (key) props.key = key;
-
-	let el: HTMLElement;
 
 	if (typeof init === "function") {
 		let [, , , , genCssUid, isAdopted, lifecycle, componentCb] = getDom();
 
 		let _state: any = { children };
 		let state = createState(_state) as Stateful<any>;
+
+		let lifeTmp: any;
+
+		let style = init.style;
+		let cssId = style?._get(DOCUMENT, isAdopted, genCssUid, init);
+		let cx = {
+			state,
+			id: cssId,
+			[NO_CHANGE]: [],
+		} as ComponentContext<any>;
 
 		for (let attr in props) {
 			if (attr == "children") continue;
@@ -73,14 +104,6 @@ function _jsx(
 		}
 
 		componentCb?.(init, state);
-
-		let style = init.style;
-		let cssId = style?._get(DOCUMENT, isAdopted, genCssUid, init);
-		let cx = {
-			state,
-			id: cssId,
-			[NO_CHANGE]: [],
-		} as ComponentContext<any>;
 
 		_state.cx = cx;
 		el = withCx(cx, init, state, state);
@@ -110,8 +133,9 @@ function _jsx(
 
 		componentCb?.(init, state, cx);
 
-		if (cx.init) lifecycle(DomLifecycleState.Init, cx, withCx(cx, cx.init));
-		if (cx.mount) lifecycle(DomLifecycleState.Mount, cx, withCx(cx, cx.mount));
+		lifeTmp = runLifecycle(lifecycle, Lifecycle.Load, cx, cx.load);
+		lifeTmp = runLifecycle(lifecycle, Lifecycle.Init, cx, cx.init, lifeTmp);
+		runLifecycle(lifecycle, Lifecycle.Mount, cx, cx.mount, lifeTmp);
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute

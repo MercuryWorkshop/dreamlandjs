@@ -17,11 +17,19 @@ let HOSTILE = `</script><img src=x onerror=alert(1)>`;
 
 ssrTest("state cannot break out of the data script", async () => {
 	let App = function (this: any) {
-		this.evil = HOSTILE;
+		this.cx.load = () => {
+			this.evil = HOSTILE;
+		};
 		return jsx("main", {});
 	};
 
 	let r = await serverRender(App);
+	// without this the test passes for the wrong reason if the value never gets
+	// serialized at all
+	check("the value really is in the payload").assertEq(
+		JSON.stringify(r.payload.v).includes("onerror"),
+		true
+	);
 	// exactly one </script -- the tag that closes the payload itself
 	let closers = r.head.split("</script").length - 1;
 	check("no early script close").assertEq(closers, 1);
@@ -31,7 +39,9 @@ ssrTest("state cannot break out of the data script", async () => {
 ssrTest("hostile state still hydrates to the original string", async () => {
 	let side = "server";
 	let App = function (this: any) {
-		this.evil = side === "server" ? HOSTILE : "";
+		this.cx.load = () => {
+			this.evil = side === "server" ? HOSTILE : "";
+		};
 		return jsx("main", {});
 	};
 
@@ -54,7 +64,9 @@ ssrTest("quotes, newlines and astral characters survive", async () => {
 		`"double" 'single' &amp; <b> \n\t \u2028 \u2029 \u00a0 \u{1F600} \\ back`;
 	let side = "server";
 	let App = function (this: any) {
-		this.text = side === "server" ? tricky : "";
+		this.cx.load = () => {
+			this.text = side === "server" ? tricky : "";
+		};
 		return jsx("main", {});
 	};
 
@@ -127,19 +139,39 @@ ssrTest("KNOWN BUG: a null child serializes as an empty comment", async () => {
 	);
 });
 
-ssrTest("no entry is emitted for plain elements", async () => {
-	// only component roots and text/comment nodes need payload entries; a tree of
-	// plain elements should cost nothing beyond its dlssri attributes
-	let App = function () {
-		return jsx("main", {
-			children: jsx("div", {
-				children: jsx("span", { children: jsx("i", {}) }),
-			}),
-		});
-	};
+ssrTest(
+	"entries are emitted only where there is something to carry",
+	async () => {
+		// text/comment nodes need one to be locatable, and a component needs one only
+		// if its load actually wrote something. a tree of plain elements under a
+		// component that never loads should cost nothing beyond its dlssri attributes
+		let App = function () {
+			return jsx("main", {
+				children: jsx("div", {
+					children: jsx("span", { children: jsx("i", {}) }),
+				}),
+			});
+		};
 
-	let r = await serverRender(App);
-	let entries = Object.keys(r.payload.n).length;
-	// just the App component root
-	check("one entry for the component root").assertEq(entries, 1);
-});
+		let r = await serverRender(App);
+		check("nothing to carry, nothing emitted").assertEq(
+			Object.keys(r.payload.n).length,
+			0
+		);
+
+		let Loading = function (this: any) {
+			this.cx.load = () => {
+				this.v = 1;
+			};
+			return jsx("main", {
+				children: jsx("div", { children: jsx("span", {}) }),
+			});
+		};
+
+		let r2 = await serverRender(Loading);
+		check("one entry for the component that loaded").assertEq(
+			Object.keys(r2.payload.n).length,
+			1
+		);
+	}
+);

@@ -5,7 +5,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 import { CSS_IDENT, SSR_DATA } from "../common/consts";
 import { Node, SsrData } from "../common/types";
-import { serializeState } from "../common/serialize";
+import { serializeWatchedStates } from "../common/serialize";
 
 export { newVDom as __unstable_newVdom };
 
@@ -53,9 +53,20 @@ export async function render(
 		};
 		walk(root);
 
+		let [keyStore, valStore, refStore, _serialized] = serializeWatchedStates(
+			vdom[0].objectMap,
+			vdom[0].elArr.flatMap((x) => {
+				if (x instanceof Element && domIds.has(x._id) && x.watchedState)
+					return [[x._id, x.watchedState!]];
+				else return [];
+			})
+		);
+		let serialized = new Map(_serialized);
+
 		let data: SsrData = {
-			k: [],
-			v: [],
+			k: keyStore,
+			v: valStore,
+			r: refStore,
 			n: {},
 			i: Object.fromEntries(
 				[...vdom[0].identArr.entries()].filter(([_, i]) =>
@@ -70,11 +81,7 @@ export async function render(
 
 			let node: Node | undefined;
 			if (el instanceof Element && el.component) {
-				node = serializeState(
-					data,
-					el.component.state,
-					(x) => x instanceof vdom[1]
-				);
+				node = serialized.get(el._id);
 			} else if ((el instanceof Comment || el instanceof Text) && el.parent) {
 				node = [el.parent._id, el.parent.childNodes.indexOf(el)];
 				dev: {

@@ -13,7 +13,8 @@ let CFG = { encodeEntities: "utf8", decodeEntities: false } as const;
 
 export interface SsrPayload {
 	k /* interned keys */: string[];
-	v /* interned values */: any[];
+	v /* interned primitives */: any[];
+	r /* interned refs */: any[];
 	n /* nodes: component state, or [parent, childIndex] for text/comments */: Record<
 		number,
 		any
