@@ -240,3 +240,34 @@ ssrTest("component css is installed once and scopes match", async () => {
 		true
 	);
 });
+
+ssrTest("one-colon pseudo-elements still scope in front", async () => {
+	// dreamland/vite's cssMinifier runs lightningcss, which downlevels the four
+	// pseudo-elements that have a legacy alias -- ::before, ::after, ::first-line,
+	// ::first-letter -- to one colon. so this is the spelling the scoper actually
+	// receives in a built app, and it has to read as a pseudo-element: appending
+	// the scope selector behind one makes a browser empty the :where() argument
+	// list, and the rule then matches nothing. the server's css parser hands
+	// selectors back verbatim, so unlike a browser's cssom it will not normalize
+	// this on the way in
+	let Styled: any = function () {
+		return jsx("div", { children: "styled" });
+	};
+	Styled.style = css`
+		:scope:after {
+			content: "";
+		}
+	`;
+
+	let r = await serverRender(Styled);
+	let ident = r.head.match(/dlcss-id="([^"]+)"/)![1];
+
+	check("selector round-trips as a pseudo-element").assertEq(
+		r.head.includes(`[${ident}][dlc]:where([${ident}])::after`),
+		true
+	);
+	check("scope selector is not left behind it").assertEq(
+		/:{1,2}after:where\(/.test(r.head),
+		false
+	);
+});

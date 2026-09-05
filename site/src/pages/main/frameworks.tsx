@@ -2,30 +2,31 @@ import { css, type FC } from "dreamland/core";
 
 // @ts-expect-error dl:frameworks untyped
 import _frameworks from "dl:frameworks";
-let frameworks = _frameworks as [string, number][];
-frameworks.sort((a, b) => a[1] - b[1]);
+let frameworks = _frameworks as {
+	name: string;
+	bundle: number;
+	gzip: number;
+	brotli: number;
+}[];
+frameworks.sort((a, b) => a.brotli - b.brotli);
 
-let min = frameworks[0][1];
-let max = frameworks[frameworks.length - 1][1];
+let max = frameworks[frameworks.length - 1].brotli;
 
-let bundles = frameworks.map(([name, size]) => ({
-	name,
-	size,
-	relative: (size - min) / (max - min),
-}));
+let format = (bytes: number) => (bytes / 1024).toFixed(1);
 
 export function BundleSize(this: FC) {
 	return (
 		<div>
-			{bundles.map(({ name, size, relative }) => (
+			{frameworks.map(({ name, bundle, brotli }) => (
 				<>
 					<div class="name">{name}</div>
 					<div
 						class="bar"
-						class:dreamland={name.startsWith("Dreamland")}
-						style={{ "--size": relative }}
-					>
-						<div>{(size / 1024).toFixed(2)}kb</div>
+						class:dreamland={name === "dreamland"}
+						style={{ "--size": brotli / max }}
+					/>
+					<div class="value">
+						{format(brotli)}kb <span>{format(bundle)}kb min</span>
 					</div>
 				</>
 			))}
@@ -35,36 +36,36 @@ export function BundleSize(this: FC) {
 BundleSize.style = css`
 	:scope {
 		display: grid;
-		grid-template-columns: min-content 1fr;
-		grid-auto-rows: 2rem;
-		gap: 0.5rem 1.5rem;
+		grid-template-columns: min-content 1fr auto;
+		grid-auto-rows: 1.5rem;
+		gap: 0.5rem 1rem;
 
 		align-items: center;
-	}
-
-	.bar {
-		height: 100%;
 	}
 
 	.name {
 		white-space: nowrap;
 	}
 
-	.bar div {
-		width: calc(35% + var(--size) * 65%);
+	.bar {
+		width: max(3px, var(--size) * 100%);
 		height: 100%;
 
 		background: var(--bg-3);
+		border-radius: 0.25rem;
 
-		display: flex;
-		justify-content: flex-end;
-		align-items: center;
-		padding: 0 1rem;
-		border-radius: 0.5rem;
+		justify-self: start;
 	}
 
-	.dreamland div {
-		background: var(--accent) 50%;
-		color: var(--bg-1);
+	.dreamland {
+		background: var(--accent);
+	}
+
+	.value {
+		white-space: nowrap;
+	}
+
+	.value span {
+		opacity: 0.6;
 	}
 `;

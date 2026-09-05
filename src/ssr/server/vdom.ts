@@ -212,6 +212,42 @@ function fromDomhandler(node: DomNode, parent: Node): Node {
 	return newNode;
 }
 
+// ::before, ::after, ::first-line and ::first-letter are the four pseudo-elements
+// that predate the `::` syntax, so they still accept a one-colon spelling -- and a
+// minifier will happily emit that spelling to save a byte. a browser's cssom
+// normalizes it back to `::` on parse, and the scoper depends on that: it treats
+// only `::` as a pseudo-element, and a one-colon `:after` reads to it as a
+// pseudo-class, so the scope selector lands *behind* the pseudo-element instead of
+// in front of it. that is not a parse error a browser reports -- it empties the
+// `:where()` argument list and the rule quietly stops matching anything.
+//
+// rrweb-cssom hands the selector back exactly as it was written, so do the
+// normalization here, where the rest of the pipeline already assumes it happened.
+//
+// the leading alternatives exist to be skipped over: an escape, an attribute
+// selector or a string may hold a literal `:after` that is not a pseudo-element.
+// the lookbehind leaves an already-correct `::after` alone, and the lookahead
+// keeps a longer ident like `:after-foo` from matching its prefix
+let LEGACY_PSEUDO =
+	/\\.|\[(?:[^\]\\"']|\\.|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')*\]|(?<!:):(?:before|after|first-line|first-letter)(?![-\w\P{ASCII}])/giu;
+
+let normalizeSelector = (sel: string) =>
+	sel.replace(LEGACY_PSEUDO, (m) => (m[0] == ":" ? ":" + m : m));
+
+// grouping rules nest, and a rule inside @media needs the same treatment
+let normalizeRules = (list: any) =>
+	[...list].forEach((rule: any) => {
+		if (rule.selectorText)
+			rule.selectorText = normalizeSelector(rule.selectorText);
+		if (rule.cssRules) normalizeRules(rule.cssRules);
+	});
+
+let parseSheet = (value: string) => {
+	let sheet = CSSOM.parse(value);
+	normalizeRules(sheet.cssRules);
+	return sheet;
+};
+
 export class Style extends Element {
 	constructor() {
 		super("style");
@@ -220,10 +256,10 @@ export class Style extends Element {
 	sheet = new CSSOM.CSSStyleSheet();
 
 	set innerText(value: string) {
-		this.sheet = CSSOM.parse(value);
+		this.sheet = parseSheet(value);
 	}
 	set textContent(value: string) {
-		this.sheet = CSSOM.parse(value);
+		this.sheet = parseSheet(value);
 	}
 
 	toStandard(): DomElement {

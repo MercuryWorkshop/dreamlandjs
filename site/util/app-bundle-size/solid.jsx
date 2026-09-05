@@ -13,4 +13,4 @@ function Counter() {
 	);
 }
 
-render(() => <Counter />, document.getElementById("app")!);
+render(() => <Counter />, document.querySelector("#app"));
