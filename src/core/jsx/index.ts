@@ -148,9 +148,7 @@ function _jsx(
 			else el.setAttribute(param, val);
 		};
 		// last class list only matters when the fastpath is gone due to something setting additional classes on it
-		let lastClassList: string[] | undefined,
-			classList: DOMTokenList,
-			lastChildNode: Node;
+		let lastClassList: string[] | undefined, classList: DOMTokenList;
 
 		el = (DOCUMENT as any)[CREATE_ELEMENT + (xmlns ? "NS" : "")](
 			xmlns || init,
@@ -159,7 +157,8 @@ function _jsx(
 			children
 		);
 
-		if (children !== undefined)
+		if (children !== undefined) {
+			let lastChildNode: Node;
 			flattenChildRet(mapChild(children, el, lastCssIdent)).forEach((x) => {
 				if (x.parentNode !== el)
 					el.insertBefore(
@@ -168,6 +167,7 @@ function _jsx(
 					);
 				lastChildNode = x;
 			});
+		}
 
 		classList = el.classList;
 

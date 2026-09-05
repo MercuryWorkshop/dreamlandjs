@@ -74,13 +74,7 @@ export let mapChild = (
 			? last
 			: { _type: ChildStateType.Comment, _node: new_Comment(""), _value: 0 };
 	} else if (child instanceof Pointer) {
-		let old: Node[],
-			current: Node[],
-			oldToIndex: Map<Node, number>,
-			LIS: number[],
-			lisIdx: number,
-			anchor: Node,
-			ident = child._cx?.id || cssIdent,
+		let ident = child._cx?.id || cssIdent,
 			val = child.value;
 		let ret: PointerChildState = {
 			_type: ChildStateType.Pointer,
@@ -93,18 +87,17 @@ export let mapChild = (
 			if (v === val || !ret._anchor.parentNode) return;
 			val = v;
 
-			old = flattenChildRet(ret._inner); // since reused nodes are modified inplace
-			ret._inner = mapChild(v, parent, ident, ret._inner);
-
-			current = flattenChildRet(ret._inner);
-			oldToIndex = MAP(old.map((x, i) => [x, i]));
-			// undefined -> NaN (falsy), 0 -> 1 (truthy), n -> n+1 (truthy)
-			LIS = findLIS(
+			let old: Node[] = flattenChildRet(ret._inner); // since reused nodes are modified inplace
+			let current: Node[] = flattenChildRet(
+				(ret._inner = mapChild(v, parent, ident, ret._inner))
+			);
+			let oldToIndex: Map<Node, number> = MAP(old.map((x, i) => [x, i]));
+			let LIS: number[] = findLIS(
 				current.map((x) => oldToIndex.get(x)!).filter((x) => x + 1)
 			);
-			lisIdx = 0;
+			let lisIdx: number = 0;
+			let anchor: Node = ret._anchor;
 
-			anchor = ret._anchor;
 			current.forEach((child) => {
 				// LIS is a subsequence of the reused indices in current order, so one
 				// cursor picks out the stay-put nodes without a second lookup table.
