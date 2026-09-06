@@ -15,11 +15,8 @@ export interface SsrPayload {
 	k /* interned keys */: string[];
 	v /* interned primitives */: any[];
 	r /* interned refs */: any[];
-	n /* nodes: component state, or [parent, childIndex] for text/comments */: Record<
-		number,
-		any
-	>;
-	i /* css idents */: Record<number, string>;
+	d /* component state */: Record<number, any>;
+	n /* text/comments: [parent, childIndex] */: Record<number, any>;
 	t /* text splits */: [number, number, number][];
 	p /* pruned id ranges, dev build only */?: (number | [number, number])[];
 	c /* css idents seen, dev build only */?: string[];

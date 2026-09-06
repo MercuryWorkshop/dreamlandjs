@@ -33,6 +33,7 @@ export {
 	DomNodeConstructor,
 	DomCssUidGenerator,
 	DomIsAdopted,
+	DomComponentState,
 	DomComponentCallback,
 	DomLifecycleState,
 	DomLifecycleCallback,

@@ -53,26 +53,17 @@ export async function render(
 		};
 		walk(root);
 
-		let [keyStore, valStore, refStore, _serialized] = serializeWatchedStates(
+		let [keyStore, valStore, refStore, serialized] = serializeWatchedStates(
 			vdom[0].objectMap,
-			vdom[0].elArr.flatMap((x) => {
-				if (x instanceof Element && domIds.has(x._id) && x.watchedState)
-					return [[x._id, x.watchedState!]];
-				else return [];
-			})
+			[...vdom[0].stateArr.entries()]
 		);
-		let serialized = new Map(_serialized);
 
 		let data: SsrData = {
 			k: keyStore,
 			v: valStore,
 			r: refStore,
+			d: Object.fromEntries(serialized),
 			n: {},
-			i: Object.fromEntries(
-				[...vdom[0].identArr.entries()].filter(([_, i]) =>
-					domCssIdents.has(CSS_IDENT + i)
-				)
-			),
 			t: [],
 		};
 
@@ -80,9 +71,7 @@ export async function render(
 			if (!domIds.has(el._id)) continue;
 
 			let node: Node | undefined;
-			if (el instanceof Element && el.component) {
-				node = serialized.get(el._id);
-			} else if ((el instanceof Comment || el instanceof Text) && el.parent) {
+			if ((el instanceof Comment || el instanceof Text) && el.parent) {
 				node = [el.parent._id, el.parent.childNodes.indexOf(el)];
 				dev: {
 					node.push(el.data);

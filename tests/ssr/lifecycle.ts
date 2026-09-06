@@ -91,38 +91,35 @@ ssrTest("state written after an await in init round-trips", async () => {
 	);
 });
 
-ssrTest(
-	"KNOWN BUG: hydration does not clobber client-only init state",
-	async () => {
-		// hydrateCx for a server-rendered root is deferred to the very end of
-		// hydrate(), after the init drain. so anything init could only compute in
-		// the browser -- matchMedia, localStorage, a client-side fetch -- is
-		// overwritten by whatever the server serialized.
-		let client = false;
-		let App = function (this: any) {
-			this.text = "default";
-			this.cx.init = async () => {
-				await Promise.resolve();
-				if (client) this.text = "client only";
-			};
-			return jsx("main", { children: use(this.text) });
+ssrTest("hydration does not clobber client-only init state", async () => {
+	// hydrateCx for a server-rendered root is deferred to the very end of
+	// hydrate(), after the init drain. so anything init could only compute in
+	// the browser -- matchMedia, localStorage, a client-side fetch -- is
+	// overwritten by whatever the server serialized.
+	let client = false;
+	let App = function (this: any) {
+		this.text = "default";
+		this.cx.init = async () => {
+			await Promise.resolve();
+			if (client) this.text = "client only";
 		};
+		return jsx("main", { children: use(this.text) });
+	};
 
-		let r = await serverRender(App);
-		check("server kept the default").assertEq(r.body.includes("default"), true);
+	let r = await serverRender(App);
+	check("server kept the default").assertEq(r.body.includes("default"), true);
 
-		let win = mountDocument(r);
-		client = true;
-		await hydrateIn(win, App);
+	let win = mountDocument(r);
+	client = true;
+	await hydrateIn(win, App);
 
-		check("client-only value survived").assertEq(
-			win.document.body.firstElementChild!.textContent,
-			"client only"
-		);
-	}
-);
+	check("client-only value survived").assertEq(
+		win.document.body.firstElementChild!.textContent,
+		"client only"
+	);
+});
 
-ssrTest("KNOWN BUG: structural updates during init reach the dom", async () => {
+ssrTest("structural updates during init reach the dom", async () => {
 	// the list lives outside component state, so hydrateCx never touches it.
 	// growing it during the init drain should insert a node, but mapChild's
 	// insert/remove pass is behind the owned(parent) guard and is skipped.
@@ -152,7 +149,7 @@ ssrTest("KNOWN BUG: structural updates during init reach the dom", async () => {
 });
 
 ssrTest(
-	"KNOWN BUG: a pointer child that changes type during init leaks no nodes",
+	"a pointer child that changes type during init leaks no nodes",
 	async () => {
 		// this.el starts null, so mapChild mounts a placeholder comment. the server
 		// swaps it for the <b> and removes the placeholder, which makes the

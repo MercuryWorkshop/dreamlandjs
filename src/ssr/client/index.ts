@@ -1,4 +1,5 @@
 import {
+	DomComponentState,
 	DomImpl,
 	domImpl,
 	DomLifecycleState,
@@ -57,6 +58,7 @@ export let hydrate = async (
 
 	let rootIdx = +ssr.getAttribute(SSR_ID)!;
 	let idx = -1;
+	let componentIdx = 0;
 	let getInternal = (idx: number) => {
 		let selector = `[${SSR_ID}="${idx}"]`;
 		let ret =
@@ -168,9 +170,9 @@ export let hydrate = async (
 			if (stage <= DomLifecycleState.Init) inits.push(res);
 			else mounts.push(res);
 		},
-		(_init, state, cx) => {
-			if (cx) {
-				let ssr = data.n[state.root?.getAttribute?.(SSR_ID) as any as number];
+		(lifecycle, _init, state, cx) => {
+			if (lifecycle == DomComponentState.AfterComponentInit) {
+				let ssr = data.d[componentIdx++];
 				if (ssr) {
 					applyState(state, ssr as SerializedState);
 					cx.load = undefined;

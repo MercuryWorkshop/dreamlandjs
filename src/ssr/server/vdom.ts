@@ -1,4 +1,4 @@
-import { ComponentContext, DomImpl } from "dreamland/core";
+import { ComponentContext, DomComponentState, DomImpl } from "dreamland/core";
 
 // @ts-expect-error rrweb-cssom doesn't have types
 import { CSSOM } from "rrweb-cssom";
@@ -111,7 +111,6 @@ export class Element extends Node {
 	classList = new ClassList();
 
 	component: ComponentContext<any> | undefined;
-	watchedState: WatchedState | undefined;
 
 	style = new CSSOM.CSSStyleDeclaration();
 
@@ -308,8 +307,9 @@ export let newVDom = () => {
 		return el;
 	};
 
-	let identArr: Map<number, string> = new Map();
-
+	let identCount = 0;
+	let componentCount = 0;
+	let stateArr: Map<number, WatchedState> = new Map();
 	let objectMap: ObjectMap = new Map();
 
 	let promises: (Promise<any> | any)[] = [];
@@ -324,7 +324,7 @@ export let newVDom = () => {
 			},
 
 			elArr,
-			identArr,
+			stateArr,
 			objectMap,
 
 			promises,
@@ -340,8 +340,7 @@ export let newVDom = () => {
 		(text?: any) => push(new Text("" + text)),
 		(text?: any) => push(new Comment("" + text)),
 		(_component, style) => {
-			let ret = "" + identArr.size;
-			identArr.set(elArr.length, ret);
+			let ret = "" + identCount++;
 			(style as any as Style).setAttribute(SSR_DATA, ret);
 			return ret;
 		},
@@ -349,18 +348,15 @@ export let newVDom = () => {
 		(_state, _cx, result) => {
 			promises.push(result);
 		},
-		(_init, state, cx) => {
-			if (cx) {
+		(lifecycle, _init, state, cx) => {
+			if (lifecycle == DomComponentState.AfterComponentInit) {
+				let idx = componentCount++;
 				// we are in ssr, no running mounts
 				cx.mount = undefined;
 				let load = cx.load;
 				if (load) {
 					cx.load = async () => {
-						(state.root as any as Element).watchedState = await watchState(
-							state,
-							objectMap,
-							load
-						);
+						stateArr.set(idx, await watchState(state, objectMap, load));
 					};
 				}
 			}

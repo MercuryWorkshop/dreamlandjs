@@ -300,11 +300,7 @@ ssrTest(
 	}
 );
 
-ssrTest("KNOWN BUG: a wrapper component keeps its own load state", async () => {
-	// a payload entry is keyed on the element its component returned, but a
-	// wrapper and the component it wraps return the *same* element -- so whichever
-	// load settles last overwrites the other's entry, and on the client both
-	// contexts read that one entry back into their own state
+ssrTest("wrapper and inner components keep their own load state", async () => {
 	let Inner = function (this: any) {
 		this.cx.load = async () => {
 			await new Promise((r) => setTimeout(r, 2));
@@ -331,10 +327,7 @@ ssrTest("KNOWN BUG: a wrapper component keeps its own load state", async () => {
 	);
 });
 
-ssrTest("KNOWN BUG: a data component with a load does not crash", async () => {
-	// same root cause as the wrapper case: the entry is anchored on state.root,
-	// which for a component returning a non-node is whatever it returned. writing
-	// a property to a string throws in strict mode
+ssrTest("a data component with a load does not crash", async () => {
 	let Data: any = function (this: any) {
 		this.cx.load = () => {
 			this.x = 1;

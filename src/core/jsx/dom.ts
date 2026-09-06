@@ -9,6 +9,11 @@ export const enum DomLifecycleState {
 	Mount = 3,
 }
 
+export const enum DomComponentState {
+	BeforeComponentInit = 1,
+	AfterComponentInit = 2,
+}
+
 export type DomNodeConstructor = (text?: string) => any;
 export type DomCssUidGenerator = (
 	init: Component<any, any>,
@@ -16,9 +21,10 @@ export type DomCssUidGenerator = (
 ) => string;
 export type DomIsAdopted = (el: HTMLElement) => boolean;
 export type DomComponentCallback = <T extends Component<any, any>>(
+	lifecycle: DomComponentState,
 	init: T,
 	state: ComponentState<T>,
-	cx?: ComponentContext<T>
+	cx: ComponentContext<T>
 ) => void;
 export type DomLifecycleCallback = <T extends Component<any, any>>(
 	state: DomLifecycleState,

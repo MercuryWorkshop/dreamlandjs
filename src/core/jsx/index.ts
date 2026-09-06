@@ -3,6 +3,7 @@ import {
 	CREATE_ELEMENT,
 	DomLifecycleState as Lifecycle,
 	DomLifecycleCallback,
+	DomComponentState,
 } from "./dom";
 import { CSS_COMPONENT } from "../css";
 import {
@@ -103,7 +104,7 @@ function _jsx(
 			}
 		}
 
-		componentCb?.(init, state);
+		componentCb?.(DomComponentState.BeforeComponentInit, init, state, cx);
 
 		_state.cx = cx;
 		el = withCx(cx, init, state, state);
@@ -131,7 +132,7 @@ function _jsx(
 			}
 		}
 
-		componentCb?.(init, state, cx);
+		componentCb?.(DomComponentState.AfterComponentInit, init, state, cx);
 
 		lifeTmp = runLifecycle(lifecycle, Lifecycle.Load, cx, cx.load);
 		lifeTmp = runLifecycle(lifecycle, Lifecycle.Init, cx, cx.init, lifeTmp);

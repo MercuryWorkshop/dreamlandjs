@@ -123,7 +123,7 @@ ssrTest("text and comment entries point at their real parent", async () => {
 	check("every entry resolves").assertEq(bad.join("; ") || "ok", "ok");
 });
 
-ssrTest("KNOWN BUG: a null child serializes as an empty comment", async () => {
+ssrTest("a null child serializes as an empty comment", async () => {
 	// new_Comment() is called with no argument, and the ssr vdom stringifies it
 	// as "" + undefined. nine wasted bytes on every conditional in the tree, and
 	// the client's fallback would produce "" instead
@@ -170,7 +170,7 @@ ssrTest(
 
 		let r2 = await serverRender(Loading);
 		check("one entry for the component that loaded").assertEq(
-			Object.keys(r2.payload.n).length,
+			Object.keys(r2.payload.d).length,
 			1
 		);
 	}
