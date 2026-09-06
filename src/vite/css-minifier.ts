@@ -1,5 +1,5 @@
 import type { Plugin } from "vite";
-import { transform } from "lightningcss";
+import { Targets, transform } from "lightningcss";
 import MagicString from "magic-string";
 import type { FilterPattern } from "vite";
 import { createFilter } from "vite";
@@ -7,6 +7,7 @@ import { createFilter } from "vite";
 export type CssMinifierOptions = {
 	include?: FilterPattern;
 	exclude?: FilterPattern;
+	targets?: Targets;
 };
 
 export let cssMinifier = (options: CssMinifierOptions = {}): Plugin => {
@@ -162,8 +163,24 @@ export let cssMinifier = (options: CssMinifierOptions = {}): Plugin => {
 							filename: id,
 							code: Buffer.from(combined),
 							minify: true,
+							targets: options.targets,
 						});
 						let minified = result.code.toString();
+
+						// lightningcss decides url() quoting from the placeholder text,
+						// not the real interpolated value (unknown at build time, and it
+						// may contain chars like ' that require quoting - e.g. a Vite
+						// inlined SVG data URI). Restore quotes around any url() holding a
+						// placeholder so the substituted value stays a valid url token.
+						minified = minified.replace(
+							new RegExp(`url\\(([^)]*${PLACEHOLDER}[^)]*)\\)`, "g"),
+							(_m, inner) => {
+								inner = inner.trim();
+								return /^["']/.test(inner)
+									? `url(${inner})`
+									: `url("${inner}")`;
+							}
+						);
 
 						// split back on placeholders
 						let parts = minified.split(PLACEHOLDER);

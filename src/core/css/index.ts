@@ -1,31 +1,10 @@
-import {
-	COMBINATOR_TOKEN,
-	COMMA_TOKEN,
-	PSEUDO_CLASS_TOKEN,
-	PSEUDO_ELEMENT_TOKEN,
-} from "../consts";
-import { ComponentFn, ComponentFnState } from "../jsx/definitions";
-import { stringify, Token, tokenize } from "./selectorParser";
+import { DREAMLAND, WEAKMAP } from "../consts";
+import { Component, ComponentFn, ComponentFnState } from "../jsx/definitions";
+import { CREATE_ELEMENT, DomImpl } from "../jsx/dom";
+import { Stateful } from "../state/state";
+import { CSS_COMPONENT, rewriteSelector } from "./scope";
 
-export type CssInit = {
-	_strings: TemplateStringsArray;
-	_funcs: (((state: any) => any) | string)[];
-	_rewrite: typeof _rewrite;
-};
-
-export let css = /*@__NO_SIDE_EFFECTS__*/ <T extends ComponentFn<any, any>>(
-	_strings: TemplateStringsArray,
-	..._funcs: (((state: ComponentFnState<T>) => any) | string)[]
-): CssInit => {
-	return {
-		_strings,
-		_funcs,
-		_rewrite,
-	};
-};
-
-// added to every component's root, determines start of scoped css scope
-export let CSS_COMPONENT = "dlc";
+export { CSS_COMPONENT };
 
 export let genuid = () => {
 	// prettier-ignore
@@ -35,77 +14,117 @@ export let genuid = () => {
 	// the above will occasionally misfire with `undefined` or 0 in the string whenever Math.random returns exactly 0 or really small numbers
 	// we don't care, it would be very uncommon for that to actually happen 16 times
 };
+export let CSS_IDENT = "dlcss-";
+let THROWAWAY_ID = CSS_IDENT + genuid();
 
+let GLOBAL_WHERE_TRANSFORMATION = `:where(._${genuid()} `;
 let GLOBAL = ":global(";
-let _rewrite = (style: HTMLStyleElement, css: string, tag: string) => {
-	let where = tokenize(`:where(.${tag})`);
-	let globalWhereTransformation = `:where(._${genuid()} `;
 
-	let rewriteSelector = (tokens: Token[], inGlobal?: boolean): Token[] => {
-		for (let i = 0; i < tokens.length; i++) {
-			let token = tokens[i];
+// index into _funcs -> accessor. the css text numbers its var() the same way, so
+// the two stay aligned with no per-document rewriting: whoever sets the inline
+// property builds `--${id}-${i}` itself
+export type CssVarMap = [number, (props: Stateful<any>) => any][];
 
-			let idx: number, cnt: number, arr: Token[] | undefined;
-			if (token._type == PSEUDO_CLASS_TOKEN && token.arg) {
-				let global = token.nm == "global";
+export interface CssInit {
+	/// THIS IS A SEALED MARKER TYPE. do not try accessing it
+	readonly [DREAMLAND]: unique symbol;
 
-				let rewritten = rewriteSelector(
-					tokenize(token.arg),
-					global || inGlobal
-				);
-				if (global) {
-					idx = i;
-					cnt = 1;
-					arr = rewritten;
-				} else {
-					token.arg = stringify(rewritten);
-					token._content = `:${token.nm}(${token.arg})`;
-				}
-			} else if (
-				!inGlobal &&
-				(i === tokens.length - 1 ||
-					[COMBINATOR_TOKEN, COMMA_TOKEN].includes(tokens[i + 1]._type))
-			) {
-				idx = i;
-				while (idx > 0 && tokens[idx]._type == PSEUDO_ELEMENT_TOKEN) {
-					idx--;
-				}
+	// @internal
+	_vars?: CssVarMap;
+	// @internal
+	// built and rewritten, still carrying THROWAWAY_ID
+	_css?: string;
 
-				idx++;
-				cnt = 0;
-				arr = where;
-			}
+	// @internal
+	// per-document ident, doubles as whether or not a style tag is already installed
+	_map: WeakMap<DomImpl[0]["head"], string>;
 
-			if (arr) {
-				tokens.splice(idx!, cnt!, ...arr);
-				i += arr.length;
+	// @internal
+	_get(
+		DOCUMENT: DomImpl[0],
+		hydrating: DomImpl[5],
+		genCssUid: DomImpl[4],
+		init: Component<any, any>
+	): string;
+}
+
+// :global() is not valid css, so the browser would drop every rule using it
+// before we ever get to look at the sheet. swap it for something parseable on
+// the way in and swap it back per-selector on the way out
+let rewriteRules = (list: any) =>
+	[...list].forEach((rule: any) => {
+		if (rule.selectorText) {
+			let newselector = rewriteSelector(
+				rule.selectorText.replaceAll(GLOBAL_WHERE_TRANSFORMATION, GLOBAL),
+				THROWAWAY_ID
+			);
+			rule.selectorText = newselector;
+			dev: {
+				if (
+					rule.selectorText.replaceAll(/\s+/g, "") !==
+					newselector.replaceAll(/\s+/g, "")
+				)
+					console.warn(
+						"[dreamland/css]: invalid selector",
+						rule.selectorText,
+						newselector
+					);
 			}
 		}
-		return tokens;
-	};
+		if (rule.cssRules) {
+			rewriteRules(rule.cssRules);
+		}
+	});
 
-	let rewriteRules = (list: any) =>
-		[...list].map((rule: any) => {
-			if (rule.selectorText) {
-				rule.selectorText = stringify(
-					rewriteSelector(
-						tokenize(
-							rule.selectorText.replaceAll(globalWhereTransformation, GLOBAL)
+export let css = /*@__NO_SIDE_EFFECTS__*/ <T extends ComponentFn<any, any>>(
+	_strings: TemplateStringsArray,
+	..._funcs: (((state: ComponentFnState<T>) => any) | string)[]
+): CssInit => {
+	return {
+		_map: WEAKMAP(),
+		_get(DOCUMENT, hydrating, genCssUid, init) {
+			let style: HTMLStyleElement = DOCUMENT[CREATE_ELEMENT]("style");
+			let _id = this._map.get(DOCUMENT.head);
+			if (_id) return _id;
+
+			_id = CSS_IDENT + genCssUid(init, style).toLowerCase();
+			this._vars ??= _funcs.flatMap((f, i) =>
+				typeof f == "function" ? [[i, f] as CssVarMap[number]] : []
+			);
+
+			if (!hydrating?.(style)) {
+				let _css = this._css;
+
+				dev: {
+					style.setAttribute(CSS_COMPONENT, init.name);
+				}
+				style.setAttribute(CSS_IDENT + "id", _id);
+				DOCUMENT.head.append(style); // .sheet only exists on appended style els
+
+				if (!_css) {
+					style.innerText = _strings
+						.reduce(
+							(acc, string, i) =>
+								acc +
+								string +
+								(typeof _funcs[i] == "function"
+									? `var(--${THROWAWAY_ID}-${i})`
+									: _funcs[i] || ""),
+							""
 						)
-					)
-				).replace(/:scope/g, `.${tag}.${CSS_COMPONENT}`);
-			}
-			if (rule.cssRules) {
-				rewriteRules(rule.cssRules);
-			}
-			return rule;
-		});
+						.replaceAll(GLOBAL, GLOBAL_WHERE_TRANSFORMATION);
+					rewriteRules(style.sheet!.cssRules);
+					this._css = _css = Array.from(
+						style.sheet!.cssRules,
+						(x) => x.cssText
+					).join("\n");
+				}
 
-	style.innerText = css.replaceAll(GLOBAL, globalWhereTransformation);
-	rewriteRules(style.sheet!.cssRules);
-	dev: {
-		style.innerText = [...style.sheet!.cssRules]
-			.map((x) => x.cssText)
-			.join("\n");
-	}
+				style.innerText = _css.replaceAll(THROWAWAY_ID, _id);
+			}
+
+			this._map.set(DOCUMENT.head, _id);
+			return _id;
+		},
+	} satisfies Omit<CssInit, typeof DREAMLAND> as CssInit;
 };

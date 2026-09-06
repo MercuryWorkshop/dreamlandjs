@@ -81,11 +81,21 @@ Sidebar.style = css`
 		z-index: 1;
 	}
 
+	:scope::after {
+		content: "";
+		background: var(--border-2);
+
+		position: absolute;
+		width: 1px;
+		height: 100%;
+		top: 0;
+		right: 0;
+	}
 	:scope :global(.active)::after {
 		content: "";
 
 		background: var(--bg-2);
-		border: 1px solid var(--border-2);
+		border: 1.5px solid var(--border-2);
 		border-top: 0px;
 		border-right: 0px;
 
@@ -96,16 +106,6 @@ Sidebar.style = css`
 		right: -1rem;
 		width: 1rem;
 		height: 1rem;
-	}
-	:scope::after {
-		content: "";
-		background: var(--border-2);
-
-		position: absolute;
-		width: 1px;
-		height: 100%;
-		top: 0;
-		right: 0;
 	}
 `;
 

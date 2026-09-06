@@ -14,8 +14,8 @@ import { matter } from "vfile-matter";
 
 import { readFile } from "node:fs/promises";
 
-import computeAppBundleSize from "./util/app-bundle-size";
-import { getFrameworkInfo } from "./util/framework-info";
+import computeAppBundleSize from "./util/app-bundle-size/index.ts";
+import { getFrameworkInfo } from "./util/framework-info.ts";
 
 let appBundleSize =
 	"export default" + JSON.stringify(await computeAppBundleSize());
@@ -110,6 +110,20 @@ export default defineConfig({
 		},
 	},
 	plugins: [
+		{
+			name: "ignore-chrome-devtools-json",
+			configureServer(server) {
+				server.middlewares.use((req, res, next) => {
+					if (req.url === "/.well-known/appspecific/com.chrome.devtools.json") {
+						res.statusCode = 200;
+						res.setHeader("Content-Type", "application/json");
+						res.end(JSON.stringify({ workspace: null }));
+						return;
+					}
+					next();
+				});
+			},
+		},
 		cssMinifier({
 			include: ["src/**/*.tsx"],
 		}),
@@ -141,9 +155,8 @@ export default defineConfig({
 			enforce: "pre",
 			resolveId: {
 				filter: {
-					/* @ts-expect-error regexp.escape */ id: new RegExp(
-						RegExp.escape("dl:frameworks")
-					),
+					/* @ts-expect-error regexp.escape */
+					id: new RegExp(RegExp.escape("dl:frameworks")),
 				},
 				handler() {
 					return "\0dl:frameworks";

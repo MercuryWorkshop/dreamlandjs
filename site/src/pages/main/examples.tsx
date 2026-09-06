@@ -19,7 +19,6 @@ ExampleView.style = css`
 		min-width: 0;
 		scroll-snap-align: start;
 
-		padding: 0.5rem;
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;
@@ -65,6 +64,7 @@ export function ExamplesCarousel(this: FC) {
 ExamplesCarousel.style = css`
 	:scope {
 		display: flex;
+		gap: 0.5rem;
 		overflow: scroll hidden;
 
 		scroll-snap-type: x mandatory;

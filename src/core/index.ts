@@ -4,15 +4,17 @@ import "./state";
 export { Pointer } from "./state/pointers";
 export {
 	Stateful,
+	StatefulListener,
 	createState,
 	stateListen,
+	stateListenRemove,
 	stateProxy,
 	isStateful,
 } from "./state/state";
 
 export { createDelegate, Delegate } from "./delegate";
 
-export { css } from "./css";
+export { css, CssInit } from "./css";
 
 export {
 	ComponentChild,
@@ -24,8 +26,18 @@ export {
 	JSX,
 } from "./jsx/definitions";
 export { h, jsx, Fragment } from "./jsx";
-export { setDomImpl, getDom as domImpl, DomImpl } from "./jsx/dom";
+export {
+	setDomImpl,
+	getDom as domImpl,
+	DomImpl,
+	DomNodeConstructor,
+	DomCssUidGenerator,
+	DomIsAdopted,
+	DomComponentCallback,
+	DomLifecycleState,
+	DomLifecycleCallback,
+} from "./jsx/dom";
 
-export { DREAMLAND, NO_CHANGE } from "./consts";
+export { NO_CHANGE } from "./consts";
 
 defineUse();

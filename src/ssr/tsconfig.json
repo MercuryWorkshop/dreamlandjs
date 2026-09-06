@@ -1,0 +1,9 @@
+{
+	"compilerOptions": {
+		// src/ssr/server imports node:async_hooks. Keep Node's ambient types
+		// scoped to SSR rather than adding them to browser entries.
+		"types": ["node"]
+	},
+	"include": ["."],
+	"extends": "../../tsconfig.json"
+}

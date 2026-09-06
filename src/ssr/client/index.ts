@@ -1,14 +1,13 @@
 import {
-	Component,
-	ComponentContext,
 	DomImpl,
 	domImpl,
+	DomLifecycleState,
 	jsx,
 	setDomImpl,
 } from "dreamland/core";
 import { SSR_DATA, SSR_ID } from "../common/consts";
-import { hydrateState, Json } from "../common/serialize";
-import { SsrData, SsrObject } from "../common/types";
+import { SsrData } from "../common/types";
+import { getStateApplier, SerializedState } from "../common/serialize";
 
 // single function for all hydration mismatch warnings, easy to breakpoint
 let mismatch: (msg: string) => void;
@@ -32,7 +31,7 @@ export let hydrate = async (
 	// decode entities
 	let textarea = jsx("textarea", {}) as HTMLTextAreaElement;
 	textarea.innerHTML = dataEl.innerText;
-	let data: SsrData = Json.parse(textarea.value);
+	let data: SsrData = JSON.parse(textarea.value);
 
 	dev: {
 		if (data.p) {
@@ -54,7 +53,7 @@ export let hydrate = async (
 		}
 	}
 
-	let els: [number, HTMLElement][] = [];
+	let applyState = getStateApplier(data.k, data.v, data.r);
 
 	let rootIdx = +ssr.getAttribute(SSR_ID)!;
 	let idx = -1;
@@ -65,32 +64,32 @@ export let hydrate = async (
 				? ssr
 				: ssr.querySelector<HTMLElement>(selector) ||
 					head.querySelector<HTMLElement>(selector);
-		if (ret) els.push([idx, ret]);
 		return ret;
 	};
-	let getRelative = () => {
-		let info = data.n[++idx];
-		if (!info) return;
-
-		let [parent, offset] = info as [number, number];
-		return getInternal(parent)?.childNodes?.[offset];
-	};
-	let hydrateCx = (cx: ComponentContext<any>) => {
-		let ssr = data.n[cx?.state?.root?.getAttribute?.(SSR_ID) as any as number];
-		if (ssr) {
-			hydrateState(data, ssr as SsrObject, cx.state);
-		}
-	};
-	let hydrating = (x: HTMLElement) => x.hasAttribute(SSR_ID);
+	let adopted = (x: HTMLElement) => x.hasAttribute(SSR_ID);
 
 	for (let [parent, offset, len] of data.t) {
 		let text = getInternal(parent)!.childNodes[offset] as Text;
 		if (text.length !== len) text.splitText(len);
 	}
 
+	// child offsets were recorded against the server's finished tree, but
+	// hydration mutates as it walks -- a pruned placeholder gets inserted into an
+	// already-adopted parent, shifting every sibling after it -- so resolve them
+	// all now, while the dom still matches what the server sent
+	let relative: Record<number, Node | undefined> = {};
+	for (let id in data.n) {
+		// text/comment is [parent, offset]; state is an array of arrays
+		let info = data.n[id as any as number] as [number, number];
+		if (typeof info[0] == "number")
+			relative[id as any as number] = getInternal(info[0])?.childNodes?.[
+				info[1]
+			];
+	}
+	let getRelative = () => relative[++idx];
+
 	let _old = domImpl,
 		old = _old();
-	let cxs: ComponentContext<Component<any, any>>[] = [];
 	let inits: (Promise<any> | any)[] = [];
 	let mounts: typeof inits = [];
 	let vdom = [
@@ -163,16 +162,21 @@ export let hydrate = async (
 			}
 			return node || old[3](x);
 		},
-		(x) => data.i[idx + 1] || old[4](x),
-		old[5],
-		hydrating,
-		(_init, _state, cx) => {
-			if (cx?.state?.root instanceof old[1] && !hydrating(cx.state?.root))
-				hydrateCx(cx);
+		(init, style) => style.getAttribute(SSR_DATA) || old[4](init, style),
+		adopted,
+		(stage, _cx, res) => {
+			if (stage <= DomLifecycleState.Init) inits.push(res);
+			else mounts.push(res);
 		},
-		cxs,
-		inits,
-		mounts,
+		(_init, state, cx) => {
+			if (cx) {
+				let ssr = data.n[state.root?.getAttribute?.(SSR_ID) as any as number];
+				if (ssr) {
+					applyState(state, ssr as SerializedState);
+					cx.load = undefined;
+				}
+			}
+		},
 	] as const satisfies DomImpl;
 
 	setDomImpl(() => vdom);
@@ -181,11 +185,6 @@ export let hydrate = async (
 		await Promise.all(inits.splice(0));
 	}
 	setDomImpl(_old);
-
-	cxs.map((x) => {
-		hydrateCx(x);
-		mounts.push(x.mount?.());
-	});
 
 	await Promise.all(mounts);
 

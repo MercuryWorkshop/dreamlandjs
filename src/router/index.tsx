@@ -4,15 +4,16 @@ import {
 	ComponentState,
 	h,
 	Fragment,
-	DREAMLAND,
 	FC,
 	ComponentInstance,
 	NO_CHANGE,
 } from "dreamland/core";
 
+import { INTERNAL } from "./consts";
+
 export type RouteParams = Record<string, string> & {
 	// @internal
-	[DREAMLAND]?: string;
+	[INTERNAL]?: string;
 	[NO_CHANGE]: true;
 };
 
@@ -34,6 +35,13 @@ export type ShowElement =
 type _MaybePromiseShowEl = Promise<ShowElement> | ShowElement;
 export type ShowTarget = _MaybePromiseShowEl | (() => _MaybePromiseShowEl);
 
+let normalizeChildren = (children: ComponentChild) =>
+	(children
+		? children instanceof Array
+			? children
+			: [children]
+		: []) as any as RouteInternal[];
+
 export function Route(
 	this: FC<{
 		path?: string;
@@ -48,7 +56,7 @@ export function Route(
 		_show: this.show,
 		_layout: this.layout,
 		_cork: this.cork,
-		_children: this.children as any as RouteInternal[],
+		_children: normalizeChildren(this.children),
 	} satisfies RouteInternal as any;
 }
 
@@ -96,8 +104,8 @@ let matchRoute = (
 	route: string,
 	params: RouteParams
 ): boolean => {
-	if (params[DREAMLAND] || route === "*") {
-		params[DREAMLAND] += "/" + segment;
+	if (params[INTERNAL] || route === "*") {
+		params[INTERNAL] += "/" + segment;
 		return true;
 	} else if (route.startsWith(":")) {
 		// param
@@ -137,13 +145,13 @@ let _route = (
 		if (
 			(!segments.length ||
 				(segments[0] === "" && indexRoute) ||
-				params[DREAMLAND]) &&
+				params[INTERNAL]) &&
 			!route._children.length &&
 			route._show
 		) {
-			if (params[DREAMLAND]) {
-				params["*"] = params[DREAMLAND].slice(10);
-				delete params[DREAMLAND];
+			if (params[INTERNAL]) {
+				params["*"] = params[INTERNAL].slice(10);
+				delete params[INTERNAL];
 			}
 			// route matches fully
 			ret = [route];
@@ -297,10 +305,7 @@ export function Router(
 ) {
 	this[NO_CHANGE] = true;
 
-	// eslint-disable-next-line @typescript-eslint/no-this-alias
-	router = this;
-
-	let routes = { _children: this.children as any as RouteInternal[] };
+	let routes = { _children: normalizeChildren(this.children) };
 	dev: {
 		validateRoute(routes);
 	}
@@ -389,6 +394,9 @@ export function Router(
 		ran = true;
 		return ret;
 	};
+
+	// eslint-disable-next-line @typescript-eslint/no-this-alias
+	router = this;
 
 	return <>{use(this.el)}</>;
 }

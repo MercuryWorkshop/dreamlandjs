@@ -9,15 +9,18 @@ import nodeResolve from "@rollup/plugin-node-resolve";
 import { visualizer } from "rollup-plugin-visualizer";
 import {
 	classToDecl,
+	defaultParamFolder,
 	globalHoister,
 	instanceofHoister,
 	propertyHoister,
 	stringHoister,
 	stripBetweenComments,
+	symbolVisualizer,
 	typeofHoister,
 } from "./rollup.plugins.ts";
 
 let DEV = false;
+let EMITDEFS = true;
 let USESTR = true;
 let HOISTS = [
 	"Object",
@@ -40,6 +43,9 @@ const onwarn: WarningHandlerWithDefault = (warning, warn) => {
 	if (warning.code === "CIRCULAR_DEPENDENCY") return;
 	warn(warning);
 };
+
+const outDir = () => (DEV ? "dist/dev" : "dist");
+const typesDir = () => outDir() + "/types";
 
 interface CommonConfig {
 	typeRoot: string;
@@ -67,9 +73,18 @@ function common({
 			include: typeRoot + "/**/*",
 			filterRoot: process.cwd(),
 			tsconfig,
+			...(EMITDEFS
+				? { declarationDir: typesDir() }
+				: {
+						declaration: false,
+						declarationDir: undefined,
+						noCheck: true,
+						types: [],
+					}),
 		}),
 		...(hoist
 			? [
+					defaultParamFolder(),
 					globalHoister(HOISTS),
 					propertyHoister(),
 					stringHoister(),
@@ -117,9 +132,16 @@ function common({
 					visualizer({
 						filename: `dist/${visualizerPath}.size.html`,
 						sourcemap: true,
+						// both are silently ignored under sourcemap: true --
+						// the plugin drops them rather than compressing a
+						// per-module byte soup
 						gzipSize: true,
 						brotliSize: true,
 						title: `Dreamland ${visualizerPath} Size`,
+					}),
+					symbolVisualizer({
+						filename: `dist/${visualizerPath}.symbols.html`,
+						title: `Dreamland ${visualizerPath} Symbols`,
 					}),
 				]
 			: []),
@@ -187,12 +209,12 @@ const cfg = ({
 	const out: RollupOptions[] = [
 		{
 			input,
-			output: [{ file: `dist/${output}.js`, sourcemap: true }],
+			output: [{ file: `${outDir()}/${output}.js`, sourcemap: true }],
 			plugins: [
 				...common({
 					runTerser: minify,
 					typeRoot: entry[0],
-					visualizerPath: visualize ? output : undefined,
+					visualizerPath: visualize && !DEV ? output : undefined,
 					unsafe,
 					hoist,
 				}),
@@ -202,15 +224,16 @@ const cfg = ({
 			onwarn,
 		},
 	];
-	if (defs) {
+	if (defs && EMITDEFS) {
 		out.push({
 			input:
-				"dist/types/" +
+				typesDir() +
+				"/" +
 				input
 					.substring("src/".length)
 					.replace(".tsx", ".ts")
 					.replace(".ts", ".d.ts"),
-			output: [{ file: `dist/${output}.d.ts`, format: "es" }],
+			output: [{ file: `${outDir()}/${output}.d.ts`, format: "es" }],
 			plugins: [dts()],
 			external,
 			onwarn,
@@ -219,9 +242,8 @@ const cfg = ({
 	return out;
 };
 
-export default (args: Record<string, boolean>) => {
-	if (args["config-dev"]) DEV = true;
-	if (args["config-nousestr"]) USESTR = false;
+const configs = () => {
+	const constDefs = typesDir() + "/core/consts.d.ts";
 
 	return [
 		...cfg({
@@ -229,18 +251,20 @@ export default (args: Record<string, boolean>) => {
 			output: "core",
 			hoist: true,
 			plugins: [
-				{
-					name: "copyConstDefs",
-					writeBundle: () =>
-						fs.promises.copyFile(
-							"src/core/consts.d.ts",
-							"dist/types/core/consts.d.ts"
-						),
-				},
+				...(EMITDEFS
+					? [
+							{
+								name: "copyConstDefs",
+								writeBundle: () =>
+									fs.promises.copyFile("src/core/consts.d.ts", constDefs),
+							},
+						]
+					: []),
 				classToDecl(),
 			],
 			visualize: true,
 		}),
+		...cfg({ input: ["src/babel-compat"], output: "babel-compat" }),
 		...cfg({ input: ["src/js-runtime"], output: "js-runtime" }),
 		...cfg({ input: ["src/jsx-runtime"], output: "jsx-runtime" }),
 		...cfg({
@@ -282,13 +306,9 @@ export default (args: Record<string, boolean>) => {
 			visualize: true,
 		}),
 		...cfg({
-			input: ["src/ssr", "hybrid/index.ts"],
-			output: "ssr.hybrid",
-			visualize: true,
-		}),
-		...cfg({
 			input: ["src/router", "index.tsx"],
 			output: "router",
+			visualize: true,
 			hoist: true,
 		}),
 		...cfg({ input: ["src/motion"], output: "motion" }),
@@ -299,4 +319,17 @@ export default (args: Record<string, boolean>) => {
 		}),
 		...cfg({ input: ["src/util"], output: "util" }),
 	] satisfies RollupOptions[];
+};
+
+export default (args: Record<string, boolean>) => {
+	if (args["config-nousestr"]) USESTR = false;
+
+	const variants = args["config-dev"] ? [true] : [false, true];
+	const out: RollupOptions[] = [];
+	for (const dev of variants) {
+		DEV = dev;
+		EMITDEFS = dev === variants[0];
+		out.push(...configs());
+	}
+	return out;
 };

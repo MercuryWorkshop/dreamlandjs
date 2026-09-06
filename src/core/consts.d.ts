@@ -1,16 +1,5 @@
 export const DREAMLAND: unique symbol;
 export const NO_CHANGE: unique symbol;
 
-export const COMMA_TOKEN: unique symbol;
-export const COMBINATOR_TOKEN: unique symbol;
-export const ID_TOKEN: unique symbol;
-export const CLASS_TOKEN: unique symbol;
-export const PSEUDO_ELEMENT_TOKEN: unique symbol;
-export const PSEUDO_CLASS_TOKEN: unique symbol;
-export const UNIVERSAL_TOKEN: unique symbol;
-export const ATTRIBUTE_TOKEN: unique symbol;
-export const TYPE_TOKEN: unique symbol;
-
 export const MAP: <K, V>(x?: [K, V][]) => Map<K, V>;
 export const WEAKMAP: <K extends object, V>() => WeakMap<K, V>;
-export const WEAKREF: <V extends object>(val: V) => WeakRef<V>;

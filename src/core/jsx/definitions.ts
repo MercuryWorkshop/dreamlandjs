@@ -1,7 +1,7 @@
 import { CssInit } from "../css";
 import { Pointer } from "../state/pointers";
 import { Stateful } from "../state/state";
-import { COMMA_TOKEN } from "../consts";
+import { DREAMLAND, NO_CHANGE } from "../consts";
 
 export type ComponentChild =
 	| Node
@@ -17,13 +17,8 @@ type BannedPropNames = "cx" | "root";
 type BanProps<T extends object> = {
 	[K in keyof T]: K extends BannedPropNames ? never : T[K];
 };
-type MapChildren<ChildrenTy> =
-	ChildrenTy extends Array<any> ? ChildrenTy : [ChildrenTy];
-
 type _StateProps<Combined extends BanProps<Combined>> = {
-	[K in keyof Combined]: K extends "children"
-		? MapChildren<Combined[K]>
-		: Combined[K];
+	[K in keyof Combined]: Combined[K];
 } & { root: JSX.Element; cx: ComponentCx<_StateProps<Combined>> };
 type StateProps<
 	Props extends BanProps<Props>,
@@ -50,13 +45,14 @@ export type Component<
 	This extends BanProps<This> = {},
 > = ComponentFn<Props, This> & { style?: CssInit };
 
-type ComponentCx<StatefulProps extends { [COMMA_TOKEN]?: never } & object> = {
+type ComponentCx<StatefulProps extends { [DREAMLAND]?: never } & object> = {
+	[NO_CHANGE]: any[];
+
 	state: Stateful<StatefulProps>;
 	id?: string;
 
-	// Run on client and server (return value not accessible)
+	load?: () => Promise<any> | any;
 	init?: () => Promise<any> | any;
-	// Run only on client (return value not accessible)
 	mount?: () => Promise<any> | any;
 } & {
 	[K in keyof DLComponentContextExtraProps]?: DLComponentContextExtraProps[K];

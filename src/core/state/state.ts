@@ -1,78 +1,109 @@
-import { COMMA_TOKEN, WEAKMAP } from "../consts";
-import { deref, ObjectProp } from "../utils";
+import { DREAMLAND } from "../consts";
+import { ObjectProp } from "../utils";
 import { InitializingPointer, Pointer } from "./pointers";
 import { useTrap, useTrapMap } from "./use";
-
-let internalStatefuls: WeakMap<Stateful<any>, InternalStateful> = WEAKMAP();
+import { StateListenerNode, walkStateListeners } from "./util";
 
 export type StatefulListener = (newValue: any, prop: ObjectProp) => void;
 
-interface InternalStateful {
+export interface InternalStateful {
 	_listeners: StatefulListener[];
-	_weaks: WeakRef<StatefulListener>[];
+	_pointers: Record<
+		ObjectProp,
+		StateListenerNode<Pointer<any>, number> | undefined
+	>;
 	_proxies: Record<ObjectProp, Pointer<any>>;
+	_weak: WeakRef<InternalStateful>;
 }
 
+/// THIS IS A SEALED MARKER TYPE. do not try accessing it
+interface StatefulMarker {
+	readonly [DREAMLAND]: unique symbol;
+}
+// @internal
+interface StatefulMarker extends InternalStateful {}
+
 export type Stateful<T extends object> = T & {
-	/// THIS IS A SEALED MARKER TYPE. do not try accessing it
-	readonly [COMMA_TOKEN]: unique symbol;
+	readonly [DREAMLAND]: StatefulMarker;
 };
 
-let getInternal = (stateful: Stateful<any>): InternalStateful =>
-	internalStatefuls.get(stateful)!;
-let callListeners = (
+export let _callStateListeners = (
 	internal: InternalStateful,
 	prop: ObjectProp,
 	newValue: any
 ) => {
-	internal._listeners.map((x) => x(newValue, prop));
-	(internal._weaks = internal._weaks.filter(deref)).map((x) =>
-		deref(x)!(newValue, prop)
+	internal._listeners.forEach((x) => x(newValue, prop));
+	walkStateListeners(
+		(ptr, index) => ptr._changed(index),
+		internal._pointers,
+		prop
 	);
 };
 
 export let _stateListen = <T extends object>(
 	stateful: Stateful<T>,
-	listener: WeakRef<StatefulListener>
+	prop: ObjectProp,
+	listener: WeakRef<Pointer<any>>,
+	i: number
 ) => {
-	getInternal(stateful)._weaks.push(listener);
+	let pointers = stateful[DREAMLAND]._pointers;
+	pointers[prop] = { _value: listener, _index: i, _next: pointers[prop] };
 };
 export let _stateListenRemove = <T extends object>(
 	stateful: Stateful<T>,
-	listener: WeakRef<StatefulListener>
-) => {
-	getInternal(stateful)._weaks = getInternal(stateful)._weaks.filter(
-		(x) => x !== listener
+	prop: ObjectProp,
+	listener: Pointer<any>,
+	i: number
+) =>
+	walkStateListeners(
+		(ptr, index) => ptr === listener && index === i,
+		stateful[DREAMLAND]._pointers,
+		prop
 	);
+
+export interface StepCollector {
+	_sym: symbol;
+	_ptr: InitializingPointer;
+	_proxy: any;
+}
+
+export let stepCollectors: StepCollector[] = [];
+
+// do not close over anything otherwise it'll keep stuff alive
+let stepCollectorHandler: ProxyHandler<StepCollector> = {
+	get(collector, p, receiver) {
+		if (p === Symbol.toPrimitive) return () => collector._sym;
+		collector._ptr._path.push(p as ObjectProp);
+		return receiver;
+	},
 };
 
 export let createState = <T extends object>(target: T): Stateful<T> => {
 	let internal: InternalStateful = {
 		_listeners: [],
-		_weaks: [],
+		_pointers: {},
 		_proxies: {},
-	} satisfies InternalStateful;
-
+	} satisfies Omit<InternalStateful, "_weak"> as any as InternalStateful;
 	let ret = new Proxy(target, {
 		get(target, p, receiver) {
+			if (p === DREAMLAND) return internal;
+
 			if (useTrap) {
-				let sym = Symbol();
-				let ptr: InitializingPointer = {
+				let _sym = Symbol();
+				let _ptr: InitializingPointer = {
 					_state: ret,
 					_path: [p],
-				} satisfies InitializingPointer;
-				useTrapMap.set(sym, ptr);
+				} as any;
+				let collector = stepCollectors.pop() || ({} as StepCollector);
+				if (!collector._proxy) {
+					collector._proxy = new Proxy(collector, stepCollectorHandler);
+				}
+				collector._sym = _sym;
+				collector._ptr = _ptr;
+				_ptr._collector = collector;
+				useTrapMap.set(_sym, _ptr);
 
-				return new Proxy(
-					{},
-					{
-						get(target, p, receiver) {
-							if (p === Symbol.toPrimitive) return () => sym;
-							ptr._path.push(p);
-							return receiver;
-						},
-					}
-				);
+				return collector._proxy;
 			}
 
 			return internal._proxies[p]
@@ -83,12 +114,14 @@ export let createState = <T extends object>(target: T): Stateful<T> => {
 			let setRet = internal._proxies[p]
 				? internal._proxies[p]._set(newValue)
 				: Reflect.set(target, p, newValue, receiver);
-			if (setRet) callListeners(internal, p, newValue);
+			if (setRet && (internal._listeners.length || internal._pointers[p]))
+				_callStateListeners(internal, p, newValue);
 			// returning setRet would be better here but it would break a lot of strictmode code
 			return true;
 		},
 	}) as Stateful<T>;
-	internalStatefuls.set(ret, internal);
+
+	internal._weak = new WeakRef(internal);
 	return ret;
 };
 
@@ -96,7 +129,15 @@ export let stateListen = <T extends object>(
 	state: Stateful<T>,
 	func: StatefulListener
 ) => {
-	getInternal(state)._listeners.push(func);
+	state[DREAMLAND]._listeners.push(func);
+};
+export let stateListenRemove = <T extends object>(
+	state: Stateful<T>,
+	func: StatefulListener
+) => {
+	state[DREAMLAND]._listeners = state[DREAMLAND]._listeners.filter(
+		(x) => x !== func
+	);
 };
 
 export let stateProxy = <T extends object, Key extends keyof T & ObjectProp>(
@@ -105,8 +146,9 @@ export let stateProxy = <T extends object, Key extends keyof T & ObjectProp>(
 	ptr: Pointer<T[Key]>
 ) => {
 	// `number` keys will get coerced to string anyway
-	getInternal(state)._proxies[key as ObjectProp] = ptr;
-	ptr.listen((val) => callListeners(getInternal(state), key, val));
+	state[DREAMLAND]._proxies[key as ObjectProp] = ptr;
+	ptr.p = { _value: state[DREAMLAND]._weak, _index: key, _next: ptr.p };
 };
 
-export let isStateful = (val: any): val is Stateful<any> => !!getInternal(val);
+export let isStateful = (val: any): val is Stateful<any> =>
+	!!(val && val[DREAMLAND]);

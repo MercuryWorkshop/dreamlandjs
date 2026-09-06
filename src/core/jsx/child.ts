@@ -1,91 +1,146 @@
 import { MAP } from "../consts";
-import { CSS_COMPONENT } from "../css";
-import { Pointer, maybeListen } from "../state/pointers";
+import { CSS_COMPONENT, CSS_IDENT } from "../css";
+import { Pointer } from "../state/pointers";
 import { findLIS } from "../utils";
 import { ComponentChild } from "./definitions";
-import { CSS_IDENT, getDom } from "./dom";
+import { getDom } from "./dom";
 
-let isBlacklisted = (val: any): val is null | undefined | boolean =>
-	[null, undefined, false, true].includes(val);
+const enum ChildStateType {
+	Text = 1,
+	Comment = 2,
+	Node = 3,
+	Pointer = 4,
+}
+
+// Comment and Node have _value to reduce object shapes
+type ChildState =
+	| { _type: ChildStateType.Text; _node: Text; _value: string | number }
+	| { _type: ChildStateType.Comment; _node: Comment; _value: number }
+	| { _type: ChildStateType.Node; _node: Node; _value: number }
+	| {
+			_type: ChildStateType.Pointer;
+			_anchor: Comment;
+			_inner: MapChildRet;
+			_ptr: Pointer<ComponentChild>;
+	  };
+
+type PointerChildState = ChildState & { _type: ChildStateType.Pointer };
+
+interface ChildStateArray extends Array<MapChildRet> {
+	_type: "typescript hack so it matches runtime behavior";
+}
+type MapChildRet = ChildState | ChildStateArray;
+
+let applyIdent = (child: any, cssIdent: string) => {
+	let arr: string[] = child.getAttributeNames?.();
+	// walk until we reach a component boundary
+	if (arr && !arr.includes(CSS_COMPONENT)) {
+		// paint any unowned nodes
+		if (!arr.some((x) => x.startsWith(CSS_IDENT)))
+			child.setAttribute(cssIdent, "");
+
+		child.childNodes.forEach((x: any) => applyIdent(x, cssIdent));
+	}
+};
+
+export let flattenChildRet = (state: MapChildRet, out: Node[] = []): Node[] => {
+	if (state instanceof Array) {
+		state.forEach((x) => flattenChildRet(x, out));
+	} else if (state._type == ChildStateType.Pointer) {
+		out.push(state._anchor);
+		flattenChildRet(state._inner, out);
+	} else {
+		out.push(state._node);
+	}
+	return out;
+};
 
 export let mapChild = (
 	child: ComponentChild,
 	parent: Node,
 	cssIdent?: string,
-	identOverride?: string
-): Node[] => {
-	let [, NODE, new_Text, new_Comment, , , hydrating] = getDom();
+	last?: MapChildRet
+): MapChildRet => {
+	let [, NODE, new_Text, new_Comment] = getDom();
 
-	if (isBlacklisted(child)) {
-		return [new_Comment()];
+	// keep the inner value's state even when we're dropping the pointer
+	while (last?._type == ChildStateType.Pointer) {
+		if (child === last._ptr) return last;
+		last = last._inner;
+	}
+
+	if (child == null || typeof child == "boolean") {
+		return last?._type == ChildStateType.Comment
+			? last
+			: { _type: ChildStateType.Comment, _node: new_Comment(""), _value: 0 };
 	} else if (child instanceof Pointer) {
-		let start = new_Comment("[");
-		let end = new_Comment("]");
-		let current: Node[];
+		let ident = child._cx?.id || cssIdent,
+			val = child.value;
+		let ret: PointerChildState = {
+			_type: ChildStateType.Pointer,
+			_anchor: new_Comment("["),
+			_ptr: child,
+			_inner: mapChild(val, parent, ident, last),
+		};
 
-		maybeListen(child, start, (val: ComponentChild) => {
-			if (current && !start.parentNode) return;
-			let mapped: Node[] = mapChild(val, parent, cssIdent, child._cssIdent);
-			let hydrating = getDom()[6];
+		child.constrain(ret._anchor).listen((v) => {
+			if (v === val || !ret._anchor.parentNode) return;
+			val = v;
 
-			// pretty sure it's not possible to put a pointer child in not a htmlelement
-			if (!hydrating?.(parent as HTMLElement) && current) {
-				let actual: Node[] = [];
-				for (let n = start.nextSibling; n && n !== end; n = n.nextSibling) {
-					actual.push(n);
-				}
-				let old = MAP(actual.map((x, i) => [x, i]));
-				let staticNodes = mapped.map((x) => old.get(x)!).filter((x) => x);
-				let LIS = MAP(findLIS(staticNodes).map((x) => [actual[x], ,]));
-				let anchor: Node = start;
+			let old: Node[] = flattenChildRet(ret._inner); // since reused nodes are modified inplace
+			let current: Node[] = flattenChildRet(
+				(ret._inner = mapChild(v, parent, ident, ret._inner))
+			);
+			let oldToIndex: Map<Node, number> = MAP(old.map((x, i) => [x, i]));
+			let LIS: number[] = findLIS(
+				current.map((x) => oldToIndex.get(x)!).filter((x) => x + 1)
+			);
+			let lisIdx: number = 0;
+			let anchor: Node = ret._anchor;
 
-				mapped.map((child) => {
-					if (!old.has(child) || !LIS.has(child)) {
-						parent.insertBefore(child, anchor.nextSibling);
-					}
-					anchor = child;
-				});
+			current.forEach((child) => {
+				// LIS is a subsequence of the reused indices in current order, so one
+				// cursor picks out the stay-put nodes without a second lookup table.
+				// the +1 makes an absent index NaN, which never matches a spent LIS
+				if (oldToIndex.get(child)! + 1 === LIS[lisIdx] + 1) lisIdx++;
+				else parent.insertBefore(child, anchor.nextSibling);
+				oldToIndex.delete(child);
+				anchor = child;
+			});
 
-				actual.map(
-					(x) =>
-						!mapped.includes(x) &&
-						x.parentNode === parent &&
-						parent.removeChild(x)
-				);
-			}
-			current = mapped;
+			// whatever is left unclaimed is exactly the dropped set
+			oldToIndex.forEach(
+				(_, x) => x.parentNode === parent && parent.removeChild(x)
+			);
 		});
 
-		return [
-			start,
-			...(hydrating?.(parent as HTMLElement) ? [] : current!),
-			end,
-		];
+		return ret;
 	} else if (child instanceof (NODE as typeof globalThis.Node)) {
-		let list: DOMTokenList;
-		let apply = (child: any) => {
-			if ((list = child.classList)) {
-				let arr = [...list];
-				let other = arr.find((x) => x.startsWith(CSS_IDENT));
+		// an identical node is already stamped; skipping the walk is the whole
+		// point of holding onto the state
+		if (last?._type == ChildStateType.Node && last._node === child) return last;
 
-				if (arr.find((x) => x == CSS_COMPONENT)) return;
+		if (cssIdent) applyIdent(child, cssIdent);
 
-				if (!other) {
-					list.add(identOverride || cssIdent!);
-				} else if (identOverride && other !== identOverride) {
-					list.remove(other);
-					list.add(identOverride);
-				}
-
-				[...child.childNodes].map(apply);
-			}
-		};
-		if (identOverride || cssIdent) apply(child);
-
-		return [child];
+		if (last?._type == ChildStateType.Node) {
+			last._node = child;
+			return last;
+		}
+		return { _type: ChildStateType.Node, _node: child, _value: 0 };
 	} else if (child instanceof Array) {
-		return child.flatMap((x) => mapChild(x, parent, cssIdent, identOverride));
+		if (!(last instanceof Array)) last = [last] as any as ChildStateArray;
+		return child.map((x, i) =>
+			mapChild(x, parent, cssIdent, (last as ChildStateArray)[i])
+		) as ChildStateArray;
 	} else {
-		return [new_Text(child as string)];
+		if (last?._type == ChildStateType.Text) {
+			if (last._value !== child) (last._node as any).data = last._value = child;
+			return last;
+		}
+		return {
+			_type: ChildStateType.Text,
+			_node: new_Text(child as any),
+			_value: child,
+		};
 	}
 };

@@ -1,0 +1,273 @@
+import { check } from "../harness.ts";
+import { jsx, css, createState } from "../../dist/core.js";
+import {
+	ssrTest,
+	roundTrip,
+	serverRender,
+	mountDocument,
+	hydrateIn,
+	norm,
+	shape,
+} from "./harness.ts";
+
+// The contract hydration is supposed to uphold: afterwards the dom is the one
+// the server sent -- the same node objects, not equivalent replacements -- and
+// every binding is live.
+
+ssrTest("static tree round-trips", async () => {
+	let Leaf = function () {
+		return jsx("span", { children: "leaf" });
+	};
+	let App = function () {
+		return jsx("main", {
+			children: [jsx("h1", { children: "hi" }), jsx(Leaf, {})],
+		});
+	};
+
+	let r = await roundTrip(App);
+	check("server markup").assertEq(
+		norm(r.body),
+		"<main><h1>hi</h1><span>leaf</span></main>"
+	);
+	check("client matches server").assertEq(norm(r.client), norm(r.body));
+});
+
+ssrTest("adopts server nodes instead of rebuilding them", async () => {
+	let App = function () {
+		return jsx("main", {
+			children: [
+				jsx("p", { children: "one" }),
+				jsx("ul", {
+					children: [1, 2, 3].map((i) => jsx("li", { children: "" + i })),
+				}),
+			],
+		});
+	};
+
+	let win = mountDocument(await serverRender(App));
+	let before = [...win.document.body.querySelectorAll("*")];
+	let root = await hydrateIn(win, App);
+	let after = [...win.document.body.querySelectorAll("*")];
+
+	check("no elements added or dropped").assertEq(after.length, before.length);
+	// identity, not equality: a fresh element with the same tag passes a markup
+	// comparison while having lost every server-rendered attribute and leaving
+	// the original orphaned in the tree
+	check("every element is the same object").assertEq(
+		after.every((x, i) => x === before[i]),
+		true
+	);
+	check("hydrate returns the server root").assertEq(
+		root,
+		win.document.body.firstElementChild
+	);
+});
+
+ssrTest("listeners bind to the adopted elements", async () => {
+	let state = createState({ clicks: 0 });
+	let App = function () {
+		return jsx("main", {
+			children: [
+				jsx("button", { "on:click": () => state.clicks++, children: "click" }),
+				jsx("span", { children: use(state.clicks) }),
+			],
+		});
+	};
+
+	let r = await roundTrip(App);
+	let button = r.win.document.querySelector("button")!;
+	let span = r.win.document.querySelector("span")!;
+
+	check("server rendered the initial value").assertEq(span.textContent, "0");
+	button.click();
+	check("listener fired").assertEq(state.clicks, 1);
+	check("dom updated through the server node").assertEq(span.textContent, "1");
+});
+
+ssrTest("pointer-driven attributes stay live", async () => {
+	let state = createState({ cls: "a", flag: false });
+	let App = function () {
+		return jsx("main", {
+			children: jsx("div", {
+				class: use(state.cls),
+				"attr:inert": use(state.flag),
+			}),
+		});
+	};
+
+	let r = await roundTrip(App);
+	let div = r.win.document.querySelector("div")!;
+
+	check("server rendered the class").assertEq(div.getAttribute("class"), "a");
+	state.cls = "b";
+	check("class updates after hydration").assertEq(
+		div.getAttribute("class"),
+		"b"
+	);
+	state.flag = true;
+	check("property updates after hydration").assertEq((div as any).inert, true);
+});
+
+ssrTest("null pointer children round-trip", async () => {
+	let state = createState({ value: null as string | null });
+	let App = function () {
+		return jsx("main", { children: [use(state.value), jsx("hr", {})] });
+	};
+
+	let r = await roundTrip(App);
+	let main = r.win.document.body.firstElementChild;
+
+	check("client matches server").assertEq(norm(r.client), norm(r.body));
+	// anchor for the pointer, placeholder for its null value, then the hr
+	check("no stray nodes").assertEq(shape(main), "!,!,<hr>");
+
+	state.value = "now set";
+	check("placeholder is replaced, not appended").assertEq(
+		shape(main),
+		'!,"now set",<hr>'
+	);
+});
+
+ssrTest("a mid-render value keeps later child offsets aligned", async () => {
+	// the body runs before init settles, so both sides stamp a placeholder comment
+	// for the empty value. the server then resolves it, drops the placeholder and
+	// emits a text node -- which the client can only locate by child index. the
+	// client's own placeholder is briefly in the dom at that index, so an offset
+	// read after it is inserted lands on the comment instead of the text
+	let App: any = function (this: any) {
+		this.title = undefined as string | undefined;
+		this.cx.init = async () => {
+			await Promise.resolve();
+			this.title = "resolved";
+		};
+		return jsx("main", { children: use(this.title) });
+	};
+
+	let r = await roundTrip(App);
+	let main = r.win.document.body.firstElementChild;
+
+	check("server emitted a text node").assertEq(
+		norm(r.body),
+		"<main><!--[-->resolved</main>"
+	);
+	check("client matches server").assertEq(norm(r.client), norm(r.body));
+	check("no leftover placeholder").assertEq(shape(main), '!,"resolved"');
+
+	// the binding has to own the server's text node rather than the placeholder it
+	// was meant to replace, or updates are written into a comment and never show
+	r.root.$.state.title = "updated";
+	check("updates reach the text node").assertEq(shape(main), '!,"updated"');
+});
+
+ssrTest("adjacent text nodes are re-split", async () => {
+	// the server emits these as two text nodes; the html parser merges them into
+	// one, so the payload has to carry enough to cut it apart again or every
+	// later child index in this parent is off by one
+	let App = function () {
+		return jsx("p", { children: ["one", "two", jsx("i", {})] });
+	};
+
+	let r = await roundTrip(App);
+	let p = r.win.document.body.firstElementChild;
+
+	// one entry per node in the run, including the trailing one that never needs
+	// splitting -- redundant but harmless, so this only asserts the split exists
+	check("payload carries the split").assertEq(r.payload.t.length > 0, true);
+	check("text is two nodes again").assertEq(shape(p), '"one","two",<i>');
+	check("markup is unchanged").assertEq(norm(r.client), norm(r.body));
+});
+
+ssrTest("svg elements round-trip", async () => {
+	let App = function () {
+		return jsx("main", {
+			children: jsx("svg", {
+				xmlns: "http://www.w3.org/2000/svg",
+				children: jsx("circle", { r: "5" }),
+			}),
+		});
+	};
+
+	let r = await roundTrip(App);
+	// compared structurally: dom-serializer self-closes empty foreign elements
+	// and happy-dom does not, which is a serializer difference, not a hydration one
+	let circle = r.win.document.querySelector("circle")!;
+
+	check("circle survived hydration").assertEq(!!circle, true);
+	check("attribute survived").assertEq(circle.getAttribute("r"), "5");
+	check("still in the svg namespace").assertEq(
+		circle.namespaceURI,
+		"http://www.w3.org/2000/svg"
+	);
+	check("no duplicate svg subtree").assertEq(
+		r.win.document.querySelectorAll("circle").length,
+		1
+	);
+});
+
+ssrTest("component css is installed once and scopes match", async () => {
+	let Styled: any = function () {
+		return jsx("div", { children: "styled" });
+	};
+	Styled.style = css`
+		:scope {
+			color: red;
+		}
+	`;
+	let App = function () {
+		return jsx("main", { children: [jsx(Styled, {}), jsx(Styled, {})] });
+	};
+
+	let r = await roundTrip(App);
+	let styles = [...r.win.document.head.querySelectorAll("style")];
+
+	check("one stylesheet for two instances").assertEq(styles.length, 1);
+	check("client did not append another").assertEq(
+		r.win.document.querySelectorAll("style").length,
+		1
+	);
+
+	// both instances must carry the scope attribute the server baked into the
+	// stylesheet -- a mismatch here renders the component unstyled
+	let ident = styles[0].getAttribute("dlcss-id")!;
+	let divs = [...r.win.document.querySelectorAll("div")];
+	check("ident is present").assertEq(!!ident, true);
+	check("scope ident is on both instances").assertEq(
+		divs.length === 2 && divs.every((d) => d.hasAttribute(ident)),
+		true
+	);
+	check("stylesheet text uses that ident").assertEq(
+		styles[0].textContent!.includes(ident),
+		true
+	);
+});
+
+ssrTest("one-colon pseudo-elements still scope in front", async () => {
+	// dreamland/vite's cssMinifier runs lightningcss, which downlevels the four
+	// pseudo-elements that have a legacy alias -- ::before, ::after, ::first-line,
+	// ::first-letter -- to one colon. so this is the spelling the scoper actually
+	// receives in a built app, and it has to read as a pseudo-element: appending
+	// the scope selector behind one makes a browser empty the :where() argument
+	// list, and the rule then matches nothing. the server's css parser hands
+	// selectors back verbatim, so unlike a browser's cssom it will not normalize
+	// this on the way in
+	let Styled: any = function () {
+		return jsx("div", { children: "styled" });
+	};
+	Styled.style = css`
+		:scope:after {
+			content: "";
+		}
+	`;
+
+	let r = await serverRender(Styled);
+	let ident = r.head.match(/dlcss-id="([^"]+)"/)![1];
+
+	check("selector round-trips as a pseudo-element").assertEq(
+		r.head.includes(`[${ident}][dlc]:where([${ident}])::after`),
+		true
+	);
+	check("scope selector is not left behind it").assertEq(
+		/:{1,2}after:where\(/.test(r.head),
+		false
+	);
+});

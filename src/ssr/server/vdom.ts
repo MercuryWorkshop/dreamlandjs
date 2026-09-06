@@ -11,7 +11,8 @@ import {
 } from "domhandler";
 import { parseDocument } from "htmlparser2";
 import renderToString from "dom-serializer";
-import { CSS_IDENT, SSR_ID } from "../common/consts";
+import { SSR_DATA, SSR_ID } from "../common/consts";
+import { ObjectMap, WatchedState, watchState } from "../common/serialize";
 
 export class Node {
 	_id!: number;
@@ -34,14 +35,20 @@ export class Node {
 		this.childNodes = this.childNodes.filter((x) => x !== node);
 	}
 
+	replaceChild(el: Node, node: Node) {
+		let idx = this.childNodes.findIndex((x) => x === node);
+		this.childNodes[idx] = el;
+		el.parent = this;
+		node.parent = undefined;
+	}
+
 	insertBefore(node: Node, anchor: Node) {
 		this.removeChild(node);
 		node.parent = this;
-		this.childNodes.splice(
-			this.childNodes.findIndex((x) => x === anchor),
-			0,
-			node
-		);
+		// a null/absent anchor means append, per the DOM spec -- findIndex would
+		// return -1 and splice(-1) inserts before the *last* child instead
+		let idx = this.childNodes.findIndex((x) => x === anchor);
+		this.childNodes.splice(idx < 0 ? this.childNodes.length : idx, 0, node);
 	}
 
 	toStandard(): DomNode {
@@ -77,6 +84,10 @@ class ClassList extends Array {
 		}
 	}
 
+	set value(val: string) {
+		this._replace(val.split(" "));
+	}
+
 	empty(): boolean {
 		return this.length == 0;
 	}
@@ -100,6 +111,7 @@ export class Element extends Node {
 	classList = new ClassList();
 
 	component: ComponentContext<any> | undefined;
+	watchedState: WatchedState | undefined;
 
 	style = new CSSOM.CSSStyleDeclaration();
 
@@ -113,18 +125,25 @@ export class Element extends Node {
 	addEventListener() {}
 
 	setAttribute(key: string, value: any) {
-		if (key === "class") this.classList._replace(value.split(" "));
+		if (key === "class") this.classList.value = value;
 		this.attributes.set(key, "" + value);
 	}
 	removeAttribute(key: string) {
-		if (key === "class") this.classList._replace([]);
+		if (key === "class") this.classList.value = "";
 		this.attributes.delete(key);
+	}
+	// applyIdent walks this to find the scope ident; without it every stamp it
+	// would apply is silently skipped during ssr
+	getAttributeNames() {
+		return [...this.attributes.keys()];
+	}
+	hasAttribute(key: string) {
+		return this.attributes.has(key);
 	}
 
 	replaceWith(el: Element) {
 		if (!this.parent) throw new Error("element has no parent");
-		let idx = this.parent.childNodes.findIndex((x) => x === this);
-		this.parent.childNodes[idx] = el;
+		this.parent.replaceChild(el, this);
 	}
 
 	get $() {
@@ -146,6 +165,9 @@ export class Element extends Node {
 	}
 
 	set innerText(value: string) {
+		this.childNodes = [new Text(value)];
+	}
+	set textContent(value: string) {
 		this.childNodes = [new Text(value)];
 	}
 
@@ -190,6 +212,42 @@ function fromDomhandler(node: DomNode, parent: Node): Node {
 	return newNode;
 }
 
+// ::before, ::after, ::first-line and ::first-letter are the four pseudo-elements
+// that predate the `::` syntax, so they still accept a one-colon spelling -- and a
+// minifier will happily emit that spelling to save a byte. a browser's cssom
+// normalizes it back to `::` on parse, and the scoper depends on that: it treats
+// only `::` as a pseudo-element, and a one-colon `:after` reads to it as a
+// pseudo-class, so the scope selector lands *behind* the pseudo-element instead of
+// in front of it. that is not a parse error a browser reports -- it empties the
+// `:where()` argument list and the rule quietly stops matching anything.
+//
+// rrweb-cssom hands the selector back exactly as it was written, so do the
+// normalization here, where the rest of the pipeline already assumes it happened.
+//
+// the leading alternatives exist to be skipped over: an escape, an attribute
+// selector or a string may hold a literal `:after` that is not a pseudo-element.
+// the lookbehind leaves an already-correct `::after` alone, and the lookahead
+// keeps a longer ident like `:after-foo` from matching its prefix
+let LEGACY_PSEUDO =
+	/\\.|\[(?:[^\]\\"']|\\.|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')*\]|(?<!:):(?:before|after|first-line|first-letter)(?![-\w\P{ASCII}])/giu;
+
+let normalizeSelector = (sel: string) =>
+	sel.replace(LEGACY_PSEUDO, (m) => (m[0] == ":" ? ":" + m : m));
+
+// grouping rules nest, and a rule inside @media needs the same treatment
+let normalizeRules = (list: any) =>
+	[...list].forEach((rule: any) => {
+		if (rule.selectorText)
+			rule.selectorText = normalizeSelector(rule.selectorText);
+		if (rule.cssRules) normalizeRules(rule.cssRules);
+	});
+
+let parseSheet = (value: string) => {
+	let sheet = CSSOM.parse(value);
+	normalizeRules(sheet.cssRules);
+	return sheet;
+};
+
 export class Style extends Element {
 	constructor() {
 		super("style");
@@ -198,7 +256,10 @@ export class Style extends Element {
 	sheet = new CSSOM.CSSStyleSheet();
 
 	set innerText(value: string) {
-		this.sheet = CSSOM.parse(value);
+		this.sheet = parseSheet(value);
+	}
+	set textContent(value: string) {
+		this.sheet = parseSheet(value);
 	}
 
 	toStandard(): DomElement {
@@ -249,6 +310,8 @@ export let newVDom = () => {
 
 	let identArr: Map<number, string> = new Map();
 
+	let objectMap: ObjectMap = new Map();
+
 	let promises: (Promise<any> | any)[] = [];
 
 	return [
@@ -262,24 +325,45 @@ export let newVDom = () => {
 
 			elArr,
 			identArr,
+			objectMap,
 
 			promises,
 
 			head: new Element("head"),
+
+			Comment,
+			Text,
+			Node,
+			Element,
 		},
 		Node,
 		(text?: any) => push(new Text("" + text)),
 		(text?: any) => push(new Comment("" + text)),
-		() => {
+		(_component, style) => {
 			let ret = "" + identArr.size;
 			identArr.set(elArr.length, ret);
+			(style as any as Style).setAttribute(SSR_DATA, ret);
 			return ret;
 		},
-		new Map(),
-		undefined, // enables "ssr mode"
-		undefined,
-		undefined,
-		promises,
-		promises,
+		() => false,
+		(_state, _cx, result) => {
+			promises.push(result);
+		},
+		(_init, state, cx) => {
+			if (cx) {
+				// we are in ssr, no running mounts
+				cx.mount = undefined;
+				let load = cx.load;
+				if (load) {
+					cx.load = async () => {
+						(state.root as any as Element).watchedState = await watchState(
+							state,
+							objectMap,
+							load
+						);
+					};
+				}
+			}
+		},
 	] as const satisfies DomImpl;
 };

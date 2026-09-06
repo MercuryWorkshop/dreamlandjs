@@ -1,5 +1,10 @@
-import { getDom, CSS_IDENT, CssInfo } from "./dom";
-import { CSS_COMPONENT, genuid } from "../css";
+import {
+	getDom,
+	CREATE_ELEMENT,
+	DomLifecycleState as Lifecycle,
+	DomLifecycleCallback,
+} from "./dom";
+import { CSS_COMPONENT } from "../css";
 import {
 	Component,
 	ComponentChild,
@@ -9,24 +14,37 @@ import {
 } from "./definitions";
 import { Pointer, maybeListen } from "../state/pointers";
 import { createState, stateProxy, Stateful } from "../state/state";
-import { DelegateListener } from "../delegate";
-import { mapChild } from "./child";
+import { flattenChildRet, mapChild } from "./child";
+import { NO_CHANGE } from "../consts";
+import { currentComponentCx, withCx } from "../cx";
 
-export let currentComponentCx:
-	| ComponentContext<Component<any, any>>
-	| undefined;
-export let callDelegateListeners = (
-	value: any,
-	listeners: DelegateListener<any>[]
-): void =>
-	listeners.map((x) => {
-		let old = currentComponentCx;
-		currentComponentCx = x._cx;
-		x._callback(value);
-		currentComponentCx = old;
-	}) as any as void;
+let setStyle = (
+	el: HTMLElement,
+	ptr: Pointer<any>,
+	style: CSSStyleDeclaration,
+	k: string
+) =>
+	maybeListen(ptr, el, (v: any) => {
+		if (v === undefined) style.removeProperty(k);
+		else style.setProperty(k, v);
+	});
 
-let CREATE_ELEMENT = "createElement" as const;
+let runLifecycle = (
+	lifecycle: DomLifecycleCallback,
+	stage: Lifecycle,
+	cx: ComponentContext<any>,
+	cb?: () => Pointer<any> | any,
+	prev?: Pointer<any> | any
+): Pointer<any> | any => {
+	let ret;
+	if (!cb) return prev;
+	ret =
+		prev && prev instanceof Promise
+			? prev.then(() => withCx(cx, cb))
+			: withCx(cx, cb);
+	lifecycle(stage, cx, ret);
+	return ret;
+};
 
 function _jsx<T extends Component<any, any>>(
 	init: T,
@@ -40,149 +58,98 @@ function _jsx<T extends string>(
 ): DLElementNameToElement<T>;
 function _jsx(
 	init: Component<any, any> | string,
-	_props: Record<string, any> | null,
+	props: Record<string, any> | null,
 	key?: string
 ): HTMLElement {
-	let [
-		DOCUMENT,
-		NODE,
-		,
-		,
-		genCssUid,
-		componentCssInfo,
-		hydrating,
-		ssrTransform,
-		cxs = [],
-		inits = [],
-		mounts = [],
-	] = getDom();
-	let lastCssIdent = currentComponentCx?.id;
+	props ||= {};
 
 	dev: {
 		if (!["string", "function"].includes(typeof init))
 			throw new Error("invalid component");
 	}
 
-	let { children: _children, ...props } = _props!;
-	if (init === Fragment) return _children;
-	if (key) props.key = key;
-	_children ||= [];
-	let children = _children instanceof Array ? _children : [_children];
-
+	let [DOCUMENT, NODE] = getDom();
+	let children = props.children;
 	let el: HTMLElement;
-	let setStyle = (ptr: Pointer<any>, style: CSSStyleDeclaration, k: string) =>
-		maybeListen(ptr, el, (v: any) => {
-			if (v === undefined) style.removeProperty(k);
-			else style.setProperty(k, v);
-		});
+
+	if (init === Fragment) return children;
+	if (key) props.key = key;
 
 	if (typeof init === "function") {
-		let state = createState({ children }) as Stateful<any>;
-		let cssInfo: CssInfo | undefined = componentCssInfo.get(init);
+		let [, , , , genCssUid, isAdopted, lifecycle, componentCb] = getDom();
+
+		let _state: any = { children };
+		let state = createState(_state) as Stateful<any>;
+
+		let lifeTmp: any;
+
+		let style = init.style;
+		let cssId = style?._get(DOCUMENT, isAdopted, genCssUid, init);
+		let cx = {
+			state,
+			id: cssId,
+			[NO_CHANGE]: [],
+		} as ComponentContext<any>;
 
 		for (let attr in props) {
+			if (attr == "children") continue;
+
 			let val = props[attr];
 
 			if (val instanceof Pointer) {
 				stateProxy(state, attr, val);
 			} else {
-				state[attr] = val;
+				_state[attr] = val;
 			}
 		}
 
-		ssrTransform?.(init, state);
+		componentCb?.(init, state);
 
-		for (let child of children) {
-			// any pointers passed as children were unable to inherit the currentCssIdent.
-			// we add the currentCssIdent (which is of the parent) here since we know that the pointer came from the parent.
-			// this might break if pointers of elements are being passed as props but oh well
-			if (child instanceof Pointer) {
-				child._cssIdent ||= lastCssIdent;
-			}
+		_state.cx = cx;
+		el = withCx(cx, init, state, state);
+		_state.root = el;
+
+		dev: {
+			if (cssId && !(el instanceof NODE))
+				throw new Error("Fragment/data components cannot have CSS");
 		}
-
-		if (init.style) {
-			let style = init.style;
-			let styleEl = DOCUMENT[CREATE_ELEMENT]("style");
-			if (!cssInfo) {
-				cssInfo = { _id: CSS_IDENT + genCssUid(init), _vars: [] };
-				let cssString = "";
-
-				for (let i = 0; i < style._strings.length; i++) {
-					cssString += style._strings[i];
-					if (i + 1 < style._strings.length) {
-						let func = style._funcs[i];
-						if (typeof func === "string") {
-							cssString += func;
-						} else {
-							let varid = genuid();
-							cssString += `var(--${varid})`;
-							cssInfo._vars.push([varid, func]);
-						}
-					}
-				}
-
-				if (!hydrating?.(styleEl)) {
-					styleEl.setAttribute(CSS_COMPONENT, init.name);
-					styleEl.setAttribute(CSS_IDENT + "id", cssInfo._id);
-
-					DOCUMENT.head.append(styleEl);
-					style._rewrite(styleEl, cssString, cssInfo._id);
-				}
-				componentCssInfo.set(init, cssInfo);
-			}
-		}
-
-		let cx = {
-			state,
-			id: cssInfo?._id,
-		} as ComponentContext<any>;
-
-		let old = currentComponentCx;
-		state.cx = cx;
-		currentComponentCx = cx;
-		el = init.call(state);
-		currentComponentCx = old;
-		state.root = el;
 
 		if (el instanceof NODE) {
 			dev: {
-				if ((el as ComponentInstance<any>).$ && cssInfo)
+				if ((el as ComponentInstance<any>).$ && cssId)
 					throw new Error("Wrapper components cannot have CSS");
 			}
 
-			(el as ComponentInstance<any>).$ = cx;
+			if (!(el as ComponentInstance<any>).$)
+				(el as ComponentInstance<any>).$ = cx;
 
-			el.classList.add(CSS_COMPONENT);
-
-			if (cssInfo)
-				for (let [varid, func] of cssInfo._vars) {
-					let id = `--${varid}`;
-					let style = el.style;
-					setStyle(func(cx.state), style, id);
-				}
+			if (cssId) {
+				el.setAttribute(CSS_COMPONENT, "");
+				style!._vars!.forEach(([i, func]) =>
+					setStyle(el, func(cx.state), el.style, `--${cssId}-${i}`)
+				);
+			}
 		}
 
-		ssrTransform?.(init, state, cx);
+		componentCb?.(init, state, cx);
 
-		currentComponentCx = cx;
-		inits.push(cx.init?.());
-
-		if (el instanceof NODE && hydrating?.(el)) cxs.push(cx);
-		else if (hydrating) {
-			mounts.push(cx.mount?.());
-		}
-		currentComponentCx = old;
+		lifeTmp = runLifecycle(lifecycle, Lifecycle.Load, cx, cx.load);
+		lifeTmp = runLifecycle(lifecycle, Lifecycle.Init, cx, cx.init, lifeTmp);
+		runLifecycle(lifecycle, Lifecycle.Mount, cx, cx.mount, lifeTmp);
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
 		let xmlns = props?.xmlns;
+		let lastCssIdent = currentComponentCx?.id;
 		let setAttr = (param: string, val: any) => {
-			if (hydrating?.(el)) return;
+			if (getDom()[5](el)) return;
 
 			if (val === undefined || val === false) el.removeAttribute(param);
 			else el.setAttribute(param, val);
 		};
+		// last class list only matters when the fastpath is gone due to something setting additional classes on it
+		let lastClassList: string[] | undefined, classList: DOMTokenList;
+
 		el = (DOCUMENT as any)[CREATE_ELEMENT + (xmlns ? "NS" : "")](
 			xmlns || init,
 			xmlns && init,
@@ -190,21 +157,27 @@ function _jsx(
 			children
 		);
 
-		for (let child of children) {
-			let ret = mapChild(child, el, lastCssIdent);
-			ret.map((x) => {
-				if (x.parentNode !== el) el.appendChild(x);
+		if (children !== undefined) {
+			let lastChildNode: Node;
+			flattenChildRet(mapChild(children, el, lastCssIdent)).forEach((x) => {
+				if (x.parentNode !== el)
+					el.insertBefore(
+						x,
+						lastChildNode ? lastChildNode.nextSibling : el.firstChild
+					);
+				lastChildNode = x;
 			});
 		}
 
-		let classList = el.classList;
+		classList = el.classList;
 
 		for (let attr in props) {
+			if (attr == "children") continue;
+
 			let val = props[attr];
-			let oldClasses: string[] = [];
-			if (attr === "this") {
+			if (attr == "this") {
 				val.value = el;
-			} else if (attr === "value" || attr === "checked") {
+			} else if (attr == "value" || attr == "checked") {
 				maybeListen(
 					val,
 					el,
@@ -216,24 +189,29 @@ function _jsx(
 						el.addEventListener("input", () => (val.value = (el as any)[attr]));
 					}
 				);
-			} else if (attr === "class") {
+			} else if (attr == "class") {
 				maybeListen(val, el, (val: string) => {
 					// document.createElement("div").classList.{add,remove}(...[]) work
 					// document.createElement("div").classList.{add,remove}(...[""]) throw
-					let classes = val.split(" ").filter((x) => x.length);
-					classList.remove(...oldClasses);
-					classList.add(...classes);
-					oldClasses = classes;
+					if (lastClassList) {
+						classList.remove(...lastClassList);
+						classList.add(
+							...(lastClassList = val.split(" ").filter((x) => x.length))
+						);
+					} else {
+						classList.value = val;
+					}
 				});
 			} else if (attr.startsWith("on:")) {
 				el.addEventListener(attr.slice(3), val);
 			} else if (attr.startsWith("class:")) {
 				maybeListen(val, el, (val: boolean) => {
+					lastClassList ||= [...classList];
 					classList[val ? "add" : "remove"](attr.slice(6));
 				});
 			} else if (attr.startsWith("attr:")) {
 				maybeListen(val, el, (val: boolean) => {
-					if (!hydrating?.(el)) (el as any)[attr.slice(5)] = val;
+					if (!getDom()[5](el)) (el as any)[attr.slice(5)] = val;
 				});
 			} else if (
 				attr == "style" &&
@@ -241,15 +219,16 @@ function _jsx(
 				!(val instanceof Pointer)
 			) {
 				for (let k in val) {
-					setStyle(val[k], el.style, k);
+					setStyle(el, val[k], el.style, k);
 				}
 			} else {
 				maybeListen(val, el, (val) => setAttr(attr, val));
 			}
 		}
 
-		if (lastCssIdent && ![...classList].find((x) => x.startsWith(CSS_IDENT)))
-			classList.add(lastCssIdent);
+		if (lastCssIdent) {
+			el.setAttribute(lastCssIdent, "");
+		}
 
 		// all children would need to also be created with the correct namespace if we were doing this properly
 		// this is annoying and expensive bundle size wise, so it's easier to just force a reparse

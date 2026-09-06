@@ -5,7 +5,9 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 import { CSS_IDENT, SSR_DATA } from "../common/consts";
 import { Node, SsrData } from "../common/types";
-import { serializeState } from "../common/serialize";
+import { serializeWatchedStates } from "../common/serialize";
+
+export { newVDom as __unstable_newVdom };
 
 export interface RenderedComponent {
 	head: DomElement[];
@@ -38,7 +40,7 @@ export async function render(
 		}
 
 		let domIds = new Set<number>();
-		let domCssIdents = new Set();
+		let domCssIdents = new Set<string>();
 		let walk = (el: VdomNode) => {
 			domIds.add(el._id);
 			if (el instanceof Element && el.component) {
@@ -51,9 +53,20 @@ export async function render(
 		};
 		walk(root);
 
+		let [keyStore, valStore, refStore, _serialized] = serializeWatchedStates(
+			vdom[0].objectMap,
+			vdom[0].elArr.flatMap((x) => {
+				if (x instanceof Element && domIds.has(x._id) && x.watchedState)
+					return [[x._id, x.watchedState!]];
+				else return [];
+			})
+		);
+		let serialized = new Map(_serialized);
+
 		let data: SsrData = {
-			k: [],
-			v: [],
+			k: keyStore,
+			v: valStore,
+			r: refStore,
 			n: {},
 			i: Object.fromEntries(
 				[...vdom[0].identArr.entries()].filter(([_, i]) =>
@@ -68,11 +81,7 @@ export async function render(
 
 			let node: Node | undefined;
 			if (el instanceof Element && el.component) {
-				node = serializeState(
-					data,
-					el.component.state,
-					(x) => x instanceof vdom[1]
-				);
+				node = serialized.get(el._id);
 			} else if ((el instanceof Comment || el instanceof Text) && el.parent) {
 				node = [el.parent._id, el.parent.childNodes.indexOf(el)];
 				dev: {
@@ -133,6 +142,7 @@ export async function render(
 			}
 			if (start !== -1) flush();
 			data.p = ranges;
+			data.c = [...domCssIdents];
 		}
 
 		let head = [
@@ -140,7 +150,7 @@ export async function render(
 			...vdom[0].head.childNodes.filter(
 				(x) =>
 					x instanceof Element &&
-					domCssIdents.has(x.attributes.get(CSS_IDENT + "id"))
+					domCssIdents.has(x.attributes.get(CSS_IDENT + "id") || "")
 			),
 		].map((x) => x.toStandard()) as DomElement[];
 

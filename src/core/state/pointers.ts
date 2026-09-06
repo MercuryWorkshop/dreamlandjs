@@ -1,16 +1,21 @@
-import { DREAMLAND, NO_CHANGE, WEAKMAP, WEAKREF } from "../consts";
-import { currentComponentCx } from "../jsx";
-import { deref, ObjectProp } from "../utils";
+import { NO_CHANGE, WEAKMAP } from "../consts";
+import { currentComponentCx, CxListener, withCx } from "../cx";
+import { ComponentContext } from "../jsx/definitions";
+import { ObjectProp } from "../utils";
 import {
 	_stateListen,
 	_stateListenRemove,
 	isStateful,
 	Stateful,
+	StepCollector,
+	stepCollectors,
+	InternalStateful,
+	_callStateListeners,
 } from "./state";
 import { useTrap, UseTrapMap, useTrapMap } from "./use";
+import { StateListenerNode, walkStateListeners } from "./util";
 
 let constraints: WeakMap<any, Pointer<any>[]> = WEAKMAP();
-let internalPointers: WeakMap<Pointer<any>, InternalPointer<any>> = WEAKMAP();
 
 const enum PointerType {
 	Regular = 0,
@@ -18,24 +23,17 @@ const enum PointerType {
 	Zipped = 2,
 }
 
-type StateStepListener = (prop?: ObjectProp) => void;
 type StateStepVal = Pointer<ObjectProp> | ObjectProp;
 type StateStep = {
 	readonly _prop: StateStepVal;
 	// the computed value used in _recalculate
 	_computed?: any;
-	// the current state object that has the listener
+	// the current state object that has the listener, and the prop the listener
+	// was registered under (_prop may be a pointer, so it can change under us)
 	_state?: Stateful<any>;
-	// the listener
-	_callback?: StateStepListener;
-	// listener weakref
-	_callbackRef?: WeakRef<StateStepListener>;
+	_lprop?: ObjectProp;
 };
-export type PointerListener<T> = (val: T) => void;
-type InternalPointer<T> = {
-	_listeners: PointerListener<T>[];
-	_weaks: WeakRef<PointerListener<T>>[];
-} & (
+type InternalPointer<T> =
 	| {
 			readonly _type: PointerType.Regular;
 			readonly _state: Stateful<any>;
@@ -52,30 +50,24 @@ type InternalPointer<T> = {
 			readonly _type: PointerType.Zipped;
 
 			readonly _ptrs: ReadonlyArray<Pointer<any>>;
-	  }
-);
+	  };
 type InternalRegularPointer<T> = InternalPointer<T> & {
 	readonly _type: PointerType.Regular;
-};
-type InternalZippedPointer<T> = InternalPointer<T> & {
-	readonly _type: PointerType.Zipped;
 };
 
 export interface InitializingPointer {
 	_state: Stateful<any>;
 	_path: ObjectProp[];
+	_collector: StepCollector;
 }
 
 let unwrapStep = (val: StateStep): any => unwrapValue(val._prop);
 let followPath = (obj: any, path: ReadonlyArray<StateStep>): any =>
-	path.reduce((acc, x) => acc[unwrapStep(x)], obj);
+	path.length - 1
+		? path.reduce((acc, x) => acc[unwrapStep(x)], obj)
+		: obj[unwrapStep(path[0])];
 
-type DistributiveOmit<T, K extends PropertyKey> = T extends any
-	? Omit<T, K>
-	: never;
-let newPtr = (
-	ptr: DistributiveOmit<InternalPointer<any>, "_listeners" | "_weaks">
-) => new Pointer<any>({ ...ptr, _listeners: [], _weaks: [] });
+let newPtr = (ptr: InternalPointer<any>) => new Pointer<any>(ptr);
 
 export let initializeStep = (
 	map: UseTrapMap,
@@ -85,6 +77,9 @@ export let initializeStep = (
 	let init = map.get(step as symbol);
 	if (init instanceof Pointer) return init;
 	else if (!init) return step;
+
+	stepCollectors.push(init._collector);
+	init._collector._ptr = null!;
 
 	return newPtr({
 		_type: PointerType.Regular,
@@ -96,42 +91,62 @@ export let initializeStep = (
 type Truthy<T> = NonNullable<Exclude<T, false | 0 | "" | null | undefined>>;
 type Falsy<T> = Extract<T, false | 0 | "" | null | undefined>;
 
+export type PointerListener<T> = (val: T) => void;
+
 export class Pointer<T> {
 	// @internal
-	_id: symbol = Symbol();
+	declare _id?: symbol;
 	// @internal
-	_listener = this._callListeners.bind(this);
+	_weak = new WeakRef(this);
 	// @internal
-	_cssIdent?: string;
+	declare _cx?: ComponentContext<any>;
 
 	// @internal
-	get _ptr(): InternalPointer<T> {
-		return internalPointers.get(this)!;
-	}
+	declare _ptr: InternalPointer<T>;
+	// @internal
+	_listeners: CxListener<T>[] = [];
+	// @internal
+	declare d /* _deps */?: StateListenerNode<Pointer<T>, number | undefined>;
+	// @internal
+	declare p /* _proxied */?: StateListenerNode<InternalStateful, ObjectProp>;
 
 	// @internal
 	_recalculate(i: number, ptr: InternalRegularPointer<T>, step: StateStep) {
-		let old = step._state;
-		let last = ptr._path[i - 1]?._computed || ptr._state;
+		let old = step._state,
+			oldProp = step._lprop,
+			// the previous step's _computed is always up to date here: both callers
+			// walk forward from the step that changed
+			last = i ? ptr._path[i - 1]._computed : ptr._state,
+			prop = unwrapStep(step);
 
-		step._computed = followPath(ptr._state, ptr._path.slice(0, i))[
-			unwrapStep(step)
-		];
+		step._computed = last[prop];
 		step._state = isStateful(last) ? last : null;
 
-		if (old !== step._state) {
-			if (old) _stateListenRemove(old, step._callbackRef!);
-			if (step._state) _stateListen(step._state, step._callbackRef!);
+		if (old !== step._state || oldProp !== prop) {
+			if (old) _stateListenRemove(old, oldProp!, this, i);
+			if (step._state)
+				_stateListen(step._state, (step._lprop = prop), this._weak, i);
 		}
 	}
 
 	// @internal
-	_changed(i: number, _: any, prop?: ObjectProp) {
+	// called on step pointer changes and for dependencies of this pointer depending on pointer type
+	_pointerChanged(i?: number) {
+		if (this._ptr._type == PointerType.Regular) {
+			this._changed(i!);
+		} else {
+			// zipped/mapped. nothing to recalculate
+			this._callListeners();
+		}
+	}
+
+	// @internal
+	// called on regular pointer changes. recalculates step tree for stuff after itself
+	_changed(i: number) {
 		let ptr = this._ptr;
 		dev: {
 			if (ptr._type != PointerType.Regular) throw "unreachable";
 		}
-		if (prop && prop !== unwrapStep(ptr._path[i])) return;
 
 		for (; i < ptr._path.length; i++) {
 			this._recalculate(i, ptr, ptr._path[i]);
@@ -141,30 +156,37 @@ export class Pointer<T> {
 	}
 
 	// @internal
-	_callListeners() {
-		let ptr = this._ptr;
-		ptr._listeners.map((x) => x(this.value));
-		(ptr._weaks = ptr._weaks.filter(deref)).map((x) => deref(x)!(this.value));
+	_callListeners(this: Pointer<T>) {
+		let listeners = this._listeners,
+			value: T;
+		if (listeners.length || this.p) {
+			value = this.value;
+			listeners.forEach(([a, b]) => withCx(b, a, value));
+			walkStateListeners(
+				(internal, key) => _callStateListeners(internal, key, value),
+				this,
+				"p"
+			);
+		}
+		walkStateListeners((ptr, index) => ptr._pointerChanged(index), this, "d");
 	}
 
 	// @internal
 	constructor(internal: InternalPointer<T>) {
-		internalPointers.set(this, internal);
+		this._ptr = internal;
 
 		if (internal._type == PointerType.Regular) {
-			internal._path.map((x, i) => {
-				x._callback = this._changed.bind(this, i);
-				x._callbackRef = WEAKREF(x._callback);
-				if (x._prop instanceof Pointer) x._prop._listenWeak(x._callbackRef);
+			internal._path.forEach((x, i) => {
+				if (x._prop instanceof Pointer) x._prop._listenDep(this._weak, i);
 				this._recalculate(i, internal, x);
 			});
 		} else if (internal._type == PointerType.Mapped) {
-			internal._ptr._listenWeak(WEAKREF(this._listener));
+			internal._ptr._listenDep(this._weak);
 		} else if (internal._type == PointerType.Zipped) {
-			internal._ptrs.map((x) => x._listenWeak(WEAKREF(this._listener)));
+			internal._ptrs.forEach((x) => x._listenDep(this._weak));
 		}
 
-		if (currentComponentCx) this.constrain(currentComponentCx.state);
+		if ((this._cx = currentComponentCx)) this.constrain(currentComponentCx);
 	}
 
 	get value(): T {
@@ -173,7 +195,7 @@ export class Pointer<T> {
 		if (ptr._type == PointerType.Regular) {
 			return followPath(ptr._state, ptr._path);
 		} else if (ptr._type == PointerType.Mapped) {
-			return ptr._map(ptr._ptr.value);
+			return withCx(this._cx, ptr._map, ptr._ptr.value);
 		} else if (ptr._type == PointerType.Zipped) {
 			return ptr._ptrs.map((x) => x.value) as any;
 		}
@@ -193,7 +215,10 @@ export class Pointer<T> {
 			] = val;
 			return true;
 		} else if (ptr._type == PointerType.Mapped) {
-			if (ptr._reverse && (recalculated = ptr._reverse(val)) !== NO_CHANGE) {
+			if (
+				ptr._reverse &&
+				(recalculated = withCx(this._cx, ptr._reverse, val)) !== NO_CHANGE
+			) {
 				ptr._ptr.value = recalculated;
 				return true;
 			}
@@ -205,21 +230,17 @@ export class Pointer<T> {
 		this._set(val);
 	}
 
-	[DREAMLAND](): ReadonlyArray<Pointer<any>> | undefined {
-		return (this._ptr as InternalZippedPointer<T>)._ptrs;
-	}
-
 	[Symbol.toPrimitive]() {
-		if (useTrap) useTrapMap.set(this._id, this);
+		if (useTrap) useTrapMap.set((this._id ||= Symbol()), this);
 		return this._id;
 	}
 
 	// @internal
-	_listenWeak(func: WeakRef<PointerListener<T>>): void {
-		this._ptr._weaks.push(func);
+	_listenDep(ptr: WeakRef<Pointer<any>>, i?: number): void {
+		this.d = { _value: ptr, _index: i, _next: this.d };
 	}
 	listen(func: PointerListener<T>) {
-		this._ptr._listeners.push(func);
+		this._listeners.push([func, currentComponentCx]);
 	}
 
 	zip<Ptrs extends ReadonlyArray<Pointer<any>>>(
@@ -282,12 +303,17 @@ export class Pointer<T> {
 	}
 
 	constrain(to: any) {
-		if (!constraints.has(to)) constraints.set(to, []);
-		constraints.get(to)!.push(this);
+		let arr = to[NO_CHANGE];
+		if (!arr && !(arr = constraints.get(to))) constraints.set(to, (arr = []));
+		arr.push(this);
 		return this;
 	}
 	unconstrain(to: any) {
-		constraints.set(to, constraints.get(to)?.filter((x) => x !== this) || []);
+		let arr = to[NO_CHANGE] || constraints.get(to),
+			idx;
+		if (arr && (idx = arr.indexOf(this)) >= 0) {
+			arr.splice(idx, 1);
+		}
 	}
 }
 

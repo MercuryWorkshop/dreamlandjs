@@ -1,13 +1,30 @@
-import { glob, realpath } from "node:fs/promises";
-import { sep } from "node:path";
-import { argv, stdout } from "node:process";
-import { fileURLToPath } from "node:url";
+import { parentPort } from "node:worker_threads";
+import type {
+	CollectedTestFile,
+	HarnessMessage,
+	IndexMessage,
+} from "./index.ts";
 
-let induceGC = (() => {
-	let induceGC = global.gc;
-	if (!induceGC) throw new Error("global.gc not found");
-	return induceGC;
+let rawGC = (() => {
+	let gc = global.gc;
+	if (!gc) throw new Error("global.gc not found");
+	return gc;
 })();
+
+function s(obj: any) {
+	try {
+		return "" + obj;
+	} catch {
+		return `[failed stringify: ${typeof obj}]`;
+	}
+}
+
+export async function collectGarbage(cycles: number = 6): Promise<void> {
+	for (let i = 0; i < cycles; i++) {
+		rawGC();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	}
+}
 
 export interface TestFunction {
 	(): Promise<void> | void;
@@ -25,6 +42,10 @@ export abstract class BaseCheck {
 
 	// @internal
 	abstract _checkInvariants(): void;
+
+	serialize(): SCheck {
+		return { name: this.name, state: this.state, details: this.details };
+	}
 }
 
 export class Check extends BaseCheck {
@@ -43,8 +64,8 @@ export class Check extends BaseCheck {
 	// @internal
 	_checkInvariants() {
 		if (this._targetCalls !== -1 && this.calls !== this._targetCalls) {
-			this.fail();
 			this.details = `call count ${this.calls} != ${this._targetCalls}`;
+			this.fail();
 		}
 	}
 
@@ -60,10 +81,20 @@ export class Check extends BaseCheck {
 
 	assertEq<T>(a: T, b: T) {
 		if (a === b) {
-			this.details = `${a} === ${b}`;
+			this.details = `${s(a)} === ${s(b)}`;
 			this.pass();
 		} else {
-			this.details = `${a} !== ${b}`;
+			this.details = `${s(a)} !== ${s(b)}`;
+			this.fail();
+		}
+	}
+
+	assertInstance(val: any, cls: any) {
+		if (val instanceof cls) {
+			this.details = `${s(val)} instanceof ${s(cls)}`;
+			this.pass();
+		} else {
+			this.details = `${s(val)} is not instanceof ${s(cls)}`;
 			this.fail();
 		}
 	}
@@ -165,43 +196,104 @@ export class Check extends BaseCheck {
 
 export class GCCheck extends BaseCheck {
 	ref: WeakRef<WeakKey>;
+	// @internal
+	_mustFree: boolean;
+
+	state: TestResult = TestResult.Invalid;
 
 	// @internal
-	constructor(name: string, obj: WeakKey) {
+	constructor(name: string, obj: WeakKey, mustFree: boolean) {
 		super(name);
 		this.ref = new WeakRef(obj);
+		this._mustFree = mustFree;
 	}
 
 	// @internal
-	_checkInvariants(): void {}
-
-	get state(): TestResult {
-		if (this.ref.deref()) return TestResult.Passed;
-		else return TestResult.GcFailed;
+	_checkInvariants(): void {
+		let alive = !!this.ref.deref();
+		if (this._mustFree) {
+			// expected to have been collected once its constraint owner was dropped
+			if (alive) {
+				this.state = TestResult.GcFailed;
+				this.details = "still reachable after GC (leak)";
+			} else {
+				this.state = TestResult.Passed;
+			}
+		} else {
+			// expected to stay alive (reachable from a still-live constraint owner)
+			if (alive) {
+				this.state = TestResult.Passed;
+			} else {
+				this.state = TestResult.GcFailed;
+				this.details = "collected prematurely";
+			}
+		}
 	}
 }
+
+let currentFile = "<no file>";
+let currentTest: Test | undefined;
+let tests: CollectedTest[] = [];
+
+export function test(name: string, fn: TestFunction, variant?: string) {
+	tests.push({ file: currentFile, name, fn, variant });
+}
+
+export function check(name: string): Check {
+	if (!currentTest) throw new Error("run this in a test");
+
+	let check = new Check(name);
+	currentTest.checks.push(check);
+	return check;
+}
+
+export function checkAlive<T extends WeakKey>(name: string, val: T): T {
+	if (!currentTest) throw new Error("run this in a test");
+	currentTest.checks.push(new GCCheck("GC-alive: " + name, val, false));
+	return val;
+}
+export function checkFreed<T extends WeakKey>(name: string, val: T): T {
+	if (!currentTest) throw new Error("run this in a test");
+	currentTest.checks.push(new GCCheck("GC-freed: " + name, val, true));
+	return val;
+}
+// @deprecated ambiguous; prefer checkAlive (stays reachable) or checkFreed (collected)
+export let checkGC = checkAlive;
 
 interface CollectedTest {
 	file: string;
 	name: string;
+	variant?: string;
 	fn: TestFunction;
+}
+export interface SCollectedTest {
+	file: string;
+	name: string;
+	variant?: string;
 }
 
 interface Test {
 	file: string;
 	name: string;
+	variant?: string;
 	checks: BaseCheck[];
 }
-
-export enum TestResult {
-	Passed = "passed",
-	GcFailed = "GC-failed",
-	Failed = "failed",
-	Threw = "threw",
-	Invalid = "invalid",
+export interface SCheck {
+	name: string;
+	state: TestResult;
+	details?: string;
 }
 
-function resultToSortNum(result: TestResult): number {
+export const TestResult = {
+	Passed: "passed",
+	GcFailed: "GC-failed",
+	Failed: "failed",
+	Threw: "threw",
+	Invalid: "invalid",
+} as const;
+export type TestResult = (typeof TestResult)[keyof typeof TestResult];
+
+export function resultToSortNum(result: TestResult): number {
 	switch (result) {
 		case TestResult.Passed:
 			return 0;
@@ -219,182 +311,147 @@ function resultToSortNum(result: TestResult): number {
 export interface FinishedTest {
 	file: string;
 	name: string;
+	variant?: string;
 	result: TestResult;
 	checks: BaseCheck[];
 	error?: unknown;
 }
-
-export interface TestRunnerCallbacks {
-	collected?: (files: { file: string; name: string }[]) => void;
-	pre?: (file: string, name: string) => void;
-	post?: (test: FinishedTest) => void;
+export interface SFinishedTest {
+	file: string;
+	name: string;
+	variant?: string;
+	result: TestResult;
+	checks: SCheck[];
+	error?: unknown;
 }
 
-let currentFile = "<no file>";
-let currentTest: Test | undefined;
-let tests: CollectedTest[] = [];
-
-export function test(name: string, fn: TestFunction) {
-	tests.push({ file: currentFile, name, fn });
-}
-
-export function check(name: string): Check {
-	if (!currentTest) throw new Error("run this in a test");
-
-	let check = new Check(name);
-	currentTest.checks.push(check);
-	return check;
-}
-
-export function checkGC<T extends WeakKey>(name: string, val: T): T {
-	if (!currentTest) throw new Error("run this in a test");
-	let check = new GCCheck("GC: " + name, val);
-	currentTest.checks.push(check);
-	return val;
-}
-
-async function collectTests(folders: string[]) {
-	if (!folders.length) return [];
-
-	folders = await Promise.all(folders.map((x) => realpath(x)));
-
-	let commonParts = [];
-	let sepFolders = folders.map((x) => x.split("/").slice(1));
-	while (true) {
-		let parts = sepFolders.map((x) => x.shift());
-		if (parts.every((x) => x?.length) && parts.every((x) => x === parts[0])) {
-			commonParts.push(parts[0]);
-		} else {
-			break;
-		}
+async function collectTests(
+	files: CollectedTestFile[]
+): Promise<CollectedTest[]> {
+	let collected = [];
+	for (let file of files) {
+		tests = [];
+		currentFile = file.display;
+		await import(file.path);
+		currentFile = "<no file>";
+		collected.push(...tests);
 	}
-
-	let common = commonParts.join("/") + "/";
-
-	let testList: CollectedTest[] = [];
-	tests = testList;
-	for (let folder of folders) {
-		for await (let entry of glob(
-			["js", "ts"].map((x) => folder + "/**/*." + x)
-		)) {
-			let displayEntry = entry.replace(common, "").slice(1);
-
-			currentFile = displayEntry;
-			await import(entry);
-			currentFile = "<no file>";
-		}
-	}
-	tests = [];
-
-	return testList;
+	return collected;
 }
 
-export async function runTests(
-	folders: string[],
-	callbacks?: TestRunnerCallbacks
+async function runTest(testDesc: CollectedTest): Promise<FinishedTest> {
+	let test: Test = {
+		file: testDesc.file,
+		name: testDesc.name,
+		variant: testDesc.variant,
+
+		checks: [],
+	} satisfies Test;
+
+	let result: TestResult | undefined;
+	let error: unknown;
+
+	currentTest = test;
+	try {
+		await testDesc.fn();
+	} catch (err) {
+		result = TestResult.Threw;
+		error = err;
+	}
+	currentTest = undefined;
+
+	await collectGarbage();
+
+	test.checks.map((x) => x._checkInvariants());
+
+	let checkResult =
+		test.checks.toSorted(
+			(a, b) => resultToSortNum(b.state) - resultToSortNum(a.state)
+		)[0]?.state || TestResult.Invalid;
+	if (!result) result = checkResult;
+
+	return {
+		file: test.file,
+		name: test.name,
+		variant: test.variant,
+		result,
+		checks: test.checks,
+		error,
+	} satisfies FinishedTest;
+}
+
+async function runTests(
+	tests: CollectedTest[],
+	pre: (test: SCollectedTest) => void,
+	post: (test: FinishedTest) => void
 ): Promise<FinishedTest[]> {
-	let tests = await collectTests(folders);
+	let results = [];
+	for (let test of tests) {
+		pre({ file: test.file, name: test.name, variant: test.variant });
 
-	callbacks?.collected?.(tests.map((x) => ({ file: x.file, name: x.name })));
+		let ret = await runTest(test);
 
-	let finished = [];
-	for (let testDesc of tests) {
-		let test: Test = {
-			file: testDesc.file,
-			name: testDesc.name,
-
-			checks: [],
-		} satisfies Test;
-
-		callbacks?.pre?.(test.file, test.name);
-
-		let result: TestResult | undefined;
-		let error: unknown;
-
-		currentTest = test;
-		try {
-			await testDesc.fn();
-		} catch (err) {
-			result = TestResult.Threw;
-			error = err;
-		}
-		currentTest = undefined;
-
-		induceGC();
-
-		test.checks.map((x) => x._checkInvariants());
-
-		let checkResult =
-			test.checks.toSorted(
-				(a, b) => resultToSortNum(b.state) - resultToSortNum(a.state)
-			)[0]?.state || TestResult.Invalid;
-		if (!result) result = checkResult;
-
-		let finishedTest: FinishedTest = {
-			file: test.file,
-			name: test.name,
-			result,
-			checks: test.checks,
-			error,
-		} satisfies FinishedTest;
-		callbacks?.post?.(finishedTest);
-		finished.push(finishedTest);
+		results.push(ret);
+		post(ret);
 	}
-	return finished;
+
+	return results;
 }
 
-if (fileURLToPath(import.meta.url) === argv[1]) {
-	(async () => {
-		let folders = argv.slice(2);
-		if (!folders.length) folders.push(".");
+let collected: CollectedTest[];
 
-		let tests = await runTests(folders, {
-			collected(files) {
-				stdout.write(`Collected ${files.length} tests\n\n`);
-			},
-			pre(file, name) {
-				stdout.write(`Running test ${file}/${name}...`);
-			},
-			post({ result, error, checks }) {
-				stdout.write(result.toUpperCase() + "\n");
-				let failed = checks.filter((x) => x.state !== TestResult.Passed);
-				if (failed.length) {
-					stdout.write("\tFailed checks:\n");
-					for (let check of failed) {
-						let details = check.details ? ` (${check.details})` : "";
-						stdout.write(
-							`\t\t${check.name}...${check.state.toUpperCase()}${details}\n`
-						);
-					}
-				}
-				if (result === TestResult.Threw) {
-					stdout.write(`\tThrown error: ${error}\n`);
-					if (error instanceof Error) {
-						for (let line of error.stack!.split("\n").slice(1)) {
-							stdout.write(`\t\t${line}\n`);
-						}
-					}
-				}
-			},
-		});
-
-		let map = tests.reduce((acc, x) => {
-			let arr = acc.get(x.result);
-			if (arr) arr.push(x);
-			else acc.set(x.result, [x]);
-			return acc;
-		}, new Map<TestResult, FinishedTest[]>());
-		let results = [...map.entries()]
-			.sort(([a], [b]) => resultToSortNum(a) - resultToSortNum(b))
-			.map(([a, b]) => `${b.length} ${a}`)
-			.join(" ");
-
-		stdout.write(`\nResults: ${results}\n`);
-		let invalid = map.get(TestResult.Invalid);
-		if (invalid) {
-			stdout.write(
-				`Please fix these tests: ${invalid.map((x) => `${x.file}/${x.name}`).join(" ")}\n`
-			);
+if (parentPort) {
+	let port = (data: HarnessMessage) => {
+		try {
+			parentPort!.postMessage(data);
+		} catch (err) {
+			console.log(data);
+			throw err;
 		}
-	})();
+	};
+	parentPort.on("message", async (data: IndexMessage) => {
+		try {
+			if (data.type === "collect") {
+				collected = await collectTests(data.files);
+				port({
+					type: "collected",
+					tests: collected.map(({ file, name, variant }) => ({
+						file,
+						name,
+						variant,
+					})),
+				});
+			} else if (data.type === "run") {
+				let ret = await runTests(
+					collected,
+					(test) => port({ type: "pre", test }),
+					({ file, name, variant, result, checks, error }) =>
+						port({
+							type: "post",
+							test: {
+								file,
+								name,
+								variant,
+								result,
+								checks: checks.map((x) => x.serialize()),
+								error,
+							},
+						})
+				);
+				port({
+					type: "done",
+					tests: ret.map(({ file, name, variant, result, checks, error }) => ({
+						file,
+						name,
+						variant,
+						result,
+						checks: checks.map((x) => x.serialize()),
+						error,
+					})),
+				});
+			}
+		} catch (err) {
+			port({ type: "err", err });
+		}
+	});
 }
