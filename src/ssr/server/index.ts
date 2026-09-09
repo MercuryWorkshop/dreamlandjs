@@ -1,4 +1,7 @@
-import { Element as DomElement, Text as DomText } from "domhandler";
+import {
+	Element as DomHandlerElement,
+	Text as DomHandlerText,
+} from "domhandler";
 import { setDomImpl, DomImpl, domImpl } from "dreamland/core";
 import { Node as VdomNode, Comment, Text, Element, newVDom } from "./vdom";
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -10,9 +13,9 @@ import { serializeWatchedStates } from "../common/serialize";
 export { newVDom as __unstable_newVdom };
 
 export interface RenderedComponent {
-	head: DomElement[];
-	data: DomElement;
-	component: DomElement;
+	head: DomHandlerElement[];
+	data: DomHandlerElement;
+	component: DomHandlerElement;
 }
 
 let storage = new AsyncLocalStorage<DomImpl>();
@@ -141,14 +144,14 @@ export async function render(
 					x instanceof Element &&
 					domCssIdents.has(x.attributes.get(CSS_IDENT + "id") || "")
 			),
-		].map((x) => x.toStandard()) as DomElement[];
+		].map((x) => x.toStandard()) as DomHandlerElement[];
 
 		return {
 			head,
-			data: new DomElement(
+			data: new DomHandlerElement(
 				"script",
 				{ type: "application/json", [SSR_DATA]: ":3" },
-				[new DomText(JSON.stringify(data))]
+				[new DomHandlerText(JSON.stringify(data))]
 			),
 			component: root.toStandard(),
 		};

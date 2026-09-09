@@ -1,6 +1,9 @@
 {
 	"compilerOptions": {
-		"lib": ["ES2022"]
+		"lib": ["ES2022"],
+		// this entry point must stay dom-free, so resolve dreamland/core through
+		// its built .d.ts rather than the root config's src/* path mapping
+		"paths": {}
 	},
 	"include": ["."],
 	"extends": "../../../tsconfig.json"

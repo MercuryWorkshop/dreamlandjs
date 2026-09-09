@@ -1,9 +1,13 @@
 import {
 	getDom,
 	CREATE_ELEMENT,
-	DomLifecycleState as Lifecycle,
+	DomLifecycleState,
 	DomLifecycleCallback,
 	DomComponentState,
+	DomNode,
+	DomElement,
+	DomStyleDeclaration,
+	DomClassList,
 } from "./dom";
 import { CSS_COMPONENT } from "../css";
 import {
@@ -20,9 +24,9 @@ import { NO_CHANGE } from "../consts";
 import { currentComponentCx, withCx } from "../cx";
 
 let setStyle = (
-	el: HTMLElement,
+	el: DomElement,
 	ptr: Pointer<any>,
-	style: CSSStyleDeclaration,
+	style: DomStyleDeclaration,
 	k: string
 ) =>
 	maybeListen(ptr, el, (v: any) => {
@@ -32,7 +36,7 @@ let setStyle = (
 
 let runLifecycle = (
 	lifecycle: DomLifecycleCallback,
-	stage: Lifecycle,
+	stage: DomLifecycleState,
 	cx: ComponentContext<any>,
 	cb?: () => Pointer<any> | any,
 	prev?: Pointer<any> | any
@@ -71,7 +75,7 @@ function _jsx(
 
 	let [DOCUMENT, NODE] = getDom();
 	let children = props.children;
-	let el: HTMLElement;
+	let el: DomElement;
 
 	if (init === Fragment) return children;
 	if (key) props.key = key;
@@ -107,7 +111,7 @@ function _jsx(
 		componentCb?.(DomComponentState.BeforeComponentInit, init, state, cx);
 
 		_state.cx = cx;
-		el = withCx(cx, init, state, state);
+		el = withCx(cx, init, state, state) as DomElement;
 		_state.root = el;
 
 		dev: {
@@ -134,9 +138,15 @@ function _jsx(
 
 		componentCb?.(DomComponentState.AfterComponentInit, init, state, cx);
 
-		lifeTmp = runLifecycle(lifecycle, Lifecycle.Load, cx, cx.load);
-		lifeTmp = runLifecycle(lifecycle, Lifecycle.Init, cx, cx.init, lifeTmp);
-		runLifecycle(lifecycle, Lifecycle.Mount, cx, cx.mount, lifeTmp);
+		lifeTmp = runLifecycle(lifecycle, DomLifecycleState.Load, cx, cx.load);
+		lifeTmp = runLifecycle(
+			lifecycle,
+			DomLifecycleState.Init,
+			cx,
+			cx.init,
+			lifeTmp
+		);
+		runLifecycle(lifecycle, DomLifecycleState.Mount, cx, cx.mount, lifeTmp);
 	} else {
 		// <svg> elemnts need to be created with createElementNS specifically
 		// we know it's an svg element if it has the xmlns attribute
@@ -149,17 +159,16 @@ function _jsx(
 			else el.setAttribute(param, val);
 		};
 		// last class list only matters when the fastpath is gone due to something setting additional classes on it
-		let lastClassList: string[] | undefined, classList: DOMTokenList;
+		let lastClassList: string[] | undefined, classList: DomClassList;
 
-		el = (DOCUMENT as any)[CREATE_ELEMENT + (xmlns ? "NS" : "")](
+		el = DOCUMENT[xmlns ? (`${CREATE_ELEMENT}NS` as const) : CREATE_ELEMENT](
 			xmlns || init,
 			xmlns && init,
-			props,
-			children
+			currentComponentCx
 		);
 
 		if (children !== undefined) {
-			let lastChildNode: Node;
+			let lastChildNode: DomNode;
 			flattenChildRet(mapChild(children, el, lastCssIdent)).forEach((x) => {
 				if (x.parentNode !== el)
 					el.insertBefore(
@@ -239,7 +248,7 @@ function _jsx(
 		if (xmlns) el.innerHTML = el.innerHTML;
 	}
 
-	return el;
+	return el as HTMLElement;
 }
 
 function _h<T extends Component<any, any>>(

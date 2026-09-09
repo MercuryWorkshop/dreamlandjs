@@ -3,7 +3,13 @@ import { CSS_COMPONENT, CSS_IDENT } from "../css";
 import { Pointer } from "../state/pointers";
 import { findLIS } from "../utils";
 import { ComponentChild } from "./definitions";
-import { getDom } from "./dom";
+import {
+	DomCommentNode,
+	DomElement,
+	DomNode,
+	DomTextNode,
+	getDom,
+} from "./dom";
 
 const enum ChildStateType {
 	Text = 1,
@@ -14,36 +20,43 @@ const enum ChildStateType {
 
 // Comment and Node have _value to reduce object shapes
 type ChildState =
-	| { _type: ChildStateType.Text; _node: Text; _value: string | number }
-	| { _type: ChildStateType.Comment; _node: Comment; _value: number }
-	| { _type: ChildStateType.Node; _node: Node; _value: number }
+	| { _type: ChildStateType.Text; _node: DomTextNode; _value: string | number }
+	| { _type: ChildStateType.Comment; _node: DomCommentNode; _value: number }
+	| { _type: ChildStateType.Node; _node: DomNode; _value: number }
 	| {
 			_type: ChildStateType.Pointer;
-			_anchor: Comment;
+			_anchor: DomCommentNode;
 			_inner: MapChildRet;
 			_ptr: Pointer<ComponentChild>;
 	  };
 
 type PointerChildState = ChildState & { _type: ChildStateType.Pointer };
 
-interface ChildStateArray extends Array<MapChildRet> {
-	_type: "typescript hack so it matches runtime behavior";
+interface ChildStateArray<T> extends Array<T> {
+	_type?: never;
 }
-type MapChildRet = ChildState | ChildStateArray;
+type MapChildRet = ChildState | ChildStateArray<MapChildRet>;
+type OptionalMapChildRet =
+	| ChildState
+	| ChildStateArray<OptionalMapChildRet>
+	| undefined;
 
-let applyIdent = (child: any, cssIdent: string) => {
-	let arr: string[] = child.getAttributeNames?.();
+let applyIdent = (child: DomNode, cssIdent: string) => {
+	let arr: string[] = (child as DomElement).getAttributeNames?.();
 	// walk until we reach a component boundary
 	if (arr && !arr.includes(CSS_COMPONENT)) {
 		// paint any unowned nodes
 		if (!arr.some((x) => x.startsWith(CSS_IDENT)))
-			child.setAttribute(cssIdent, "");
+			(child as DomElement).setAttribute(cssIdent, "");
 
-		child.childNodes.forEach((x: any) => applyIdent(x, cssIdent));
+		child.childNodes.forEach((x) => applyIdent(x, cssIdent));
 	}
 };
 
-export let flattenChildRet = (state: MapChildRet, out: Node[] = []): Node[] => {
+export let flattenChildRet = (
+	state: MapChildRet,
+	out: DomNode[] = []
+): DomNode[] => {
 	if (state instanceof Array) {
 		state.forEach((x) => flattenChildRet(x, out));
 	} else if (state._type == ChildStateType.Pointer) {
@@ -57,9 +70,9 @@ export let flattenChildRet = (state: MapChildRet, out: Node[] = []): Node[] => {
 
 export let mapChild = (
 	child: ComponentChild,
-	parent: Node,
+	parent: DomNode,
 	cssIdent?: string,
-	last?: MapChildRet
+	last?: OptionalMapChildRet
 ): MapChildRet => {
 	let [, NODE, new_Text, new_Comment] = getDom();
 
@@ -87,16 +100,16 @@ export let mapChild = (
 			if (v === val || !ret._anchor.parentNode) return;
 			val = v;
 
-			let old: Node[] = flattenChildRet(ret._inner); // since reused nodes are modified inplace
-			let current: Node[] = flattenChildRet(
+			let old: DomNode[] = flattenChildRet(ret._inner); // since reused nodes are modified inplace
+			let current: DomNode[] = flattenChildRet(
 				(ret._inner = mapChild(v, parent, ident, ret._inner))
 			);
-			let oldToIndex: Map<Node, number> = MAP(old.map((x, i) => [x, i]));
+			let oldToIndex: Map<DomNode, number> = MAP(old.map((x, i) => [x, i]));
 			let LIS: number[] = findLIS(
 				current.map((x) => oldToIndex.get(x)!).filter((x) => x + 1)
 			);
 			let lisIdx: number = 0;
-			let anchor: Node = ret._anchor;
+			let anchor: DomNode = ret._anchor;
 
 			current.forEach((child) => {
 				// LIS is a subsequence of the reused indices in current order, so one
@@ -128,18 +141,19 @@ export let mapChild = (
 		}
 		return { _type: ChildStateType.Node, _node: child, _value: 0 };
 	} else if (child instanceof Array) {
-		if (!(last instanceof Array)) last = [last] as any as ChildStateArray;
-		return child.map((x, i) =>
-			mapChild(x, parent, cssIdent, (last as ChildStateArray)[i])
-		) as ChildStateArray;
+		// a local, not a reassignment of `last`: control-flow narrowing on a
+		// parameter does not survive into the closure below
+		let lastArr = last instanceof Array ? last : [last];
+		return child.map((x, i) => mapChild(x, parent, cssIdent, lastArr[i]));
 	} else {
 		if (last?._type == ChildStateType.Text) {
-			if (last._value !== child) (last._node as any).data = last._value = child;
+			if (last._value !== child)
+				last._node.data = (last._value = child) as string;
 			return last;
 		}
 		return {
 			_type: ChildStateType.Text,
-			_node: new_Text(child as any),
+			_node: new_Text(child),
 			_value: child,
 		};
 	}

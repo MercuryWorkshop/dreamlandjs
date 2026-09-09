@@ -1,6 +1,12 @@
 import { DREAMLAND, WEAKMAP } from "../consts";
 import { Component, ComponentFn, ComponentFnState } from "../jsx/definitions";
-import { CREATE_ELEMENT, DomImpl } from "../jsx/dom";
+import {
+	CREATE_ELEMENT,
+	DomCSSRule,
+	DomCSSRuleList,
+	DomImpl,
+	DomStyleElement,
+} from "../jsx/dom";
 import { Stateful } from "../state/state";
 import { CSS_COMPONENT, rewriteSelector } from "./scope";
 
@@ -51,8 +57,8 @@ export interface CssInit {
 // :global() is not valid css, so the browser would drop every rule using it
 // before we ever get to look at the sheet. swap it for something parseable on
 // the way in and swap it back per-selector on the way out
-let rewriteRules = (list: any) =>
-	[...list].forEach((rule: any) => {
+let rewriteRules = (list: DomCSSRuleList) =>
+	[...list].forEach((rule: DomCSSRule) => {
 		if (rule.selectorText) {
 			let newselector = rewriteSelector(
 				rule.selectorText.replaceAll(GLOBAL_WHERE_TRANSFORMATION, GLOBAL),
@@ -83,7 +89,7 @@ export let css = /*@__NO_SIDE_EFFECTS__*/ <T extends ComponentFn<any, any>>(
 	return {
 		_map: WEAKMAP(),
 		_get(DOCUMENT, hydrating, genCssUid, init) {
-			let style: HTMLStyleElement = DOCUMENT[CREATE_ELEMENT]("style");
+			let style: DomStyleElement = DOCUMENT[CREATE_ELEMENT]("style");
 			let _id = this._map.get(DOCUMENT.head);
 			if (_id) return _id;
 
@@ -113,9 +119,9 @@ export let css = /*@__NO_SIDE_EFFECTS__*/ <T extends ComponentFn<any, any>>(
 							""
 						)
 						.replaceAll(GLOBAL, GLOBAL_WHERE_TRANSFORMATION);
-					rewriteRules(style.sheet!.cssRules);
+					rewriteRules(style.sheet.cssRules);
 					this._css = _css = Array.from(
-						style.sheet!.cssRules,
+						style.sheet.cssRules,
 						(x) => x.cssText
 					).join("\n");
 				}

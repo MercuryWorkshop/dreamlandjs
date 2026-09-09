@@ -8,7 +8,14 @@
 		"moduleResolution": "bundler",
 		"stripInternal": true,
 		"strict": true,
-		"allowUnusedLabels": true
+		"allowUnusedLabels": true,
+
+		// subpackages import core as "dreamland/core", which package.json exports
+		// resolves to dist/core.d.ts -- so without this they typecheck against the
+		// *last build* and core's `declare global { namespace JSX }` gets declared
+		// twice in one program. rollup marks dreamland/core external by name, so
+		// this only affects typechecking, not what ends up in the bundles
+		"paths": { "dreamland/*": ["./src/*"] }
 	},
 	"include": ["src"],
 	"exclude": ["dist"]

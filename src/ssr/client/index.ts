@@ -1,7 +1,9 @@
 import {
 	DomComponentState,
+	DomDocument,
 	DomImpl,
 	domImpl,
+	DomIsAdopted,
 	DomLifecycleState,
 	jsx,
 	setDomImpl,
@@ -68,7 +70,7 @@ export let hydrate = async (
 					head.querySelector<HTMLElement>(selector);
 		return ret;
 	};
-	let adopted = (x: HTMLElement) => x.hasAttribute(SSR_ID);
+	let adopted: DomIsAdopted = (x) => x.hasAttribute(SSR_ID);
 
 	for (let [parent, offset, len] of data.t) {
 		let text = getInternal(parent)!.childNodes[offset] as Text;
@@ -96,38 +98,38 @@ export let hydrate = async (
 	let mounts: typeof inits = [];
 	let vdom = [
 		{
-			createElement: (x: any) => {
+			createElement: ((name) => {
 				let el = getInternal(++idx);
 				dev: {
-					if (el && el.tagName.toLowerCase() !== x.toLowerCase())
+					if (el && el.tagName.toLowerCase() !== name.toLowerCase())
 						mismatch(
-							`expected <${x}> but server rendered <${el.tagName.toLowerCase()}> (${SSR_ID}=${idx})`
+							`expected <${name}> but server rendered <${el.tagName.toLowerCase()}> (${SSR_ID}=${idx})`
 						);
 					if (!el && !isPruned(idx))
 						mismatch(
-							`could not find server-rendered element for <${x}> (${SSR_ID}=${idx})`
+							`could not find server-rendered element for <${name}> (${SSR_ID}=${idx})`
 						);
 				}
-				return el || old[0].createElement(x);
-			},
-			createElementNS: (x: any, y: any) => {
+				return el || old[0].createElement(name);
+			}) as DomDocument["createElement"],
+			createElementNS: (xmlns, name) => {
 				let el = getInternal(++idx);
 				dev: {
-					if (el && el.tagName.toLowerCase() !== y.toLowerCase())
+					if (el && el.tagName.toLowerCase() !== name.toLowerCase())
 						mismatch(
-							`expected <${y}> (ns: ${x}) but server rendered <${el.tagName.toLowerCase()}> (${SSR_ID}=${idx})`
+							`expected <${name}> (ns: ${xmlns}) but server rendered <${el.tagName.toLowerCase()}> (${SSR_ID}=${idx})`
 						);
 					if (!el && !isPruned(idx))
 						mismatch(
-							`could not find server-rendered element for <${y}> (ns: ${x}) (${SSR_ID}=${idx})`
+							`could not find server-rendered element for <${name}> (ns: ${xmlns}) (${SSR_ID}=${idx})`
 						);
 				}
-				return el || old[0].createElementNS(x, y);
+				return el || old[0].createElementNS(xmlns, name);
 			},
 			head: old[0].head,
 		},
 		old[1],
-		(x: any) => {
+		(x) => {
 			let node = getRelative();
 			dev: {
 				if (node && node.nodeType !== 3)
@@ -148,9 +150,9 @@ export let hydrate = async (
 						`could not find server-rendered text node for "${x}" (${SSR_ID}=${idx})`
 					);
 			}
-			return node || old[2](x);
+			return (node as Text) || old[2](x);
 		},
-		(x: any) => {
+		(x) => {
 			let node = getRelative();
 			dev: {
 				if (node && node.nodeType !== 8)
@@ -162,7 +164,7 @@ export let hydrate = async (
 						`could not find server-rendered comment node (${SSR_ID}=${idx})`
 					);
 			}
-			return node || old[3](x);
+			return (node as Comment) || old[3](x);
 		},
 		(init, style) => style.getAttribute(SSR_DATA) || old[4](init, style),
 		adopted,

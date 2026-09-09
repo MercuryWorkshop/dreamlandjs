@@ -1,24 +1,56 @@
-import { ComponentContext, DomComponentState, DomImpl } from "dreamland/core";
+import {
+	ComponentContext,
+	DomClassList,
+	DomCommentNode,
+	DomComponentState,
+	DomElement,
+	DomImpl,
+	DomNode,
+	DomStyleElement,
+	DomTextNode,
+} from "dreamland/core";
 
 // @ts-expect-error rrweb-cssom doesn't have types
 import { CSSOM } from "rrweb-cssom";
 
 import {
-	Element as DomElement,
-	Comment as DomComment,
-	Text as DomText,
-	AnyNode as DomNode,
+	Element as DomHandlerElement,
+	Comment as DomHandlerComment,
+	Text as DomHandlerText,
+	AnyNode as DomHandlerNode,
 } from "domhandler";
 import { parseDocument } from "htmlparser2";
 import renderToString from "dom-serializer";
 import { SSR_DATA, SSR_ID } from "../common/consts";
 import { ObjectMap, WatchedState, watchState } from "../common/serialize";
 
-export class Node {
+function fromDomhandler(node: DomHandlerNode, parent: Node): Node {
+	let newNode: Node;
+	if (node.type === "text") {
+		newNode = new Text((node as DomHandlerText).data);
+	} else if (node.type === "comment") {
+		newNode = new Comment((node as DomHandlerComment).data);
+	} else if (node.type === "tag") {
+		const element = new Element((node as DomHandlerElement).name);
+		for (const key in (node as DomHandlerElement).attribs) {
+			element.setAttribute(key, (node as DomHandlerElement).attribs[key]);
+		}
+		for (const child of (node as DomHandlerElement).childNodes) {
+			element.appendChild(fromDomhandler(child, element));
+		}
+		newNode = element;
+	} else {
+		newNode = new Node();
+	}
+	newNode.parent = parent;
+	return newNode;
+}
+
+export class Node implements DomNode {
 	_id!: number;
 	nodeType!: number;
 
-	parent?: Node;
+	parent: Node | null = null;
 	childNodes: Node[] = [];
 
 	appendChild(node: Node) {
@@ -31,15 +63,8 @@ export class Node {
 	}
 
 	removeChild(node: Node) {
-		node.parent = undefined;
+		node.parent = null;
 		this.childNodes = this.childNodes.filter((x) => x !== node);
-	}
-
-	replaceChild(el: Node, node: Node) {
-		let idx = this.childNodes.findIndex((x) => x === node);
-		this.childNodes[idx] = el;
-		el.parent = this;
-		node.parent = undefined;
 	}
 
 	insertBefore(node: Node, anchor: Node) {
@@ -51,25 +76,25 @@ export class Node {
 		this.childNodes.splice(idx < 0 ? this.childNodes.length : idx, 0, node);
 	}
 
-	toStandard(): DomNode {
+	toStandard(): DomHandlerNode {
 		return null!;
 	}
 
-	get parentNode() {
+	get parentNode(): Node | null {
 		return this.parent;
 	}
 
-	get firstChild() {
-		return this.childNodes[0];
+	get firstChild(): Node | null {
+		return this.childNodes[0] ?? null;
 	}
 
-	get nextSibling() {
+	get nextSibling(): Node | null {
 		let self = this.parent?.childNodes?.findIndex((x) => x === this);
-		return this.parent?.childNodes[self! + 1];
+		return this.parent?.childNodes[self! + 1] ?? null;
 	}
 }
 
-class ClassList extends Array {
+class ClassList extends Array implements DomClassList {
 	constructor() {
 		super();
 	}
@@ -101,7 +126,7 @@ class ClassList extends Array {
 	}
 }
 
-export class Element extends Node {
+export class Element extends Node implements DomElement {
 	nodeType: number = 1;
 
 	namespace?: string;
@@ -127,6 +152,9 @@ export class Element extends Node {
 		if (key === "class") this.classList.value = value;
 		this.attributes.set(key, "" + value);
 	}
+	getAttribute(key: string) {
+		return this.attributes.get(key) ?? null;
+	}
 	removeAttribute(key: string) {
 		if (key === "class") this.classList.value = "";
 		this.attributes.delete(key);
@@ -138,11 +166,6 @@ export class Element extends Node {
 	}
 	hasAttribute(key: string) {
 		return this.attributes.has(key);
-	}
-
-	replaceWith(el: Element) {
-		if (!this.parent) throw new Error("element has no parent");
-		this.parent.replaceChild(el, this);
 	}
 
 	get $() {
@@ -166,16 +189,13 @@ export class Element extends Node {
 	set innerText(value: string) {
 		this.childNodes = [new Text(value)];
 	}
-	set textContent(value: string) {
-		this.childNodes = [new Text(value)];
-	}
 
-	toStandard(): DomElement {
+	toStandard(): DomHandlerElement {
 		if (this.style.cssText) {
 			this.attributes.set("style", this.style.cssText);
 		}
 
-		let el = new DomElement(this.type, {
+		let el = new DomHandlerElement(this.type, {
 			...Object.fromEntries(this.attributes.entries()),
 			...(this.classList.empty() ? {} : { class: this.classList.toString() }),
 		});
@@ -187,28 +207,6 @@ export class Element extends Node {
 		});
 		return el;
 	}
-}
-
-function fromDomhandler(node: DomNode, parent: Node): Node {
-	let newNode: Node;
-	if (node.type === "text") {
-		newNode = new Text((node as DomText).data);
-	} else if (node.type === "comment") {
-		newNode = new Comment((node as DomComment).data);
-	} else if (node.type === "tag") {
-		const element = new Element((node as DomElement).name);
-		for (const key in (node as DomElement).attribs) {
-			element.setAttribute(key, (node as DomElement).attribs[key]);
-		}
-		for (const child of (node as DomElement).childNodes) {
-			element.appendChild(fromDomhandler(child, element));
-		}
-		newNode = element;
-	} else {
-		newNode = new Node();
-	}
-	newNode.parent = parent;
-	return newNode;
 }
 
 // ::before, ::after, ::first-line and ::first-letter are the four pseudo-elements
@@ -247,7 +245,7 @@ let parseSheet = (value: string) => {
 	return sheet;
 };
 
-export class Style extends Element {
+export class Style extends Element implements DomStyleElement {
 	constructor() {
 		super("style");
 	}
@@ -257,17 +255,14 @@ export class Style extends Element {
 	set innerText(value: string) {
 		this.sheet = parseSheet(value);
 	}
-	set textContent(value: string) {
-		this.sheet = parseSheet(value);
-	}
 
-	toStandard(): DomElement {
+	toStandard(): DomHandlerElement {
 		this.childNodes = [new Text(this.sheet.toString())];
 		return super.toStandard();
 	}
 }
 
-export class Comment extends Node {
+export class Comment extends Node implements DomCommentNode {
 	nodeType: number = 8;
 	data: string;
 
@@ -277,12 +272,12 @@ export class Comment extends Node {
 		this.data = text;
 	}
 
-	toStandard(): DomComment {
-		return new DomComment(this.data);
+	toStandard(): DomHandlerComment {
+		return new DomHandlerComment(this.data);
 	}
 }
 
-export class Text extends Node {
+export class Text extends Node implements DomTextNode {
 	nodeType: number = 3;
 
 	data: string;
@@ -293,14 +288,14 @@ export class Text extends Node {
 		this.data = text;
 	}
 
-	toStandard(): DomText {
-		return new DomText(this.data);
+	toStandard(): DomHandlerText {
+		return new DomHandlerText(this.data);
 	}
 }
 
 export let newVDom = () => {
 	let elArr: Node[] = [];
-	let push = (el: Node) => {
+	let push = <T extends Node>(el: T): T => {
 		let i = elArr.push(el) - 1;
 		el._id = i;
 		if (el instanceof Element) el.setAttribute(SSR_ID, "" + i);
@@ -314,34 +309,45 @@ export let newVDom = () => {
 
 	let promises: (Promise<any> | any)[] = [];
 
-	return [
-		{
-			createElement(type: string) {
-				return push(type === "style" ? new Style() : new Element(type));
-			},
-			createElementNS(ns: string, type: string) {
-				return push(new Element(type, ns));
-			},
+	function createElement(type: "style"): DomStyleElement;
+	function createElement(
+		type: string,
+		xmlns?: string,
+		cx?: ComponentContext<any>
+	): DomElement;
+	function createElement(type: string): DomElement {
+		if (type === "style") return push(new Style());
+		return push(new Element(type));
+	}
 
-			elArr,
-			stateArr,
-			objectMap,
-
-			promises,
-
-			head: new Element("head"),
-
-			Comment,
-			Text,
-			Node,
-			Element,
+	let doc = {
+		createElement,
+		createElementNS(ns: string, type: string) {
+			return push(new Element(type, ns));
 		},
+
+		elArr,
+		stateArr,
+		objectMap,
+
+		promises,
+
+		head: new Element("head"),
+
+		Comment,
+		Text,
+		Node,
+		Element,
+	};
+
+	return [
+		doc,
 		Node,
 		(text?: any) => push(new Text("" + text)),
 		(text?: any) => push(new Comment("" + text)),
 		(_component, style) => {
 			let ret = "" + identCount++;
-			(style as any as Style).setAttribute(SSR_DATA, ret);
+			style.setAttribute(SSR_DATA, ret);
 			return ret;
 		},
 		() => false,
