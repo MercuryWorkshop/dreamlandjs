@@ -99,7 +99,7 @@ function _createStore<T extends object>(
 		for (let key in source) {
 			let val = source[key];
 			if (isStateful(val) && isAuto) stateListen(val, saveHook);
-			if (val instanceof Object && key in target) {
+			if (val instanceof Object && key in target && (target as any)[key] instanceof Object) {
 				Object.assign(val, deepMerge((target as any)[key], val));
 			}
 		}
